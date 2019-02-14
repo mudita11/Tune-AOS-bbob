@@ -103,7 +103,7 @@ cost = hv.compute(ref_point)
 # from http://stackoverflow.com/questions/4703390
 
 # print("Cost:= ",cost)
-print(cost)
+print(-cost)
 
 sys.exit(0)
 #print("End of target-runner")
