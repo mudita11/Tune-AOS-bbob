@@ -80,14 +80,22 @@ if not os.path.isfile(out_file):
     print(str(now) + " error: output file "+ out_file  +" not found.")
     sys.exit(1)
 
-# grep -v '%'  bbobexp_f1_DIM20_i1.dat  | cut -f1,3 -d ' '
+# get file
+filename = 'bbobexp_f1_DIM20_i1-run1.dat'
 
 import numpy as np
+
+points = np.loadtxt(filename, comments="%", usecols=(0,2))
+
+# See README.txt to install this
 from pygmo import hypervolume
-hv = hypervolume([[1, 0], [0.5, 0.5], [0, 1], [1.5, 0.75]] )
-ref_point = [2,2]
-hv.compute(ref_point)
-cost=[line.rstrip('\n') for line in open(out_file)][-8]
+
+# max fe_evals * 10,
+# TODO: normalize points to [0, 1], then use [1.1, 1.1] as ref
+ref_point = [12608 * 10, 8.977281728e+01 * 10]
+hv = hypervolume(points)
+cost = hv.compute(ref_point)
+#cost=[line.rstrip('\n') for line in open(out_file)][-8]
 
 # This is an example of reading a number from the output.
 # It assumes that the objective value is the first number in
