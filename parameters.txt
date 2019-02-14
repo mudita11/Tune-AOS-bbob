@@ -1,8 +1,4 @@
-### Parameter file for the ACOTSP software
- 
-
 #name		switch		     type	values			[conditions (using R syntax)]
-
 
 #FF             "--FF "              r  	(0.1, 2.0)
 #NP             "--NP "              i	        (50, 400)
