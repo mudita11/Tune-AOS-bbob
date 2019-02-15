@@ -22,8 +22,8 @@ import os.path
 import os
 import subprocess
 import sys
+import numpy as np
 
-#! /usr/bin/env python3
 
 exe = "python3 ../bin/DE_AOS.py bbob 10000 1 1"
 
@@ -52,6 +52,8 @@ c3=cand_params[5]
 
 cand_params=[str(c1), str(c2), str(c3), instance]
 
+file = "i" + str(candidate_id) + "-" + str(instance_id) + ".txt"
+
 # Define the stdout and stderr files.
 out_file = "c" + str(candidate_id) + "-" + str(instance_id) + ".stdout"
 err_file = "c" + str(candidate_id) + "-" + str(instance_id) + ".stderr"
@@ -63,12 +65,11 @@ err_file = "c" + str(candidate_id) + "-" + str(instance_id) + ".stderr"
 #
 # Exit with error if something went wrong in the execution.
 
-command = " ".join([exe] + cand_params) 
-# print(command)
+command = " ".join([exe] + cand_params + [file])
 
 outf = open(out_file, "w")
 errf = open(err_file, "w")
-return_code = subprocess.call(command, shell=True,stdout = outf, stderr = errf)
+return_code = subprocess.call(command, shell=True, stdout = outf, stderr = errf)
 outf.close()
 errf.close()
 
@@ -82,7 +83,25 @@ if not os.path.isfile(out_file):
     print(str(now) + " error: output file "+ out_file  +" not found.")
     sys.exit(1)
 
-cost=[line.rstrip('\n') for line in open(out_file)][-8]
+
+inst_file = open(file, "r")
+points = np.loadtxt(inst_file, comments = "%", usecols = (0,1))
+points = (points[:,0] - np.min(points[:,0])) / (np.max(points[:,0]) - np.min(points[:,0]))
+if (np.max(points[:,1]) - np.min(points[:,1])) != 0:
+    points[:,1] = (points[:,1] - np.min(points[:,1])) / (np.max(points[:,1]) - np.min(points[:,1]))
+else:
+    points[:,1] = 1
+
+from pygmo import hypervolume
+
+# max fe_evals * 10,
+# TODO: normalize points to [0, 1], then use [1.1, 1.1] as ref
+#ref_point = [12608 * 10, 8.977281728e+01 * 10]
+ref_point = [1.1, 1.1]
+hv = hypervolume(points)
+cost = hv.compute(ref_point)
+#cost=[line.rstrip('\n') for line in open(out_file)][-8]
+inst_file.close()
 
 # This is an example of reading a number from the output.
 # It assumes that the objective value is the first number in
@@ -90,7 +109,7 @@ cost=[line.rstrip('\n') for line in open(out_file)][-8]
 # from http://stackoverflow.com/questions/4703390
 
 # print("Cost:= ",cost)
-print(cost)
+print(-cost)
 
 sys.exit(0)
 #print("End of target-runner")

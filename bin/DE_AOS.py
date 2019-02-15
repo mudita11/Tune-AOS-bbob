@@ -222,9 +222,9 @@ class ShortInfo(object):
         h, m, s = l[3].split(':')
         return d + ' ' + h + 'h' + m + ':' + s
 
-def EA_AOS(fun, lbounds, ubounds, budget):
+def EA_AOS(fun, lbounds, ubounds, budget, instance):
     
-    cost = de.DE(fun, lbounds, ubounds, budget, FF, CR, alpha, W, phi, max_gen, C, c1_quality6, c2_quality6, gamma, delta, decay_reward3, decay_reward4, int_a_reward5, b_reward5, e_reward5, a_reward71, c_reward9, int_b_reward9, int_a_reward9, int_a_reward101, b_reward101, p_min_prob0, e_prob0, p_min_prob1, p_max_prob1, beta_prob1, p_min_prob2, beta_prob2, instance_best_value)
+    cost = de.DE(file, fun, lbounds, ubounds, budget, FF, CR, alpha, W, phi, max_gen, C, c1_quality6, c2_quality6, gamma, delta, decay_reward3, decay_reward4, int_a_reward5, b_reward5, e_reward5, a_reward71, c_reward9, int_b_reward9, int_a_reward9, int_a_reward101, b_reward101, p_min_prob0, e_prob0, p_min_prob1, p_max_prob1, beta_prob1, p_min_prob2, beta_prob2, instance_best_value, instance)
     print("\n",cost)
     return cost
 
@@ -258,7 +258,7 @@ def batch_loop(solver, suite, observer, budget,
         observer.observe(problem)
         short_info.print(problem) if verbose else None
         runs = coco_optimize(solver, problem, budget * problem.dimension,
-                             problem_index, max_runs)
+                             problem_index, instance, max_runs)
         if verbose:
             print_flush("!" if runs > 2 else ":" if runs > 1 else ".")
         short_info.add_evals(problem.evaluations, runs)
@@ -277,7 +277,7 @@ def batch_loop(solver, suite, observer, budget,
 #===============================================
 # interface: ADD AN OPTIMIZER BELOW
 #===============================================
-def coco_optimize(solver, fun, max_evals, problem_index, max_runs=1):
+def coco_optimize(solver, fun, max_evals, problem_index, instance, max_runs=1):
     """`fun` is a callable, to be optimized by `solver`.
 
     The `solver` is called repeatedly with different initial solutions
@@ -325,10 +325,11 @@ def coco_optimize(solver, fun, max_evals, problem_index, max_runs=1):
         #     CALL MY SOLVER, interfaces vary
 ##############################################################################
         elif True:
-            solver(fun, fun.lower_bounds, fun.upper_bounds, remaining_evals)
+            solver(fun, fun.lower_bounds, fun.upper_bounds, remaining_evals, instance)
         else:
             raise ValueError("no entry for solver %s" % str(solver.__name__))
-        shutil.rmtree("/shared/storage/cs/staffstore/ms1938/DQN/generic/replicated_AOS/Done/17/tune_rec_PM_training_set/arena/exdata",ignore_errors=True)
+        shutil.rmtree(os.getcwd() + "/exdata", ignore_errors = True)
+        #shutil.rmtree("/shared/storage/cs/staffstore/ms1938/DQN/generic/replicated_AOS/Done/17/tune_rec_PM_training_set/arena/exdata",ignore_errors=True)
         if fun.evaluations >= max_evals or fun.final_target_hit:
             break
         # quit if fun.evaluations did not increase
@@ -412,7 +413,7 @@ if __name__ == '__main__':
         number_of_batches = int(sys.argv[4])
 
     opt = {4:-2.525000000000e+01, 15: -2.098800000000e+02, 27: -5.688800000000e+02, 30: -4.620900000000e+02, 44: 4.066000000000e+01, 50: -3.930000000000e+01, 65: -6.639000000000e+01, 70: 9.953000000000e+01, 81: 3.085000000000e+01, 90: 9.294000000000e+01, 92: 3.820000000000e+00, 111: -1.897900000000e+02, 120: 1.238300000000e+02, 130: -4.840000000000e+00, 140: -5.191000000000e+01, 158: -2.033000000000e+01, 179: 7.789000000000e+01, 188: -2.229800000000e+02, 200: 3.270000000000e+01, 201: -3.943000000000e+01, 203: 7.640000000000e+00, 209: -9.925000000000e+01, 217: -3.475000000000e+01, 219: -9.247000000000e+01, 244: -1.479000000000e+02, 250: 4.739000000000e+01, 255: -1.694000000000e+01, 257: 2.731500000000e+02, 277: -2.602000000000e+01, 281: -1.035000000000e+01, 290: -1.367600000000e+02, 299: -1.455800000000e+02, 311: -4.860000000000e+01, 321: 9.980000000000e+01, 333: -2.231200000000e+02, 349: -1.335900000000e+02}
-
+    
     # DE parameters
     FF = 0.5; CR = 1.0;
     
@@ -456,6 +457,8 @@ if __name__ == '__main__':
     instance = int(sys.argv[8])
     instance_best_value = opt[instance]
     instance = [instance]
+    file = str(sys.argv[9])
+    
     main(instance, budget, max_runs, current_batch, number_of_batches)
 
 

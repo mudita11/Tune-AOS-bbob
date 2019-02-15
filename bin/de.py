@@ -11,6 +11,7 @@ import random
 import math
 import csv
 from numpy.linalg import inv
+#import uuid
 
 import aos
 
@@ -22,7 +23,7 @@ import aos
 # f_min = fitness minimum
 # x_min = position minimum
 
-def DE(fun, lbounds, ubounds, budget, FF, CR, alpha, W, phi, max_gen, C, c1_quality6, c2_quality6, gamma, delta, decay_reward3, decay_reward4, int_a_reward5, b_reward5, e_reward5, a_reward71, c_reward9, int_b_reward9, int_a_reward9, int_a_reward101, b_reward101, p_min_prob0, e_prob0, p_min_prob1, p_max_prob1, beta_prob1, p_min_prob2, beta_prob2, instance_best_value):
+def DE(file, fun, lbounds, ubounds, budget, FF, CR, alpha, W, phi, max_gen, C, c1_quality6, c2_quality6, gamma, delta, decay_reward3, decay_reward4, int_a_reward5, b_reward5, e_reward5, a_reward71, c_reward9, int_b_reward9, int_a_reward9, int_a_reward101, b_reward101, p_min_prob0, e_prob0, p_min_prob1, p_max_prob1, beta_prob1, p_min_prob2, beta_prob2, instance_best_value, instance):
     
     def rand1(population, samples, scale): # DE/rand/1
         r0, r1, r2 = samples[:3]
@@ -58,6 +59,7 @@ def DE(fun, lbounds, ubounds, budget, FF, CR, alpha, W, phi, max_gen, C, c1_qual
     chunk = NP
     X = lbounds + (ubounds - lbounds) * np.random.rand(chunk, dim)
     F = [fun(x) for x in X];
+    max_budget = np.copy(budget)
     budget -= chunk
     
     u = [[0 for j in range(int(dim))] for i in range(int(chunk))]
@@ -82,15 +84,17 @@ def DE(fun, lbounds, ubounds, budget, FF, CR, alpha, W, phi, max_gen, C, c1_qual
     mutations = [rand1, rand2, rand_to_best2, current_to_rand1]
     
     #output_file = open('output_statistics.txt', 'w+')
-    file = open('problem_data.txt', 'w+')
-    file.write("fevals "+" error "+" best "+"\n")
+    #problem_data = "i" + "-" + str(uuid.uuid4()) + "-" + str(instance) + ".txt"
+    
+    inst_file = open(file, "w")
+    inst_file.write("%fevals"+" "+" error"+" "+" best"+"\n")
     target_diff = (1e-8 - 1e2 +1)/ 51
-    target = 1e+2
+    target = 3e+2
     error = best_so_far - instance_best_value
     print("E",error)
     if error <= target:
         print(budget, error, best_so_far)
-        file.write(str(budget)+","+str(error)+","+str(best_so_far)+"\n")
+        inst_file.write(str(max_budget - budget)+" "+str(error)+" "+str(best_so_far)+"\n")
     while budget > 0:
         
         fill_points = np.random.randint(dim, size = NP)
@@ -124,16 +128,17 @@ def DE(fun, lbounds, ubounds, budget, FF, CR, alpha, W, phi, max_gen, C, c1_qual
             aos_method.best_so_far = aos_method.best_so_far1
         
         error = best_so_far - instance_best_value
+        print("E",error)
         if error <= target:
             print(budget, error, best_so_far)
-            file.write(str(budget)+","+str(error)+","+str(best_so_far)+"\n")
+            inst_file.write(str(max_budget - budget)+","+str(error)+","+str(best_so_far)+"\n")
             target = target + target_diff
                     
         generation = generation + 1
         budget -= chunk
     #output_file.write("Last generation number"+str(generation)+".................................................................................\n")
     #output_file.close()
-    print("one configuartion tested on one instance")
-    file.close()
+    #print("one configuartion tested on one instance")
+    #file.close()
     return aos_method.best_so_far
 
