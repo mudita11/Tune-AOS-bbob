@@ -89,7 +89,7 @@ def DE(file, fun, lbounds, ubounds, budget, FF, CR, alpha, W, phi, max_gen, C, c
     inst_file = open(file, "w")
     inst_file.write("%fevals"+" "+" error"+" "+" best"+"\n")
     target_diff = (1e-8 - 1e2 +1)/ 51
-    target = 3e+2
+    target = 1e+2
     error = best_so_far - instance_best_value
     print("E",error)
     if error <= target:
@@ -131,7 +131,7 @@ def DE(file, fun, lbounds, ubounds, budget, FF, CR, alpha, W, phi, max_gen, C, c
         print("E",error)
         if error <= target:
             print(budget, error, best_so_far)
-            inst_file.write(str(max_budget - budget)+","+str(error)+","+str(best_so_far)+"\n")
+            inst_file.write(str(max_budget - budget)+" "+str(error)+" "+str(best_so_far)+"\n")
             target = target + target_diff
                     
         generation = generation + 1
