@@ -89,12 +89,14 @@ def DE(file, fun, lbounds, ubounds, budget, FF, CR, alpha, W, phi, max_gen, C, c
     
     inst_file = open(file, "w")
     inst_file.write("%fevals"+" "+" error"+" "+" best"+"\n")
+    # MANUEL: Where do these numbers come from????
     target_diff = (1e-8 - 1e2 +1)/ 51
     target = 1e+2
     error = best_so_far - instance_best_value
     #print("E",error)
     if error <= target:
         #print(budget, error, best_so_far)
+        ## MANUEL: Is this exactly what BBOB is doing?
         inst_file.write(str((generation*NP) + index)+" "+str(error)+" "+str(best_so_far)+"\n")
     while budget > 0:
         

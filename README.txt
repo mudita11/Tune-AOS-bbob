@@ -11,4 +11,6 @@ Install pygmo
 
 $ pip3 install --user pygmo
 
+Run:
 
+$ irace --check
