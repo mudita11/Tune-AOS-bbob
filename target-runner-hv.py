@@ -23,7 +23,11 @@ import os
 import subprocess
 import sys
 
-exe = "python3 ../bin/DE_AOS.py bbob 10000 1 1"
+max_obj = 8.977281728e+01
+# fevals * dimension f-evaluations
+fevals = 10000
+# Options are: suite_name fevals batch total_batches
+exe = "python3 ../bin/DE_AOS.py bbob {} 1 1".format(fevals)
 
 fixed_params = " "
 
@@ -90,9 +94,9 @@ points = np.loadtxt(filename, comments="%", usecols=(0,2))
 # See README.txt to install this
 from pygmo import hypervolume
 
-# max fe_evals * 10,
+# max feevals * 10,
 # TODO: normalize points to [0, 1], then use [1.1, 1.1] as ref
-ref_point = [12608 * 10, 8.977281728e+01 * 10]
+ref_point = [fevals * 10, max_obj * 10]
 hv = hypervolume(points)
 cost = hv.compute(ref_point)
 #cost=[line.rstrip('\n') for line in open(out_file)][-8]
