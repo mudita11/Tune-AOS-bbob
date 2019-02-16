@@ -25,19 +25,19 @@ import aos
 
 def DE(file, fun, lbounds, ubounds, budget, FF, CR, alpha, W, phi, max_gen, C, c1_quality6, c2_quality6, gamma, delta, decay_reward3, decay_reward4, int_a_reward5, b_reward5, e_reward5, a_reward71, c_reward9, int_b_reward9, int_a_reward9, int_a_reward101, b_reward101, p_min_prob0, e_prob0, p_min_prob1, p_max_prob1, beta_prob1, p_min_prob2, beta_prob2, instance_best_value, instance):
     
-    def rand1(population, samples, scale): # DE/rand/1
+    def rand1(population, samples, best, scale): # DE/rand/1
         r0, r1, r2 = samples[:3]
         return (population[r0] + scale * (population[r1] - population[r2]))
 
-    def rand2(population, samples, scale): # DE/rand/2
+    def rand2(population, samples, best, scale): # DE/rand/2
         r0, r1, r2, r3, r4 = samples[:5]
         return (population[r0] + scale * (population[r1] - population[r2] + population[r3] - population[r4]))
 
-    def rand_to_best2(population, samples, scale): # DE/rand-to-best/2
+    def rand_to_best2(population, samples, best, scale): # DE/rand-to-best/2
         r0, r1, r2, r3, r4 = samples[:5]
         return (population[r0] + scale * (population[best] - population[r0] + population[r1] - population[r2] + population[r3] - population[r4]))
 
-    def current_to_rand1(population, samples, scale): # DE/current-to-rand/1
+    def current_to_rand1(population, samples, best, scale): # DE/current-to-rand/1
         r0, r1, r2 = samples[:3]
         return (population[i] + scale * (population[r0] - population[i] + population[r1] - population[r2]))
 
@@ -89,12 +89,12 @@ def DE(file, fun, lbounds, ubounds, budget, FF, CR, alpha, W, phi, max_gen, C, c
     inst_file = open(file, "w")
     inst_file.write("%fevals"+" "+" error"+" "+" best"+"\n")
     target_diff = (1e-8 - 1e2 +1)/ 51
-    target = 3e+2
+    target = 1e+2
     error = best_so_far - instance_best_value
-    print("E",error)
+    #print("E",error)
     if error <= target:
-        print(budget, error, best_so_far)
-        inst_file.write(str(max_budget - budget)+" "+str(error)+" "+str(best_so_far)+"\n")
+        #print(budget, error, best_so_far)
+        inst_file.write(str((generation*NP) + index)+" "+str(error)+" "+str(best_so_far)+"\n")
     while budget > 0:
         
         fill_points = np.random.randint(dim, size = NP)
@@ -109,9 +109,9 @@ def DE(file, fun, lbounds, ubounds, budget, FF, CR, alpha, W, phi, max_gen, C, c
             best = np.argmin(aos_method.F)
             crossovers = (np.random.rand(dim) < CR)
             crossovers[fill_points[i]] = True
-            trial = aos_method.X[i]
-            bprime = mutate(aos_method.X, r, FF)
-            aos_method.u[i][:] = np.where(crossovers, bprime, trial)
+            # trial = aos_method.X[i]
+            bprime = mutate(aos_method.X, r, best, FF)
+            aos_method.u[i][:] = np.where(crossovers, bprime, aos_method.X[i])
     
         aos_method.F1 = [fun(np.array(x)) for x in aos_method.u]
         
@@ -119,7 +119,13 @@ def DE(file, fun, lbounds, ubounds, budget, FF, CR, alpha, W, phi, max_gen, C, c
         #output_file.write(str(aos_method.reward)+"\n")
         #output_file.write(str(aos_method.quality)+"\n")
         #output_file.write(str(aos_method.probability)+"\n")
-
+        #fitness_swap = [a<p for a,p in zip(F1,F)]
+        for i in range(NP):
+            if aos_method.F1[i] <= aos_method.F[i]:
+                aos_method.F[i] = aos_method.F1[i]
+                aos_method.X[i] = aos_method.u[i]
+            
+        #aos_method.X[i] = np.where(aos_method.F1 < aos_method.F, self.u[i], aos_method.X[i])
         index = np.argmin(aos_method.F)
         if aos_method.f_min is None or aos_method.F[index] < aos_method.f_min:
             aos_method.x_min, aos_method.f_min = aos_method.X[index], aos_method.F[index]
@@ -127,11 +133,11 @@ def DE(file, fun, lbounds, ubounds, budget, FF, CR, alpha, W, phi, max_gen, C, c
         if aos_method.best_so_far1 < aos_method.best_so_far:
             aos_method.best_so_far = aos_method.best_so_far1
         
-        error = best_so_far - instance_best_value
-        print("E",error)
+        error = aos_method.best_so_far - instance_best_value
+        #print("E",error)
         if error <= target:
-            print(budget, error, best_so_far)
-            inst_file.write(str(max_budget - budget)+","+str(error)+","+str(best_so_far)+"\n")
+            #print(budget, error, best_so_far)
+            inst_file.write(str((generation*NP) + index)+" "+str(error)+" "+str(best_so_far)+"\n")
             target = target + target_diff
                     
         generation = generation + 1

@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/python3
 ###############################################################################
 # This script is the command that is executed every run.
 # Check the examples in examples/
@@ -17,13 +17,15 @@
 # Exit with 0 if no error, with 1 in case of error
 ###############################################################################
 
+from __future__ import division
 import datetime
 import os.path
 import os
 import subprocess
 import sys
 import numpy as np
-
+import re
+from pygmo import hypervolume
 
 exe = "python3 ../bin/DE_AOS.py bbob 10000 1 1"
 
@@ -83,25 +85,35 @@ if not os.path.isfile(out_file):
     print(str(now) + " error: output file "+ out_file  +" not found.")
     sys.exit(1)
 
-
 inst_file = open(file, "r")
-points = np.loadtxt(inst_file, comments = "%", usecols = (0,1))
-points = (points[:,0] - np.min(points[:,0])) / (np.max(points[:,0]) - np.min(points[:,0]))
-if (np.max(points[:,1]) - np.min(points[:,1])) != 0:
-    points[:,1] = (points[:,1] - np.min(points[:,1])) / (np.max(points[:,1]) - np.min(points[:,1]))
-else:
-    points[:,1] = 1
 
-from pygmo import hypervolume
-
-# max fe_evals * 10,
-# TODO: normalize points to [0, 1], then use [1.1, 1.1] as ref
-#ref_point = [12608 * 10, 8.977281728e+01 * 10]
-ref_point = [1.1, 1.1]
-hv = hypervolume(points)
-cost = hv.compute(ref_point)
-#cost=[line.rstrip('\n') for line in open(out_file)][-8]
+count = 0
+for line in inst_file:
+    if '%' not in line:
+        count += 1
 inst_file.close()
+
+#print("count",count)
+
+if count > 0:
+    points = np.loadtxt(file, comments = "%", usecols = (0,1)); points = np.array(points)
+    #print(points)
+    # Normalize points to [0, 1]
+    points[:,0] = (points[:,0] - np.min(points[:,0])) / (np.max(points[:,0]) - np.min(points[:,0]))
+    if np.max(points[:,1]) != np.min(points[:,1]):
+        points[:,1] = (points[:,1] - np.min(points[:,1])) / (np.max(points[:,1]) - np.min(points[:,1]))
+    else:
+        points[:,1] = 1
+
+    # max fe_evals * 10,
+    # TODO: normalize points to [0, 1], then use [1.1, 1.1] as ref
+    #ref_point = [12608 * 10, 8.977281728e+01 * 10]
+    ref_point = [1.1, 1.1]
+    hv = hypervolume(points)
+    cost = hv.compute(ref_point)
+    #cost=[line.rstrip('\n') for line in open(out_file)][-8]
+else:
+    cost = -1000000
 
 # This is an example of reading a number from the output.
 # It assumes that the objective value is the first number in
