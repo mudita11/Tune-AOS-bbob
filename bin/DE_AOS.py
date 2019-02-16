@@ -3,17 +3,17 @@
 
 Usage from a system shell::
 
-    python example_experiment.py bbob
+    python DE_AOS.py bbob
 
 runs a full but short experiment on the bbob suite. The optimization
 algorithm used is determined by the `SOLVER` attribute in this file::
 
-    python example_experiment.py bbob 20
+    python DE_AOS.py bbob 20
 
 runs the same experiment but with a budget of 20 * dimension
 f-evaluations::
 
-    python example_experiment.py bbob-biobj 1e3 1 20
+    python DE_AOS.py bbob-biobj 1e3 1 20
 
 runs the first of 20 batches with maximal budget of
 1000 * dimension f-evaluations on the bbob-biobj suite.
@@ -21,16 +21,16 @@ All batches must be run to generate a complete data set.
 
 Usage from a python shell:
 
->>> import example_experiment as ee
+>>> import DE_AOS as ee
 >>> ee.suite_name = "bbob-biobj"
 >>> ee.SOLVER = ee.random_search  # which is default anyway
->>> ee.observer_options['algorithm_info'] = "default of example_experiment.py"
+>>> ee.observer_options['algorithm_info'] = "default of DE_AOS.py"
 >>> ee.main(5, 1+9, 2, 300)  # doctest: +ELLIPSIS
 Benchmarking solver...
 
 runs the 2nd of 300 batches with budget 5 * dimension and at most 9 restarts.
 
-Calling `example_experiment` without parameters prints this
+Calling `DE_AOS.py` without parameters prints this
 help and the available suite names.
 """
 from __future__ import absolute_import, division, print_function, unicode_literals
@@ -39,8 +39,7 @@ except NameError: pass
 import os, sys
 import time
 import numpy as np  # "pip install numpy" installs numpy
-import cocoex
-from cocoex import Suite, Observer, log_level
+from cocoex import Suite, Observer, log_level, known_suite_names
 del absolute_import, division, print_function, unicode_literals
 import random
 import math
@@ -224,7 +223,7 @@ class ShortInfo(object):
 
 def EA_AOS(fun, lbounds, ubounds, budget, instance):
     
-    cost = de.DE(file, fun, lbounds, ubounds, budget, FF, CR, alpha, W, phi, max_gen, C, c1_quality6, c2_quality6, gamma, delta, decay_reward3, decay_reward4, int_a_reward5, b_reward5, e_reward5, a_reward71, c_reward9, int_b_reward9, int_a_reward9, int_a_reward101, b_reward101, p_min_prob0, e_prob0, p_min_prob1, p_max_prob1, beta_prob1, p_min_prob2, beta_prob2, instance_best_value, instance)
+    cost = de.DE(trace_file, fun, lbounds, ubounds, budget, FF, CR, alpha, W, phi, maxgen, C, c1_quality6, c2_quality6, gamma, delta, decay_reward3, decay_reward4, int_a_reward5, b_reward5, e_reward5, a_reward71, c_reward9, int_b_reward9, int_a_reward9, int_a_reward101, b_reward101, p_min_prob0, e_prob0, p_min_prob1, p_max_prob1, beta_prob1, p_min_prob2, beta_prob2, instance_best_value, instance)
     print("\n",cost)
     return cost
 
@@ -398,28 +397,67 @@ def main(instance, budget=budget,
             (time.asctime(), ascetime(time.clock() - t0)))
 
 # ===============================================
+from argparse import ArgumentParser,RawDescriptionHelpFormatter
+
 if __name__ == '__main__':
     """read input parameters and call `main()`"""
-    if len(sys.argv) < 2 or sys.argv[1] in ["--help", "-h"]:
-            print(__doc__)
-            print("Recognized suite names: " + str(cocoex.known_suite_names))
-            exit(0)
-    suite_name = sys.argv[1]
-    if len(sys.argv) > 2:
-        budget = float(sys.argv[2])
-    if len(sys.argv) > 3:
-        current_batch = int(sys.argv[3])
-    if len(sys.argv) > 4:
-        number_of_batches = int(sys.argv[4])
 
-    opt = {4:-2.525000000000e+01, 15: -2.098800000000e+02, 27: -5.688800000000e+02, 30: -4.620900000000e+02, 44: 4.066000000000e+01, 50: -3.930000000000e+01, 65: -6.639000000000e+01, 70: 9.953000000000e+01, 81: 3.085000000000e+01, 90: 9.294000000000e+01, 92: 3.820000000000e+00, 111: -1.897900000000e+02, 120: 1.238300000000e+02, 130: -4.840000000000e+00, 140: -5.191000000000e+01, 158: -2.033000000000e+01, 179: 7.789000000000e+01, 188: -2.229800000000e+02, 200: 3.270000000000e+01, 201: -3.943000000000e+01, 203: 7.640000000000e+00, 209: -9.925000000000e+01, 217: -3.475000000000e+01, 219: -9.247000000000e+01, 244: -1.479000000000e+02, 250: 4.739000000000e+01, 255: -1.694000000000e+01, 257: 2.731500000000e+02, 277: -2.602000000000e+01, 281: -1.035000000000e+01, 290: -1.367600000000e+02, 299: -1.455800000000e+02, 311: -4.860000000000e+01, 321: 9.980000000000e+01, 333: -2.231200000000e+02, 349: -1.335900000000e+02}
-    
+    description = __doc__ + "\n" + "Recognized suite names: " + str(known_suite_names)
+
+    parser = ArgumentParser(description = description,
+                            formatter_class=RawDescriptionHelpFormatter)
+    # MANUEL: Please add help text for each option.
+    parser.add_argument('suite_name',
+                        help='suite name, e.g., bbob',
+                        choices = known_suite_names)
+    parser.add_argument('budget', metavar='budget', type=int,
+                        help='function evaluations = BUDGET * dimension')
+    parser.add_argument('current_batch', type=int, default=1,
+                        help='batch to run')
+    parser.add_argument('number_of_batches', type=int, default=1,
+                        help='number of batches')
+    parser.add_argument('-i', '--instance', type=int, help='???')
+    parser.add_argument('--maxgen', type=int, default=-1,
+                        help='maxgen')
+    parser.add_argument('--delta', type=float, default=0,
+                        help='???')
+    parser.add_argument('--p_min_prob0', type=float, default=0,
+                        help='???')
+    parser.add_argument('--trace', help='???')
     # DE parameters
-    FF = 0.5; CR = 1.0;
+    parser.add_argument('--FF', type=float, default=0.5, help='???')
+    parser.add_argument('--CR', type=float, default=1.0, help='???')
+    parser.add_argument('-W','--W', type=int, default=50, help='???')
+    parser.add_argument('--seed', type=int, default=0, help='???')
     
-                                ################################################ List of hyper-parameters################################################
-    W=50; max_gen = 4;
+    args = parser.parse_args()
+
+    suite_name = args.suite_name
+    budget = args.budget
+    current_batch = args.current_batch
+    number_of_batches = args.number_of_batches
     
+    # MANUEL: How funevals and maxgen interact? which one has precedence?
+    maxgen = args.maxgen
+    delta = args.delta
+    p_min_prob0 = args.p_min_prob0
+    instance =  [args.instance]
+    trace_file = args.trace
+
+    FF = args.FF
+    CR = args.CR
+    W = args.W
+    seed = args.seed
+    # If no seed is given, we generate one.
+    if seed == 0:
+        seed = np.random.randint(0, 2**32 - 1, 1)
+    np.random.seed(seed)
+    
+    
+    opt = {4:-2.525000000000e+01, 15: -2.098800000000e+02, 27: -5.688800000000e+02, 30: -4.620900000000e+02, 44: 4.066000000000e+01, 50: -3.930000000000e+01, 65: -6.639000000000e+01, 70: 9.953000000000e+01, 81: 3.085000000000e+01, 90: 9.294000000000e+01, 92: 3.820000000000e+00, 111: -1.897900000000e+02, 120: 1.238300000000e+02, 130: -4.840000000000e+00, 140: -5.191000000000e+01, 158: -2.033000000000e+01, 179: 7.789000000000e+01, 188: -2.229800000000e+02, 200: 3.270000000000e+01, 201: -3.943000000000e+01, 203: 7.640000000000e+00, 209: -9.925000000000e+01, 217: -3.475000000000e+01, 219: -9.247000000000e+01, 244: -1.479000000000e+02, 250: 4.739000000000e+01, 255: -1.694000000000e+01, 257: 2.731500000000e+02, 277: -2.602000000000e+01, 281: -1.035000000000e+01, 290: -1.367600000000e+02, 299: -1.455800000000e+02, 311: -4.860000000000e+01, 321: 9.980000000000e+01, 333: -2.231200000000e+02, 349: -1.335900000000e+02}
+    instance_best_value = opt[args.instance]
+
+    # MANUEL: Please convert all these options to use the parser.
     # Reward3 (index = 3)
     decay_reward3 = 0.4;
     # Reward4 (index = 4)
@@ -442,53 +480,19 @@ if __name__ == '__main__':
     # Quality4 (index = 3)
     delta = 0.3
     # Quality5 (index = 4)
-    c1_quality6 = 1; c2_quality6 = 0.9; gamma = 0.0 # or discount_rate
+    c1_quality6 = 1
+    c2_quality6 = 0.9
+    gamma = 0.0 # or discount_rate
     
     # Probability0 (index = 0)
-    p_min_prob0 = 0.1; e_prob0 = 0.0; # p_min_prob0 should never be taken as 0.25 when K = 4 as this will lead all probabilities to 0.25 all the time.
+    p_min_prob0 = 0.1
+    e_prob0 = 0.0; # p_min_prob0 should never be taken as 0.25 when K = 4 as this will lead all probabilities to 0.25 all the time.
     # Probability1 (index = 1)
-    p_min_prob1 = 0.1; p_max_prob1 = 0.9; beta_prob1 = 0.1;
+    p_min_prob1 = 0.1
+    p_max_prob1 = 0.9
+    beta_prob1 = 0.1
     # Probability2 (index = 2)
     p_min_prob2 = 0.025; beta_prob2 = 0.5;
-    
-    maxgen = int(sys.argv[5])
-    delta = float(sys.argv[6])
-    p_min_prob0 = float(sys.argv[7])
-    instance = int(sys.argv[8])
-    instance_best_value = opt[instance]
-    instance = [instance]
-    file = str(sys.argv[9])
+
     
     main(instance, budget, max_runs, current_batch, number_of_batches)
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

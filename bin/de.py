@@ -25,7 +25,8 @@ import aos
 
 def DE(file, fun, lbounds, ubounds, budget, FF, CR, alpha, W, phi, max_gen, C, c1_quality6, c2_quality6, gamma, delta, decay_reward3, decay_reward4, int_a_reward5, b_reward5, e_reward5, a_reward71, c_reward9, int_b_reward9, int_a_reward9, int_a_reward101, b_reward101, p_min_prob0, e_prob0, p_min_prob1, p_max_prob1, beta_prob1, p_min_prob2, beta_prob2, instance_best_value, instance):
     
-    def rand1(population, samples, best, scale): # DE/rand/1
+    def rand1(population, samples, best, scale):
+        """DE/rand/1"""
         r0, r1, r2 = samples[:3]
         return (population[r0] + scale * (population[r1] - population[r2]))
 

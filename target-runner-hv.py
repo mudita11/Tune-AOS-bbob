@@ -30,8 +30,6 @@ fevals = 10000
 # Options are: suite_name fevals batch total_batches
 exe = "python3 ../bin/DE_AOS.py bbob {} 1 1".format(fevals)
 
-fixed_params = " "
-
 if len(sys.argv) < 5:
     print ("\nUsage: ./target-runner.py <candidate_id> <instance_id> <seed> <instance_path_name> <list of parameters>\n")
     sys.exit(1)
@@ -48,14 +46,7 @@ seed = sys.argv[3]
 instance = sys.argv[4]; #print("inst1",instance)
 cand_params = sys.argv[5:]
 
-# c1=cand_params[1]
-# c2=cand_params[3]
-# c3=cand_params[5]
-# # print(c1, c2, c3, c4, c5, c6)
-
-# cand_params=[str(c1), str(c2), str(c3), instance]
-
-trace_file = "i" + str(candidate_id) + "-" + str(instance_id) + ".txt"
+trace_file = "trace_" + str(candidate_id) + "-" + str(instance_id) + ".txt"
 
 # Define the stdout and stderr files.
 out_file = "c" + str(candidate_id) + "-" + str(instance_id) + ".stdout"
@@ -67,7 +58,7 @@ err_file = "c" + str(candidate_id) + "-" + str(instance_id) + ".stderr"
 # Stdout and stderr files have to be opened before the call().
 #
 # Exit with error if something went wrong in the execution.
-command = " ".join([exe] + cand_params + [instance, trace_file])
+command = " ".join([exe, "-i", instance, "--seed", seed, "--trace", trace_file] + cand_params)
 print(command)
 
 outf = open(out_file, "w")
