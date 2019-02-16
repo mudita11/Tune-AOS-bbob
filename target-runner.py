@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/python3
 ###############################################################################
 # This script is the command that is executed every run.
 # Check the examples in examples/
@@ -17,11 +17,15 @@
 # Exit with 0 if no error, with 1 in case of error
 ###############################################################################
 
+from __future__ import division
 import datetime
 import os.path
 import os
 import subprocess
 import sys
+import numpy as np
+import re
+from pygmo import hypervolume
 
 exe = "python3 ../bin/DE_AOS.py bbob 10000 1 1"
 
@@ -43,12 +47,14 @@ seed = sys.argv[3]
 instance = sys.argv[4]; #print("inst1",instance)
 cand_params = sys.argv[5:]
 
-# c1=cand_params[1]
-# c2=cand_params[3]
-# c3=cand_params[5]
-# # print(c1, c2, c3, c4, c5, c6)
+c1=cand_params[1]
+c2=cand_params[3]
+c3=cand_params[5]
+# print(c1, c2, c3, c4, c5, c6)
 
-# cand_params=[str(c1), str(c2), str(c3), instance]
+cand_params=[str(c1), str(c2), str(c3), instance]
+
+file = "i" + str(candidate_id) + "-" + str(instance_id) + ".txt"
 
 # Define the stdout and stderr files.
 out_file = "c" + str(candidate_id) + "-" + str(instance_id) + ".stdout"
@@ -61,12 +67,11 @@ err_file = "c" + str(candidate_id) + "-" + str(instance_id) + ".stderr"
 #
 # Exit with error if something went wrong in the execution.
 
-command = " ".join([exe] + cand_params + [instance]) 
-print(command)
+command = " ".join([exe] + cand_params + [file])
 
 outf = open(out_file, "w")
 errf = open(err_file, "w")
-return_code = subprocess.call(command, shell=True,stdout = outf, stderr = errf)
+return_code = subprocess.call(command, shell=True, stdout = outf, stderr = errf)
 outf.close()
 errf.close()
 
@@ -80,7 +85,35 @@ if not os.path.isfile(out_file):
     print(str(now) + " error: output file "+ out_file  +" not found.")
     sys.exit(1)
 
-cost=[line.rstrip('\n') for line in open(out_file)][-8]
+inst_file = open(file, "r")
+
+count = 0
+for line in inst_file:
+    if '%' not in line:
+        count += 1
+inst_file.close()
+
+#print("count",count)
+
+if count > 0:
+    points = np.loadtxt(file, comments = "%", usecols = (0,1)); points = np.array(points)
+    #print(points)
+    # Normalize points to [0, 1]
+    points[:,0] = (points[:,0] - np.min(points[:,0])) / (np.max(points[:,0]) - np.min(points[:,0]))
+    if np.max(points[:,1]) != np.min(points[:,1]):
+        points[:,1] = (points[:,1] - np.min(points[:,1])) / (np.max(points[:,1]) - np.min(points[:,1]))
+    else:
+        points[:,1] = 1
+
+    # max fe_evals * 10,
+    # TODO: normalize points to [0, 1], then use [1.1, 1.1] as ref
+    #ref_point = [12608 * 10, 8.977281728e+01 * 10]
+    ref_point = [1.1, 1.1]
+    hv = hypervolume(points)
+    cost = hv.compute(ref_point)
+    #cost=[line.rstrip('\n') for line in open(out_file)][-8]
+else:
+    cost = -1000000
 
 # This is an example of reading a number from the output.
 # It assumes that the objective value is the first number in
@@ -88,7 +121,7 @@ cost=[line.rstrip('\n') for line in open(out_file)][-8]
 # from http://stackoverflow.com/questions/4703390
 
 # print("Cost:= ",cost)
-print(cost)
+print(-cost)
 
 sys.exit(0)
 #print("End of target-runner")

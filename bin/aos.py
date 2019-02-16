@@ -74,8 +74,8 @@ class AOS(object):
                         elif nn==0 and self.window[nn][0] != self.opu[i]:
                             if self.F1[i] < np.max(self.window[: ,1]):
                                 self.window[np.argmax(self.window[:,1])] = second_dim
-                self.X[i][:] = self.u[i][:]
-                self.F[i] = self.F1[i]
+                #self.X[i][:] = self.u[i][:]
+                #self.F[i] = self.F1[i]; print("aos", self.F)
                 third_dim.append(second_dim);# print("r, rule: ",r, rule)
             else:
                 # unsuccess[self.opu[i]] += 1

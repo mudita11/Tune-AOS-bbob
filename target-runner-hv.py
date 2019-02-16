@@ -22,6 +22,7 @@ import os.path
 import os
 import subprocess
 import sys
+import numpy as np
 
 max_obj = 8.977281728e+01
 # fevals * dimension f-evaluations
@@ -54,6 +55,8 @@ cand_params = sys.argv[5:]
 
 # cand_params=[str(c1), str(c2), str(c3), instance]
 
+trace_file = "i" + str(candidate_id) + "-" + str(instance_id) + ".txt"
+
 # Define the stdout and stderr files.
 out_file = "c" + str(candidate_id) + "-" + str(instance_id) + ".stdout"
 err_file = "c" + str(candidate_id) + "-" + str(instance_id) + ".stderr"
@@ -64,13 +67,12 @@ err_file = "c" + str(candidate_id) + "-" + str(instance_id) + ".stderr"
 # Stdout and stderr files have to be opened before the call().
 #
 # Exit with error if something went wrong in the execution.
-
-command = " ".join([exe] + cand_params + [instance])
+command = " ".join([exe] + cand_params + [instance, trace_file])
 print(command)
 
 outf = open(out_file, "w")
 errf = open(err_file, "w")
-return_code = subprocess.call(command, shell=True,stdout = outf, stderr = errf)
+return_code = subprocess.call(command, shell=True, stdout = outf, stderr = errf)
 outf.close()
 errf.close()
 
@@ -84,19 +86,19 @@ if not os.path.isfile(out_file):
     print(str(now) + " error: output file "+ out_file  +" not found.")
     sys.exit(1)
 
-# get file
-filename = 'bbobexp_f1_DIM20_i1-run1.dat'
-
-import numpy as np
-
-points = np.loadtxt(filename, comments="%", usecols=(0,2))
+# FIXME: We cannot normalize per dataset, we need to include an upper bound of
+# fevals and fitness.
+points = np.loadtxt(trace_file, comments = "%", usecols = (0,1))
+points = (points[:,0] - np.min(points[:,0])) / (np.max(points[:,0]) - np.min(points[:,0]))
+if (np.max(points[:,1]) - np.min(points[:,1])) != 0:
+    points[:,1] = (points[:,1] - np.min(points[:,1])) / (np.max(points[:,1]) - np.min(points[:,1]))
+else:
+    points[:,1] = 1
 
 # See README.txt to install this
 from pygmo import hypervolume
 
-# max feevals * 10,
-# TODO: normalize points to [0, 1], then use [1.1, 1.1] as ref
-ref_point = [fevals * 10, max_obj * 10]
+ref_point = [1.1, 1.1]
 hv = hypervolume(points)
 cost = hv.compute(ref_point)
 #cost=[line.rstrip('\n') for line in open(out_file)][-8]
