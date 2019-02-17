@@ -23,7 +23,10 @@ import aos
 # f_min = fitness minimum
 # x_min = position minimum
 
-def DE(file, fun, lbounds, ubounds, budget, FF, CR, alpha, W, phi, max_gen, C, c1_quality6, c2_quality6, gamma, delta, decay_reward3, decay_reward4, int_a_reward5, b_reward5, e_reward5, a_reward71, c_reward9, int_b_reward9, int_a_reward9, int_a_reward101, b_reward101, p_min_prob0, e_prob0, p_min_prob1, p_max_prob1, beta_prob1, p_min_prob2, beta_prob2, instance_best_value, instance):
+def DE(fun, lbounds, ubounds, budget, instance,
+       trace_file,
+       FF, CR, alpha, W, phi, max_gen, C, c1_quality6, c2_quality6, gamma, delta, decay_reward3, decay_reward4, int_a_reward5, b_reward5, e_reward5, a_reward71, c_reward9, int_b_reward9, int_a_reward9, int_a_reward101, b_reward101, instance_best_value,
+       prob_choice, prob_args):
     
     def rand1(population, samples, best, scale):
         """DE/rand/1"""
@@ -72,22 +75,22 @@ def DE(file, fun, lbounds, ubounds, budget, FF, CR, alpha, W, phi, max_gen, C, c
     best_so_far = f_min
     best_so_far1 = best_so_far
 
-    n_operators = 4
+    mutations = [rand1, rand2, rand_to_best2, current_to_rand1]
+    n_operators = len(mutations)
     
     # Test different combinations
     OO = 2 # Range from 1-7
     RR = 7 # Range from 0-12; window: {3, 4, 8} and max_gen: {5, 6, 7, 9, 10, 11}.
     QQ = 4 # Range from 0-5
-    PP = 0 # Range from 0-3
     SS = 0 # Range from 0-1
-    aos_method = aos.Unknown_AOS(chunk, F1, F, u, X, f_min, x_min, best_so_far, best_so_far1, OO, RR, QQ, PP, SS, n_ops = n_operators, adaptation_rate = alpha, phi = phi, max_gen = max_gen, scaling_factor = C, c1_quality6 = c1_quality6, c2_quality6 = c2_quality6, discount_rate = gamma, delta = delta, decay_reward3 = decay_reward3, decay_reward4 = decay_reward4,  int_a_reward5 = int_a_reward5, b_reward5 = b_reward5, e_reward5 = e_reward5, a_reward71 = a_reward71, c_reward9 = c_reward9, int_b_reward9 = int_b_reward9, int_a_reward9 = int_a_reward9, int_a_reward101 = int_a_reward101, b_reward101 = b_reward101, window_size = W, p_min_prob0 = p_min_prob0, e_prob0 = e_prob0, p_min_prob1 = p_min_prob1, p_max_prob1 = p_max_prob1, beta_prob1 = beta_prob1, p_min_prob2 = p_min_prob2, beta_prob2 = beta_prob2)
+    aos_method = aos.Unknown_AOS(chunk, F1, F, u, X, f_min, x_min, best_so_far, best_so_far1, OO, RR, QQ, SS, n_ops = n_operators, adaptation_rate = alpha, phi = phi, max_gen = max_gen, scaling_factor = C, c1_quality6 = c1_quality6, c2_quality6 = c2_quality6, discount_rate = gamma, delta = delta, decay_reward3 = decay_reward3, decay_reward4 = decay_reward4,  int_a_reward5 = int_a_reward5, b_reward5 = b_reward5, e_reward5 = e_reward5, a_reward71 = a_reward71, c_reward9 = c_reward9, int_b_reward9 = int_b_reward9, int_a_reward9 = int_a_reward9, int_a_reward101 = int_a_reward101, b_reward101 = b_reward101, window_size = W,
+                                 prob_choice = prob_choice, prob_args = prob_args)
 
-    mutations = [rand1, rand2, rand_to_best2, current_to_rand1]
     
     #output_file = open('output_statistics.txt', 'w+')
     #problem_data = "i" + "-" + str(uuid.uuid4()) + "-" + str(instance) + ".txt"
     
-    inst_file = open(file, "w")
+    inst_file = open(trace_file, "w")
     inst_file.write("%fevals"+" "+" error"+" "+" best"+"\n")
     # MANUEL: Where do these numbers come from????
     target_diff = (1e-8 - 1e2 +1)/ 51

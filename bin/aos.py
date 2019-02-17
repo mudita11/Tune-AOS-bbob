@@ -1,10 +1,15 @@
-from __future__ import division
+from __future__ import print_function
 import numpy as np
 from scipy.stats import rankdata
 import math
 from collections import Counter
 from scipy.spatial import distance
 
+import sys
+def debug_print(*args, **kwargs):
+    print(*args, file=sys.stderr, **kwargs)
+    
+# MANUEL: What is the difference between AOS and unknown AOS?
 class AOS(object):
     def __init__(self, popsize, F1, F, u, X, f_min, x_min, best_so_far, best_so_far1, n_ops, window_size= None):
         self.popsize = int(popsize)
@@ -90,7 +95,7 @@ class AOS(object):
         #print("call to reward")
         self.Reward(); #print("call to quality")
         self.Quality(); #print("call to probability")
-        self.Probability()
+        self.probability = self.probability_type.calc_probability(self.quality)
         self.old_opu = self.opu
 
 ##################################################Other definitions######################################################################
@@ -131,6 +136,9 @@ def count_op(n_ops, window, Off_met): # ???????Include ranking for minimising ca
 # Calculates Transitive Matrix
 
 def TM(n_ops, p):
+    ## MANUEL: I think this loop can be replaced by
+    # tran_matrix = p + p[, np.newaxis]
+    ## search and read about Numpy broadcasting.
     tran_matrix = np.zeros((n_ops, n_ops))
     for i in range(n_ops):
         for j in range(n_ops):
@@ -154,9 +162,10 @@ def calc_delta_r (decay_reward3, W, ndcg):
         delta_r = (decay_reward3 ** r) * (W - r)
     return delta_r
 
-# Calculates area under the curve for each operator
-
+## MANUEL: Instead of adding comments before functions, add docstrings after
+## the function def. This way one can read the comment by doing ?AUC in Python
 def AUC(operators, rank, op, decay_reward3, ndcg = True):
+    """Calculates area under the curve for each operator"""
     assert len(operators) == len(rank)
     W = len(operators)
     delta_r_vector = calc_delta_r(decay_reward3, W, ndcg)
@@ -309,7 +318,7 @@ def Reward2(popsize, n_ops, window_size, window, gen_window, Off_met, max_gen, d
         for j in range(len(gen_window)-1, len(gen_window)-max_gen-1, -1):
             if np.any(gen_window[len(gen_window)-1, :, 0] == i):
                 b.append(gen_window[j, np.where(gen_window[j, :, 0] == i) and np.where(gen_window[j, :, Off_met] != -1), Off_met])
-        if b!= []:
+        if b != []:
             # Diversity: np.std(np.hstack(b)) and Quality: np.average(np.hstack(b))
             reward[i] = 1-distance.cosine([np.std(np.hstack(b)), np.average(np.hstack(b))], B); # print(b, reward[i])
     reward = reward - np.min(reward)
@@ -335,13 +344,17 @@ def Reward4(popsize, n_ops, window_size, window, gen_window, Off_met, max_gen, d
     window = window[window[:, Off_met] != -1][:, :];
     window_op_sorted, N, rank = count_op(n_ops, window, Off_met)
     for i in range(len(window_op_sorted)):
+        value = (decay_reward4 ** rank[i]) * (window_size - rank[i])
+        ## MANUEL: If window_op_sorted only contains values from 0 to n_ops, then this loop can be simply:
+        # reward[window_op_sorted] += value
+        ## Test it!
         for j in range(n_ops):
             if window_op_sorted[i] == j:
-                reward[j] += (decay_reward4**rank[i]) * (window_size - rank[i])
-    reward = reward/(np.sum(reward))
+                reward[j] += value
+    reward /= np.sum(reward)
     return reward
 
-                                                        ##########################Success based###########################################
+########################Success based###########################################
 
 # index: 5 Applicable for fix number of generations
 # Parameter(s): max_gen, int_a_reward5, b_reward5, e_reward5
@@ -571,37 +584,126 @@ def Quality5(n_ops, adaptation_rate, reward, old_quality, phi, window, scaling_f
 
 ##################################################Probability definitions######################################################################
 
-# Parameters: p_min_prob0, e_prob0
-def Probability0(n_ops, quality, p_min_prob0, e_prob0, p_min_prob1, p_max_prob1, beta_prob1, p_min_prob2, beta_prob2, old_probability):
-    probability = np.zeros(n_ops); #print(np.sum(quality))
-    # np.finfo(np.float32).eps as a small epsilon number which doesnot make any difference but avoids 0.
-    probability = p_min_prob0 + (1 - len(quality) * p_min_prob0) * ((quality + e_prob0 + np.finfo(np.float32).eps) / (np.sum(quality + e_prob0 + np.finfo(np.float32).eps)))
-    probability = probability/np.sum(probability)
-    return(probability)
+from abc import ABC,abstractmethod
+
+def build_probability(choice, n_ops, prob_args):
+    if choice == 0:
+        return Probability0(n_ops, prob_args["p_min_prob"], prob_args["e_prob"])
+    elif choice == 1:
+        return Probability1(n_ops, prob_args["p_min_prob"], prob_args["p_max_prob"], prob_args["beta_prob"])
+    elif choice == 2:
+        return Probability2(n_ops, prob_args["p_min_prob"], prob_args["beta_prob"])
+    elif choice == 3:
+        return Probability3(n_ops)
+    else:
+        raise ValueError("choice {} unknown".format(choice))
+ 
+class ProbabilityType(ABC):
+    def __init__(self, n_ops, p_min_prob = None, beta_prob = None):
+        self.p_min_prob = p_min_prob
+        self.beta_prob = beta_prob
+        self.old_probability = np.full(n_ops, 1.0 / n_ops)
+        self.eps = np.finfo(self.old_probability.dtype).eps
+
+    def check_probability(self, probability):
+        probability /= np.sum(probability)
+        assert np.allclose(np.sum(probability), 1.0, equal_nan = True)
+        assert np.all(probability >= -0.0)
+        # MANUEL: This is wrong! It creates a view of an array and not a copy
+        # self.old_probability = self.probability
+        self.old_probability[:] = probability
+        return(probability)
+
+    @abstractmethod
+    def calc_probability(self, quality):
+        "Must be implemented by derived probability methods"
+        pass
+    
+# MANUEL: These should have more descriptive names and a doctstring documenting
+# where they come from (references) and what they do.
+class Probability0(ProbabilityType):
+    def __init__(self, n_ops, p_min_prob = 0.1, e_prob = 0.0):
+        super().__init__(n_ops, p_min_prob)
+        # np.finfo(np.float32).eps adds a small epsilon number that doesn't make any difference but avoids 0.
+        self.e_prob = e_prob + self.eps
+        # MANUEL: Please do this in every class so one can debug what is actually running.
+        debug_print("\n {} : p_min_prob = {}, e_prob = {}".
+                    format(type(self).__name__, self.p_min_prob, self.e_prob))
+        
+    def calc_probability(self, quality):
+        probability = self.p_min_prob + (1 - len(quality) * self.p_min_prob) * \
+                      (quality + self.e_prob) / np.sum(quality + self.e_prob)
+        return super().check_probability(probability)
+        
+
+class Probability1(ProbabilityType):
+    def __init__(self, n_ops, p_min_prob = 0.1, p_max_prob = 0.9, beta_prob = 0.1):
+        super().__init__(n_ops, p_min_prob, beta_prob = beta_prob)
+        self.p_max_prob = p_max_prob
+        
+    def calc_probability(self, quality):
+        delta = np.full(quality.shape[0], self.p_min_prob)
+        delta[np.argmax(quality)] = self.p_max_prob
+        probability = self.old_probability + self.beta_prob  * (delta - self.old_probability)
+        probability += self.eps
+        return super().check_probability(probability)
+
+class Probability2(ProbabilityType):
+    def __init__(self, n_ops, p_min_prob = 0.025, beta_prob = 0.5):
+        super().__init__(n_ops, p_min_prob, beta_prob = beta_prob)
+        
+    def calc_probability(self, quality):
+        
+        # MANUEL: Why do this?
+        if np.sum(quality) != 0:
+            quality = quality.copy()
+            # Normalize
+            quality += self.eps
+            quality /= np.sum(quality)
+
+        # np.maximum is element-wise
+        probability = self.beta_prob * np.maximum(self.p_min_prob, quality) + (1.0 - self.beta_prob) * self.old_probability[i]
+        probability += self.eps
+        return super().check_probability(probability)
+
+class Probability3(ProbabilityType):
+    def __init__(self, n_ops, ):
+        super().__init__(n_ops)
+        
+    def calc_probability(self, quality):
+        probability = quality + self.eps
+        return super().check_probability(probability)
+    
+        
+# # Parameters: p_min_prob0, e_prob0
+# def Probability0(n_ops, quality, p_min_prob0, e_prob0, p_min_prob1, p_max_prob1, beta_prob1, p_min_prob2, beta_prob2, old_probability):
+#     probability = p_min_prob + (1 - len(quality) * p_min_prob0) * ((quality + e_prob0 + np.finfo(np.float32).eps) / (np.sum(quality + e_prob0 + np.finfo(np.float32).eps)))
+#     probability = probability/np.sum(probability)
+#     return(probability)
 
 # Parameters: beta_prob1, p_min_prob1, p_max_prob1
-def Probability1(n_ops, quality, p_min_prob0, e_prob0, p_min_prob1, p_max_prob1, beta_prob1, p_min_prob2, beta_prob2, old_probability):
-    probability = np.zeros(n_ops)
-    probability = old_probability + beta_prob1 * (p_min_prob1 - old_probability)
-    probability[np.argmax(quality)] = old_probability[np.argmax(quality)] + beta_prob1 * (p_max_prob1 - old_probability[np.argmax(quality)])
-    return ((probability + np.finfo(np.float32).eps) / (np.sum(probability + np.finfo(np.float32).eps)))
+# def Probability1(n_ops, quality, p_min_prob0, e_prob0, p_min_prob1, p_max_prob1, beta_prob1, p_min_prob2, beta_prob2, old_probability):
+#     probability = np.zeros(n_ops)
+#     probability = old_probability + beta_prob1 * (p_min_prob1 - old_probability)
+#     probability[np.argmax(quality)] = old_probability[np.argmax(quality)] + beta_prob1 * (p_max_prob1 - old_probability[np.argmax(quality)])
+#     return ((probability + np.finfo(np.float32).eps) / (np.sum(probability + np.finfo(np.float32).eps)))
 
-# Parameters: beta_prob2, p_min_prob2
-def Probability2(n_ops, quality, p_min_prob0, e_prob0, p_min_prob1, p_max_prob1, beta_prob1, p_min_prob2, beta_prob2, old_probability):
-    probability = np.zeros(n_ops)
-    #print("qual: ",quality)
-    for i in range(n_ops): # Direct way??????
-        if np.sum(quality) != 0:
-            probability[i] = beta_prob2 * np.max([p_min_prob2, np.array(quality[i] + np.finfo(np.float32).eps) / (np.sum(quality + np.finfo(np.float32).eps))]) + (1 - beta_prob2) * np.array(old_probability[i])
-        else:
-            probability[i] = beta_prob2 * np.max([p_min_prob2, np.array(quality[i])]) + (1 - beta_prob2) * np.array(old_probability[i])
-    #print(probability / np.sum(probability))
-    return ((probability + np.finfo(np.float32).eps) / (np.sum(probability + np.finfo(np.float32).eps)))
+# # Parameters: beta_prob2, p_min_prob2
+# def Probability2(n_ops, quality, p_min_prob0, e_prob0, p_min_prob1, p_max_prob1, beta_prob1, p_min_prob2, beta_prob2, old_probability):
+#     probability = np.zeros(n_ops)
+#     #print("qual: ",quality)
+#     for i in range(n_ops): # Direct way??????
+#         if np.sum(quality) != 0:
+#             probability[i] = beta_prob2 * np.max([p_min_prob2, np.array(quality[i] + np.finfo(np.float32).eps) / (np.sum(quality + np.finfo(np.float32).eps))]) + (1 - beta_prob2) * np.array(old_probability[i])
+#         else:
+#             probability[i] = beta_prob2 * np.max([p_min_prob2, np.array(quality[i])]) + (1 - beta_prob2) * np.array(old_probability[i])
+#     #print(probability / np.sum(probability))
+#     return ((probability + np.finfo(np.float32).eps) / (np.sum(probability + np.finfo(np.float32).eps)))
 
-def Probability3(n_ops, quality, p_min_prob0, e_prob0, p_min_prob1, p_max_prob1, beta_prob1, p_min_prob2, beta_prob2, old_probability):
-    probability = np.zeros(n_ops)
-    Probability = quality
-    return ((probability + np.finfo(np.float32).eps) / (np.sum(probability + np.finfo(np.float32).eps)))
+# def Probability3(n_ops, quality, p_min_prob0, e_prob0, p_min_prob1, p_max_prob1, beta_prob1, p_min_prob2, beta_prob2, old_probability):
+#     probability = np.zeros(n_ops)
+#     Probability = quality
+#     return ((probability + np.finfo(np.float32).eps) / (np.sum(probability + np.finfo(np.float32).eps)))
     
                               
 ##################################################Selection definitions######################################################################
@@ -628,11 +730,11 @@ def Selection1(op_init_list, p):
 
 R_list = [Reward0, Reward1, Reward2, Reward3, Reward4, Reward5, Reward6, Reward70, Reward71, Reward8, Reward9, Reward101]
 Q_list = [Quality0, Quality1, Quality2, Quality3, Quality4, Quality5]
-P_list = [Probability0, Probability1, Probability2, Probability3]
+#P_list = [Probability0, Probability1, Probability2, Probability3]
 S_list = [Selection0, Selection1]
 
 class Unknown_AOS(AOS):
-    def __init__(self, popsize, F1, F, u, X, f_min, x_min, best_so_far, best_so_far1, Off_met, Rewar, Qual, Prob, Select, n_ops, adaptation_rate, phi, max_gen, scaling_factor, c1_quality6, c2_quality6, discount_rate, delta, decay_reward3, decay_reward4, int_a_reward5, b_reward5, e_reward5, a_reward71, c_reward9, int_b_reward9, int_a_reward9, int_a_reward101, b_reward101, window_size, p_min_prob0, e_prob0, p_min_prob1, p_max_prob1, beta_prob1, p_min_prob2, beta_prob2):
+    def __init__(self, popsize, F1, F, u, X, f_min, x_min, best_so_far, best_so_far1, Off_met, Rewar, Qual, Select, n_ops, adaptation_rate, phi, max_gen, scaling_factor, c1_quality6, c2_quality6, discount_rate, delta, decay_reward3, decay_reward4, int_a_reward5, b_reward5, e_reward5, a_reward71, c_reward9, int_b_reward9, int_a_reward9, int_a_reward101, b_reward101, window_size, prob_choice, prob_args):
         # print("Inside unknown AOS-init before super")
         super(Unknown_AOS,self).__init__(popsize, F1, F, u, X, f_min, x_min, best_so_far, best_so_far1, n_ops, window_size)
         # print("Rewar= ",Rewar)
@@ -644,13 +746,6 @@ class Unknown_AOS(AOS):
         self.scaling_factor = scaling_factor
         self.discount_rate = discount_rate
         self.delta = delta
-        self.p_min_prob0 = p_min_prob0
-        self.e_prob0 = e_prob0
-        self.p_min_prob1 = p_min_prob1
-        self.p_max_prob1 = p_max_prob1
-        self.beta_prob1 = beta_prob1
-        self.p_min_prob2 = p_min_prob2
-        self.beta_prob2 = beta_prob2
         
         self.decay_reward3 = decay_reward3
         self.decay_reward4 = decay_reward4
@@ -669,57 +764,41 @@ class Unknown_AOS(AOS):
         
         self.reward = np.zeros(self.n_ops); self.old_reward = self.reward
         self.quality = np.zeros(self.n_ops); self.quality[:] = 1.0; self.old_quality = self.quality
-        self.probability = np.zeros(self.n_ops); self.probability[:] = 1.0 / len(self.probability); self.old_probability = self.probability
         self.Reward_fun = R_list[Rewar]
         self.Quality_fun = Q_list[Qual]
-        self.probability_fun = P_list[Prob]
+
+        # self.probability = np.zeros(self.n_ops); self.probability[:] = 1.0 / len(self.probability)
+        self.probability = np.full(n_ops, 1.0 / n_ops)
+        self.probability_type = build_probability(prob_choice, n_ops, prob_args)
+
         self.Selection_fun = S_list[Select]
-    
+
+        
+        
     def Reward(self):
         
         self.reward = self.Reward_fun(self.popsize, self.n_ops, self.window_size, self.window, self.gen_window, self.Off_met, self.max_gen, self.decay_reward3, self.decay_reward4, self.int_a_reward5, self.b_reward5, self.e_reward5, self.a_reward71, self.c_reward9, self.int_b_reward9, self.int_a_reward9, self.int_a_reward101, self.b_reward101, self.opu, self.old_opu, self.total_success, self.total_unsuccess, self.old_reward)
         #print("reward ",self.reward)
 
     def Quality(self):
-        self.quality = self.Quality_fun(self.n_ops, self.adaptation_rate, self.reward, self.old_quality, self.phi, self.window, self.scaling_factor, self.c1_quality6, self.c2_quality6, self.discount_rate, self.delta, self.Off_met, self.old_probability, self.old_reward); # print("qual: ", self.quality)
+        old_probability = self.probability_type.old_probability
+        self.quality = self.Quality_fun(self.n_ops, self.adaptation_rate, self.reward, self.old_quality, self.phi, self.window, self.scaling_factor, self.c1_quality6, self.c2_quality6, self.discount_rate, self.delta, self.Off_met, old_probability, self.old_reward); # print("qual: ", self.quality)
+        # MANUEL: This is all wrong because they create views, not copies
         self.old_reward = self.reward
         self.old_quality = self.quality
         #print("quality ",self.quality)
         #assert np.sum(self.quality) > 0
 
-    def Probability(self):
-        assert len(self.quality) == len(self.probability); # print("p,op1", self.probability, self.old_probability)
-        self.probability = self.probability_fun(self.n_ops, self.quality, self.p_min_prob0, self.e_prob0, self.p_min_prob1, self.p_max_prob1, self.beta_prob1, self.p_min_prob2, self.beta_prob2, self.old_probability);
-        #print("current and old probability ", self.probability, self.old_probability)
-        assert np.allclose(np.sum(self.probability), 1.0, equal_nan = True)
-        assert np.all(self.probability >= -0.0)
-        self.old_probability = self.probability
+    # def Probability(self):
+    #     assert len(self.quality) == len(self.probability); # print("p,op1", self.probability, self.old_probability)
+    #     self.probability = self.probability_fun(self.n_ops, self.quality, self.p_min_prob0, self.e_prob0, self.p_min_prob1, self.p_max_prob1, self.beta_prob1, self.p_min_prob2, self.beta_prob2, self.old_probability);
+    #     #print("current and old probability ", self.probability, self.old_probability)
+    #     assert np.allclose(np.sum(self.probability), 1.0, equal_nan = True)
+    #     assert np.all(self.probability >= -0.0)
+    #     self.old_probability = self.probability
 
     def Selection(self):
         # print(self.probability, len(self.probability))
         SI = self.Selection_fun(self.op_init_list, self.probability)
         return SI
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 

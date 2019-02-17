@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 """Python script for the COCO experimentation module `cocoex`.
 
 Usage from a system shell::
@@ -51,7 +51,6 @@ import aos
 import de
 
 verbose = 1
-
 
 try: import cma  # cma.fmin is a solver option, "pip install cma" installs cma
 except: pass
@@ -222,8 +221,13 @@ class ShortInfo(object):
         return d + ' ' + h + 'h' + m + ':' + s
 
 def EA_AOS(fun, lbounds, ubounds, budget, instance):
-    
-    cost = de.DE(trace_file, fun, lbounds, ubounds, budget, FF, CR, alpha, W, phi, maxgen, C, c1_quality6, c2_quality6, gamma, delta, decay_reward3, decay_reward4, int_a_reward5, b_reward5, e_reward5, a_reward71, c_reward9, int_b_reward9, int_a_reward9, int_a_reward101, b_reward101, p_min_prob0, e_prob0, p_min_prob1, p_max_prob1, beta_prob1, p_min_prob2, beta_prob2, instance_best_value, instance)
+    # MANUEL: What is the difference between fun and instance?
+    cost = de.DE(fun, lbounds, ubounds, budget, instance,
+                 trace_file,
+                 # DE
+                 FF, CR, alpha, W, phi, maxgen, C, c1_quality6, c2_quality6, gamma, delta, decay_reward3, decay_reward4, int_a_reward5, b_reward5, e_reward5, a_reward71, c_reward9, int_b_reward9, int_a_reward9, int_a_reward101, b_reward101, instance_best_value,
+                 # Probabilities
+                 prob_choice = prob_choice, prob_args = prob_args)
     print("\n",cost)
     return cost
 
@@ -421,9 +425,20 @@ if __name__ == '__main__':
                         help='maxgen')
     parser.add_argument('--delta', type=float, default=0,
                         help='???')
-    parser.add_argument('--p_min_prob0', type=float, default=0,
-                        help='???')
     parser.add_argument('--trace', help='???')
+
+    
+    # Handle probabilities
+    # FIXME: Use __subclasses__ to find choices.
+    parser.add_argument("--prob_choice", type=int, choices=range(0,4),
+                        help="????")
+    # FIXME: Use __slots__ to find which parameters need to be defined.
+    prob_args_names = ["p_min_prob", "beta_prob", "e_prob", "p_max_prob"]
+    # FIXME: define this in the class as @property getter doctstring and get it from it
+    prob_args_help = ["??? p_min_prob", "???", "???", "???"]
+    for arg, help in zip(prob_args_names, prob_args_help):
+        parser.add_argument('--' + arg, type=float, default=0, help=help)
+        
     # DE parameters
     parser.add_argument('--FF', type=float, default=0.5, help='???')
     parser.add_argument('--CR', type=float, default=1.0, help='???')
@@ -440,7 +455,6 @@ if __name__ == '__main__':
     # MANUEL: How funevals and maxgen interact? which one has precedence?
     maxgen = args.maxgen
     delta = args.delta
-    p_min_prob0 = args.p_min_prob0
     instance =  [args.instance]
     trace_file = args.trace
 
@@ -452,6 +466,12 @@ if __name__ == '__main__':
     if seed == 0:
         seed = np.random.randint(0, 2**32 - 1, 1)
     np.random.seed(seed)
+
+    # Handle probabilities
+    prob_choice = args.prob_choice
+    prob_args = {}
+    for x in prob_args_names:
+        prob_args[x] = getattr(args, x)
     
     
     opt = {4:-2.525000000000e+01, 15: -2.098800000000e+02, 27: -5.688800000000e+02, 30: -4.620900000000e+02, 44: 4.066000000000e+01, 50: -3.930000000000e+01, 65: -6.639000000000e+01, 70: 9.953000000000e+01, 81: 3.085000000000e+01, 90: 9.294000000000e+01, 92: 3.820000000000e+00, 111: -1.897900000000e+02, 120: 1.238300000000e+02, 130: -4.840000000000e+00, 140: -5.191000000000e+01, 158: -2.033000000000e+01, 179: 7.789000000000e+01, 188: -2.229800000000e+02, 200: 3.270000000000e+01, 201: -3.943000000000e+01, 203: 7.640000000000e+00, 209: -9.925000000000e+01, 217: -3.475000000000e+01, 219: -9.247000000000e+01, 244: -1.479000000000e+02, 250: 4.739000000000e+01, 255: -1.694000000000e+01, 257: 2.731500000000e+02, 277: -2.602000000000e+01, 281: -1.035000000000e+01, 290: -1.367600000000e+02, 299: -1.455800000000e+02, 311: -4.860000000000e+01, 321: 9.980000000000e+01, 333: -2.231200000000e+02, 349: -1.335900000000e+02}
@@ -483,16 +503,18 @@ if __name__ == '__main__':
     c1_quality6 = 1
     c2_quality6 = 0.9
     gamma = 0.0 # or discount_rate
-    
+
+    ## MANUEL: Move all this info to each class and default value of the arguments! 
     # Probability0 (index = 0)
-    p_min_prob0 = 0.1
-    e_prob0 = 0.0; # p_min_prob0 should never be taken as 0.25 when K = 4 as this will lead all probabilities to 0.25 all the time.
-    # Probability1 (index = 1)
-    p_min_prob1 = 0.1
-    p_max_prob1 = 0.9
-    beta_prob1 = 0.1
-    # Probability2 (index = 2)
-    p_min_prob2 = 0.025; beta_prob2 = 0.5;
+    # p_min_prob0 = 0.1
+    # MANUEL: Implement this check in the code!!!
+    # e_prob0 = 0.0; # p_min_prob0 should never be taken as 0.25 when K = 4 as this will lead all probabilities to 0.25 all the time.
+    # # Probability1 (index = 1)
+    # p_min_prob1 = 0.1
+    # p_max_prob1 = 0.9
+    # beta_prob1 = 0.1
+    # # Probability2 (index = 2)
+    # p_min_prob2 = 0.025; beta_prob2 = 0.5;
 
     
     main(instance, budget, max_runs, current_batch, number_of_batches)
