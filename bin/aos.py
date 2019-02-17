@@ -5,6 +5,8 @@ import math
 from collections import Counter
 from scipy.spatial import distance
 
+# MANUEL: where is Rec_PM and the other AOS methods you implemented for the PPSN paper?
+
 import sys
 def debug_print(*args, **kwargs):
     print(*args, file=sys.stderr, **kwargs)
@@ -40,53 +42,98 @@ class AOS(object):
     
     ##################################################Offspring Metric definitions##################################################################
     def OM_Update(self):
+        """ ??? """
+        ## MANUEL: describe this function!
         third_dim = []
         # success = np.zeros(self.n_ops); unsuccess = np.zeros(self.n_ops)
+        F_min = np.min(self.F)
+        F_median = np.median(self.F)
+        F_absdiff = np.fabs(self.F1 - self.F)
         for i in range(self.popsize):
-            second_dim = np.zeros(7);
-            if self.F1[i] <= self.F[i]:
-                # success[self.opu[i]] += 1
-                second_dim[0] = self.opu[i]
-                second_dim[1] = np.exp(-self.F1[i])
-                second_dim[2] = self.F[i] - self.F1[i]
-                if self.F1[i] <= np.min(self.F):
-                    second_dim[3] = np.min(self.F) - self.F1[i]
-                else:
-                    second_dim[3] = -1
-                if self.F1[i] <= self.best_so_far:
-                    second_dim[4] = self.best_so_far - self.F1[i]
-                else:
-                    second_dim[4] = -1
-                if self.F1[i] <= np.median(self.F):
-                    second_dim[5] = np.median(self.F) - self.F1[i]
-                else:
-                    second_dim[5] = -1
-                second_dim[6] = (self.best_so_far / (self.F1[i]+0.001)) * math.fabs(self.F1[i] - self.F[i])
+            second_dim = np.full(7, -1.0)
+            second_dim[0] = self.opu[i]
+            if self.F1[i] > self.F[i]:
+                continue
+            
+            second_dim[1] = np.exp(-self.F1[i])
+            second_dim[2] = self.F[i] - self.F1[i]
+            if self.F1[i] <= F_min:
+                second_dim[3] = F_min - self.F1[i]
                 
-                if np.any(self.window[:, 1] == np.inf):
-                    for value in range(self.window_size-1,-1,-1):
-                        if self.window[value][0] == -1:
-                            self.window[value] = second_dim
-                            #print(self.window)
-                            break
-                else:
-                    for nn in range(self.window_size-1,-1,-1):
-                        if self.window[nn][0] == self.opu[i]:
-                            for nn1 in range(nn, 0, -1):
-                                self.window[nn1] = self.window[nn1-1]
-                            self.window[0] = second_dim
-                            break
-                        elif nn==0 and self.window[nn][0] != self.opu[i]:
-                            if self.F1[i] < np.max(self.window[: ,1]):
-                                self.window[np.argmax(self.window[:,1])] = second_dim
+            if self.F1[i] <= self.best_so_far:
+                second_dim[4] = self.best_so_far - self.F1[i]
+            
+            if self.F1[i] <= F_median:
+                second_dim[5] = F_median - self.F1[i]
+                
+            second_dim[6] = (self.best_so_far / (self.F1[i] + 0.001)) * F_absdiff[i]
+                
+            if np.any(self.window[:, 1] == np.inf):
+                for value in range(self.window_size - 1, -1, -1):
+                    if self.window[value][0] == -1:
+                        self.window[value] = second_dim
+                        #print(self.window)
+                        break
+            else:
+                # MANUEL: What is this code doing? It is not obvious.
+                for nn in range(self.window_size-1,-1,-1):
+                    if self.window[nn][0] == self.opu[i]:
+                        for nn1 in range(nn, 0, -1):
+                            self.window[nn1] = self.window[nn1-1]
+                        self.window[0] = second_dim
+                        break
+                    elif nn==0 and self.window[nn][0] != self.opu[i]:
+                        # MANUEL: What is window? You sometimes index it like a list window[][] and other times like a matrix [, ].
+                        if self.F1[i] < np.max(self.window[: ,1]):
+                            self.window[np.argmax(self.window[:,1])] = second_dim
                 #self.X[i][:] = self.u[i][:]
                 #self.F[i] = self.F1[i]; print("aos", self.F)
-                third_dim.append(second_dim);# print("r, rule: ",r, rule)
-            else:
-                # unsuccess[self.opu[i]] += 1
-                second_dim = [-1 for i in range(7)]
-                second_dim[0] = self.opu[i]
-                third_dim.append(second_dim)
+            third_dim.append(second_dim)
+
+            # second_dim = np.zeros(7);
+            # if self.F1[i] <= self.F[i]:
+            #     # success[self.opu[i]] += 1
+            #     second_dim[0] = self.opu[i]
+            #     second_dim[1] = np.exp(-self.F1[i])
+            #     second_dim[2] = self.F[i] - self.F1[i]
+            #     if self.F1[i] <= np.min(self.F):
+            #         second_dim[3] = np.min(self.F) - self.F1[i]
+            #     else:
+            #         second_dim[3] = -1
+            #     if self.F1[i] <= self.best_so_far:
+            #         second_dim[4] = self.best_so_far - self.F1[i]
+            #     else:
+            #         second_dim[4] = -1
+            #     if self.F1[i] <= np.median(self.F):
+            #         second_dim[5] = np.median(self.F) - self.F1[i]
+            #     else:
+            #         second_dim[5] = -1
+            #     second_dim[6] = (self.best_so_far / (self.F1[i]+0.001)) * math.fabs(self.F1[i] - self.F[i])
+                
+            #     if np.any(self.window[:, 1] == np.inf):
+            #         for value in range(self.window_size-1,-1,-1):
+            #             if self.window[value][0] == -1:
+            #                 self.window[value] = second_dim
+            #                 #print(self.window)
+            #                 break
+            #     else:
+            #         for nn in range(self.window_size-1,-1,-1):
+            #             if self.window[nn][0] == self.opu[i]:
+            #                 for nn1 in range(nn, 0, -1):
+            #                     self.window[nn1] = self.window[nn1-1]
+            #                 self.window[0] = second_dim
+            #                 break
+            #             elif nn==0 and self.window[nn][0] != self.opu[i]:
+            #                 if self.F1[i] < np.max(self.window[: ,1]):
+            #                     self.window[np.argmax(self.window[:,1])] = second_dim
+            #     #self.X[i][:] = self.u[i][:]
+            #     #self.F[i] = self.F1[i]; print("aos", self.F)
+            #     third_dim.append(second_dim);# print("r, rule: ",r, rule)
+            # else:
+            #     # unsuccess[self.opu[i]] += 1
+            #     second_dim = [-1 for i in range(7)]
+            #     second_dim[0] = self.opu[i]
+            #     third_dim.append(second_dim)
         
         #print("Outside ", self.window)
         self.gen_window.append(third_dim); # print("gen_window= ",self.gen_window, type(self.gen_window), np.shape(self.gen_window))
@@ -113,12 +160,15 @@ def count_op(n_ops, window, Off_met): # ???????Include ranking for minimising ca
     window_op_sorted = window_op_sorted[window_op_sorted >= 0]; # print("window_op_sorted = ",window, window_op_sorted, rank, order)
 
     # counts number of times an operator is present in the window
-    N = np.zeros(n_ops); N = np.array(N); #print(N, window_op_sorted)
+    N = np.zeros(n_ops)
+    # MANUEL: it is already and array!
+    # N = np.array(N); #print(N, window_op_sorted)
     # the number of times each operator appears in the sliding window
     op, count = np.unique(window_op_sorted, return_counts=True); # print(op, count)
     for i in range(len(count)):
         # print(len(count), i, op[i], count[i])
         N[op[i]] = count[i]
+    # MANUEL: The above loop is not necessary, count is always equal to N, no?
     #N[op] = count
     return window_op_sorted, N, rank
 
