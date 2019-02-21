@@ -200,7 +200,7 @@ def TM(n_ops, p):
     #for i in range(n_ops):
         #for j in range(n_ops):
             #tran_matrix[i][j] = p[j] + p[i]; # print(tran_matrix[i][j])
-    tran_matrix = p + p[, np.newaxis]
+    tran_matrix = p + p[:, np.newaxis]
     tran_matrix = normalize_matrix(tran_matrix)
     return tran_matrix
 
