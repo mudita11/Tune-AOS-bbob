@@ -1,9 +1,9 @@
 #name		switch		     type	values			[conditions (using R syntax)]
-
-#FF             "--FF "              r  	(0.1, 2.0)
+FF             "--FF "              r  	(0.1, 2.0)
+CR             "--CR "              r  	(0.1, 1.0)
 #NP             "--NP "              i	        (50, 400)
-#CR             "--CR "              r  	(0.1, 1.0) 		
-max_gen		"--max_gen "	     i		(0, 100)
+# MANUEL: what is maxgen?
+#maxgen		"--maxgen "	     i		(0, 100)
 delta		"--delta "	     r		(0.0, 1.0)
 p_min_prob0	"--p_min_prob0 "     r          (0.0, 0.25)
 #e_prob0	"--e_prob0 "         r          (0.0, 1.0)
