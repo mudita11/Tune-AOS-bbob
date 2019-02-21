@@ -76,6 +76,10 @@ class AOS(object):
                         break
             else:
                 # MANUEL: What is this code doing? It is not obvious.
+                # MUDITA: When a new sample comes in (second dimension), it finds from the last index a sample to replace that was generated 
+                #by the same operator application. Once it gets the index of the sample to replace (nn), it removes it and shifts all samples 
+                #one index below to put that new sample at top of window (index = 0). In case it could not find any existing application of 
+                #that operator in the window, it replaces the worst candidate.  
                 for nn in range(self.window_size-1,-1,-1):
                     if self.window[nn][0] == self.opu[i]:
                         for nn1 in range(nn, 0, -1):
