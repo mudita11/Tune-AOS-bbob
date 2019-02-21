@@ -72,7 +72,7 @@ class AOS(object):
                 
             second_dim[6] = (self.best_so_far / (self.F1[i] + 0.001)) * F_absdiff[i]
             
-            # MUDITA: Loop for filling teh window as improved offsping are generated
+            # MUDITA: Loop for filling the window as improved offsping are generated
             if np.any(self.window[:, 1] == np.inf):
                 for value in range(self.window_size - 1, -1, -1):
                     if self.window[value][0] == -1:
@@ -195,10 +195,12 @@ def TM(n_ops, p):
     ## MANUEL: I think this loop can be replaced by
     # tran_matrix = p + p[, np.newaxis]
     ## search and read about Numpy broadcasting.
+    # MUDITA: Yes it can be if its array
     tran_matrix = np.zeros((n_ops, n_ops))
-    for i in range(n_ops):
-        for j in range(n_ops):
-            tran_matrix[i][j] = p[j] + p[i]; # print(tran_matrix[i][j])
+    #for i in range(n_ops):
+        #for j in range(n_ops):
+            #tran_matrix[i][j] = p[j] + p[i]; # print(tran_matrix[i][j])
+    tran_matrix = p + p[, np.newaxis]
     tran_matrix = normalize_matrix(tran_matrix)
     return tran_matrix
 
