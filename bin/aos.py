@@ -681,7 +681,6 @@ class RewardType(ABC):
     
     @abstractmethod
     def calc_reward(self):
-        "Must be implemented by derived probability methods"
         pass
 
 # MANUEL: These should have more descriptive names and a doctstring documenting
@@ -1024,7 +1023,6 @@ class QualityType(ABC):
     
     @abstractmethod
     def calc_quality(self, old_quality, reward):
-        "Must be implemented by derived probability methods"
         pass
 
 # MANUEL: These should have more descriptive names and a doctstring documenting
@@ -1230,7 +1228,6 @@ class SelectionType(ABC):
     
     @abstractmethod
     def perform_selection(self, probability):
-        "Must be implemented by derived probability methods"
         pass
 
 # MANUEL: These should have more descriptive names and a doctstring documenting
