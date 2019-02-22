@@ -585,4 +585,5 @@ if __name__ == '__main__':
     # beta_prob1 = 0.1
     # # Probability2 (index = 2)
     # p_min_prob2 = 0.025; beta_prob2 = 0.5;
+# MANUEL's commit
 
