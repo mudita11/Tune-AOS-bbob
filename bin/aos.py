@@ -1036,7 +1036,7 @@ class Quality0(QualityType):
         debug_print("\n {} : alpha = {}".
                     format(type(self).__name__, self.alpha))
     
-    def calc_quality(self, old_reward, old_reward, quality):
+    def calc_quality(self, old_quality, old_reward, reward):
         quality = old_quality + adaptation_rate * (reward - old_quality)
         # Q = Q - np.max(Q)
         # Q = np.exp(Q)
