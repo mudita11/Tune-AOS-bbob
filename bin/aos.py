@@ -678,6 +678,7 @@ class RewardType(ABC):
     
     def check_reward(self, reward):
         # Nothing to check
+        self.old_reward[:] = reward
         pass
     
     @abstractmethod
