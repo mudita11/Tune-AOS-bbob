@@ -676,7 +676,8 @@ class RewardType(ABC):
         self.max_gen = max_gen
         self.W = W
     
-    def check_reward(self):
+    def check_reward(self, reward):
+        # Nothing to check
         pass
     
     @abstractmethod
@@ -720,7 +721,7 @@ class Reward0(RewardType):
                             reward[i] += 1
         if np.sum(reward) != 0:
             reward = (reward / np.sum(reward))
-        return reward
+        return super().check_reward(reward)
 
 
 class Reward1(RewardType):
@@ -758,7 +759,7 @@ class Reward1(RewardType):
         #print(reward)
         if np.sum(reward) != 0:
             reward = (reward / np.sum(reward))
-        return -reward
+        return super().check_reward(-reward)
 
 
 class Reward2(RewardType):
@@ -782,7 +783,7 @@ class Reward2(RewardType):
                 # Diversity: np.std(np.hstack(b)) and Quality: np.average(np.hstack(b))
                 reward[i] = 1-distance.cosine([np.std(np.hstack(b)), np.average(np.hstack(b))], B); # print(b, reward[i])
         reward = reward - np.min(reward)
-        return reward
+        return super().check_reward(reward)
 
 class Reward3(RewardType):
     def __init__(self, n_ops, W = 50, decay_reward3 = 0.4):
@@ -797,7 +798,7 @@ class Reward3(RewardType):
         for op in range(n_ops):
             reward[op] = AUC(window_op_sorted, rank, op, decay_reward3)
             # print("Inside reward: ", reward)
-        return reward
+        return super().check_reward(reward)
 
 class Reward4(RewardType):
     def __init__(self, n_ops, W, decay_reward4 = 0.4):
@@ -818,7 +819,7 @@ class Reward4(RewardType):
                 if window_op_sorted[i] == j:
                     reward[j] += value
         reward /= np.sum(reward)
-        return reward
+        return super().check_reward(reward)
 
 class Reward5(RewardType):
     def __init__(self, n_ops, max_gen, int_a_reward5 = 1, b_reward5 = 0.01, e_reward5 = 0.0):
@@ -844,7 +845,7 @@ class Reward5(RewardType):
                 else:
                     reward[i] += 0
         reward += e_reward5
-        return reward
+        return super().check_reward(reward)
 
 
 class Reward6(RewardType):
@@ -858,7 +859,7 @@ class Reward6(RewardType):
             if np.any(gen_window[len(gen_window)-1, :, 0] == i):
                 total_success, total_unsuccess = count_success(popsize, gen_window, i, len(gen_window)-1, Off_met); #print(total_unsuccess, total_success)
                 reward[i] = (np.array(total_success) / popsize)
-        return reward
+        return super().check_reward(reward)
 
 class Reward7(RewardType):
     def __init__(self, n_ops, max_gen = 4):
@@ -884,7 +885,7 @@ class Reward7(RewardType):
                 reward[i] = np.array(reward[i]) / (np.array(appl))
             else:
                     reward[i] = 0
-        return reward
+        return super().check_reward(reward)
 
 class Reward8(RewardType):
     def __init__(self, n_ops, W, a_reward71 = 0.1):
@@ -902,7 +903,7 @@ class Reward8(RewardType):
                 reward[i] = np.array(reward[i]) / np.array(N[i])
         if np.max(reward) != 0:
             reward = reward / np.max(reward)**a_reward71
-        return reward
+        return super().check_reward(reward)
 
 class Reward9(RewardType):
     def __init__(self, n_ops, max_gen = 4):
@@ -922,7 +923,7 @@ class Reward9(RewardType):
                     total_success, total_unsuccess = count_success(popsize, gen_window, i, j, Off_met)
                     if total_success + total_unsuccess != 0:
                         reward[i] += np.sum(gen_window[j, np.where(gen_window[j,:,0] == i) and np.where(gen_window[j, :, Off_met] != -1) , Off_met]) / np.array(total_success + total_unsuccess)
-        return reward
+        return super().check_reward(reward)
 
 class Reward10(RewardType):
     def __init__(self, n_ops, c_reward9 = 1, int_b_reward9 = 0, int_a_reward9 = 1):
@@ -958,7 +959,7 @@ class Reward10(RewardType):
                 reward[i] = c_reward9 * np.fabs(best_t[i] - best_t_1[i]) / (np.fabs(n_applications[0] - n_applications[1])**int_a_reward9)
             else:
                 reward[i] = c_reward9 * np.fabs(best_t[i] - best_t_1[i])
-        return reward
+        return super().check_reward(reward)
 
 class Reward11(RewardType):
     def __init__(self, n_ops, max_gen, int_a_reward101 = 0, b_reward101 = 1):
@@ -983,7 +984,7 @@ class Reward11(RewardType):
                     reward[i] += np.sum(gen_best); # print(reward[i])
             if gen_best != []:
                 reward[i] = (1/max_gen) * reward[i]**b_reward101 / np.max(gen_best)**int_a_reward101
-        return reward
+        return super().check_reward(reward)
 
 
 ##################################################Quality definitions######################################################################
