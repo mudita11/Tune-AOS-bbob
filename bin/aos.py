@@ -1024,7 +1024,7 @@ class QualityType(ABC):
         return(quality)
     
     @abstractmethod
-    def calc_quality(self, old_quality, reward):
+    def calc_quality(self, old_quality, old_reward, reward):
         pass
 
 # MANUEL: These should have more descriptive names and a doctstring documenting
@@ -1036,7 +1036,7 @@ class Quality0(QualityType):
         debug_print("\n {} : alpha = {}".
                     format(type(self).__name__, self.alpha))
     
-    def calc_quality(self, quality):
+    def calc_quality(self, old_reward, quality):
         quality = old_quality + adaptation_rate * (reward - old_quality)
         # Q = Q - np.max(Q)
         # Q = np.exp(Q)
@@ -1050,7 +1050,7 @@ class Quality1(QualityType):
         debug_print("\n {} : C = {}".
                     format(type(self).__name__, self.C))
     
-    def calc_quality(self, old_quality, reward):
+    def calc_quality(self, old_quality, old_reward, reward):
         window_op_sorted, N, rank = count_op(n_ops, window, Off_met)
         quality = upper_confidence_bound (N, scaling_factor, reward); # print(window_op_sorted, N, rank, reward, Q)
         return quality
@@ -1062,7 +1062,7 @@ class Quality2(QualityType):
         debug_print("\n {} : phi".
                     format(type(self).__name__, self.p_min_prob, self.e_prob))
     
-    def calc_quality(self, old_quality, reward):
+    def calc_quality(self, old_quality, old_reward, reward):
         quality = np.exp(reward/phi)
         return quality
 
@@ -1072,7 +1072,7 @@ class Quality3(QualityType):
         debug_print("\n {} : p_min_prob = {}, e_prob = {}".
                     format(type(self).__name__, self.p_min_prob, self.e_prob))
     
-    def calc_quality(self, old_quality, reward):
+    def calc_quality(self, old_quality, old_reward, reward):
         quality = reward
         return quality
 
@@ -1083,7 +1083,7 @@ class Quality4(QualityType):
         debug_print("\n {} : delta = {}".
                     format(type(self).__name__, self.delta))
     
-    def calc_quality(self, old_quality, reward):
+    def calc_quality(self, old_quality, old_reward, reward):
         if np.sum(reward) > 0:
             quality = delta * (reward /np.sum(reward))  + (1 - delta) * old_quality
         else:
@@ -1100,7 +1100,7 @@ class Quality5(QualityType):
         debug_print("\n {} : c1_quality6 = {}, c2_quality6 = {}, gamma = {}".
                     format(type(self).__name__, self.c1_quality6, self.c2_quality6, self.gamma))
     
-    def calc_quality(self, old_quality, reward):
+    def calc_quality(self, old_quality, old_reward, reward):
         tran_matrix = TM(n_ops, old_probability)
         tran_matrix = normalize_matrix(np.random.rand(n_ops, n_ops)); # print(old_probability)
     
