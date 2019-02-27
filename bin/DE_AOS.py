@@ -226,18 +226,18 @@ def EA_AOS(fun, lbounds, ubounds, budget, instance):
     # MANUEL: What is the difference between fun and instance?
     # there are five classes in bbob each consisting of functions with different properties. For instance a fun, f1, from first class is sphere function. Now there are 15 instances of each fun. Eg. for f1 translated or shifted versions are instances.
     # Problem is represented as (f_i, n, j, t): f_i is i-fun, n is dimension, j is instance number and t is target.
-    cost = de.DE(fun, lbounds, ubounds, budget, instance,
+    cost = de.DE(fun, lbounds, ubounds, budget, instance, instance_best_value,
                  trace_file,
                  # DE parameters
-                 FF, CR, NP, #W, C, alpha, phi, maxgen, c1_quality6, c2_quality6, gamma, delta, decay_reward3, decay_reward4, int_a_reward5, b_reward5, e_reward5, a_reward71, c_reward9, int_b_reward9, int_a_reward9, int_a_reward101, b_reward101, instance_best_value,
+                 FF, CR, NP,# W, C, alpha, phi, maxgen, c1_quality6, c2_quality6, gamma, delta, decay_reward3, decay_reward4, int_a_reward5, b_reward5, e_reward5, a_reward71, c_reward9, int_b_reward9, int_a_reward9, int_a_reward101, b_reward101, instance_best_value,
                  # Offspring Metrics
-                 OM_choice = OM_choice
+                 OM_choice = OM_choice,
                  # Rewards
-                 rew_choice = rew_choice, rew_args = rew_args
+                 rew_choice = rew_choice, rew_args = rew_args,
                  # Qualities
-                 qual_choice = qual_choice, qual_args = qual_args
+                 qual_choice = qual_choice, qual_args = qual_args,
                  # Probabilities
-                 prob_choice = prob_choice, prob_args = prob_args
+                 prob_choice = prob_choice, prob_args = prob_args,
                  # Selection
                  select_choice = select_choice)
     print("\n",cost)
@@ -419,80 +419,71 @@ if __name__ == '__main__':
     """read input parameters and call `main()`"""
 
     description = __doc__ + "\n" + "Recognized suite names: " + str(known_suite_names)
-
+    
     parser = ArgumentParser(description = description,
                             formatter_class=RawDescriptionHelpFormatter)
     # MANUEL: Please add help text for each option.
-    parser.add_argument('suite_name',
-                        help='suite name, e.g., bbob',
-                        choices = known_suite_names)
-    parser.add_argument('budget', metavar='budget', type=int,
-                        help='function evaluations = BUDGET * dimension')
-    parser.add_argument('current_batch', type=int, default=1,
-                        help='batch to run')
-    parser.add_argument('number_of_batches', type=int, default=1,
-                        help='number of batches')
+    parser.add_argument('suite_name', help='suite name, e.g., bbob', choices = known_suite_names)
+    parser.add_argument('budget', metavar='budget', type=int, help='function evaluations = BUDGET * dimension')
+    parser.add_argument('current_batch', type=int, default=1, help='batch to run')
+    parser.add_argument('number_of_batches', type=int, default=1, help='number of batches')
     parser.add_argument('-i', '--instance', type=int, help='problem instance to train on')
-#   parser.add_argument('--maxgen', type=int, default=-1, help='data for maximum generation stored (history information)')
+    parser.add_argument('--seed', type=int, default=0, help='seed to initialise population')
+#   parser.add_argument('--max_gen', type=int, default=-1, help='data for maximum generation stored (history information)')
 #   parser.add_argument('--delta', type=float, default=0, help='selected quality hyper-parameter')
     parser.add_argument('--trace', help='current file to write data in')
-
-
-    # Handle Offspring metric
-    # FIXME: Use __subclasses__ to find choices.
-    parser.add_argument("--OM_choice", type=int, choices=range(1,7),
-                    help="Offspring metric selected")
-
-
-    # Handle rewards
-    # FIXME: Use __subclasses__ to find choices.
-    parser.add_argument("--rew_choice", type=int, choices=range(0,12),
-                    help="Reward method selected")
-    # FIXME: Use __slots__ to find which parameters need to be defined.
-    rew_args_names = ["maxgen", "W", "decay_reward3", "decay_reward4", "int_a_reward5", "b_reward5", "e_reward5", "a_reward71", "c_reward9", "int_b_reward9", "int_a_reward9", "int_a_reward101", "b_reward101"]
-    # FIXME: define this in the class as @property getter doctstring and get it from it
-    rew_args_help = ["Reward0-2,5,7,9,11", "Reward3, 4, 8 hyper-parameter", "Reward3 hyper-parameter", "Reward4 hyper-parameter", "Reward5 hyper-parameter", "Reward5 hyper-parameter", "Reward5 hyper-parameter", "Reward8 hyper-parameter", "Reward10 hyper-parameter", "Reward10 hyper-parameter", "Reward10 hyper-parameter", "Reward11 hyper-parameter", "Reward11 hyper-parameter"]
-    for arg, help in zip(rew_args_names, rew_args_help):
-        # MUDITA: Not all hyperparameters are float
-        parser.add_argument('--' + arg, type=float, default=0, help=help)
-
-
-    # Handle qualities
-    # FIXME: Use __subclasses__ to find choices.
-    parser.add_argument("--qual_choice", type=int, choices=range(0,6),
-                    help="Quality method selected")
-    # FIXME: Use __slots__ to find which parameters need to be defined.
-    qual_args_names = ["alpha", "C", "phi", "delta", "c1_quality6", "c2_quality6", "gamma"]
-    # FIXME: define this in the class as @property getter doctstring and get it from it
-    qual_args_help = ["Quality0 hyper-parameter", "Quality1 hyper-parameter", "Quality2 hyper-parameter", "Quality4 hyper-parameter", "Quality5 hyper-parameter", "Quality5 hyper-parameter", "Quality5 hyper-parameter"]
-    for arg, help in zip(qual_args_names, qual_args_help):
-        parser.add_argument('--' + arg, type=float, default=0, help=help)
-
-
-    # Handle probabilities
-    # FIXME: Use __subclasses__ to find choices.
-    parser.add_argument("--prob_choice", type=int, choices=range(0,4),
-                        help="Probability method selected")
-    # FIXME: Use __slots__ to find which parameters need to be defined.
-    prob_args_names = ["p_min_prob", "beta_prob", "e_prob", "p_max_prob"]
-    # FIXME: define this in the class as @property getter doctstring and get it from it
-    prob_args_help = ["Probability0 hyper-parameter", "Probability1 hyper-parameter", "Probability0 hyper-parameter", "Probability1 hyper-parameter"]
-    for arg, help in zip(prob_args_names, prob_args_help):
-        parser.add_argument('--' + arg, type=float, default=0, help=help)
-
-
-    # Handle Selection
-    # FIXME: Use __subclasses__ to find choices.
-    parser.add_argument("--select_choice", type=int, choices=range(0,2),
-                        help="Selection method")
 
 
     # DE parameters
     parser.add_argument('--FF', type=float, default=0.5, help='Scaling factor (DE parameter)')
     parser.add_argument('--CR', type=float, default=1.0, help='Crossover rate (DE parameter)')
     parser.add_argument('--NP', type=int, default=200, help='Population size (DE parameter)')
-#    parser.add_argument('-W','--W', type=int, default=50, help='Window size')
-    parser.add_argument('--seed', type=int, default=0, help='seed to initialise population')
+#    parser.add_argument('--W', type=int, default=150, help='Window size')
+
+
+    # Handle Offspring metric
+    # FIXME: Use __subclasses__ to find choices.
+    parser.add_argument("--OM_choice", type=int, choices=range(1,7), help="Offspring metric selected")
+
+
+    # Handle rewards
+    # FIXME: Use __subclasses__ to find choices.
+    parser.add_argument("--rew_choice", type=int, choices=range(0,12), help="Reward method selected")
+    # FIXME: Use __slots__ to find which parameters need to be defined.
+    rew_args_names = ["max_gen", "fix_appl", "theta", "window_size", "decay", "succ_lin_quad", "frac", "noise", "normal_factor", "scaling_constant", "choice2", "choice3", "choice4", "intensity"]
+    # FIXME: define this in the class as @property getter doctstring and get it from it
+    rew_args_help = ["Maximum number of previous generation", "Fix number of applications of an operator", "Defines search direction", "Size of window", "Decay value to emphasise the choice better operator", "Choice to success of operator as linear or quadratic", "Fraction of sum of successes of all operators", "Small noise for randomness", "Choice to normalise", "Scaling constant", "Choice to normalise by best produced by any operator", "Choice to include the difference between budget used by an operator in previous two generations", "Choice to normalise by best produced by any operator", "Intensify the changes of best fitness value"]
+#    rew_args_help = ["Reward0,1,5,7,9,11", "Reward2 hyperparameter", "Reward2 hyperparameter" "Reward3, 4, 8 hyper-parameter", "Reward3,4 hyper-parameter", "Reward5 hyper-parameter", "Reward5 hyper-parameter", "Reward5 hyper-parameter", "Reward8 hyper-parameter", "Reward10 hyper-parameter", "Reward10 hyper-parameter", "Reward10 hyper-parameter", "Reward11 hyper-parameter", "Reward11 hyper-parameter"]
+    for arg, help in zip(rew_args_names, rew_args_help):
+        # MUDITA: Not all hyperparameters are of type float
+        parser.add_argument('--' + arg, type=float, default=0, help=help)
+
+
+    # Handle qualities
+    # FIXME: Use __subclasses__ to find choices.
+    parser.add_argument("--qual_choice", type=int, choices=range(0,5), help="Quality method selected")
+    # FIXME: Use __slots__ to find which parameters need to be defined.
+    qual_args_names = ["adaptation_rate", "scaling_factor", "decay_rate", "memory_parameter1", "memory_parameter2", "discount_rate"]
+    # FIXME: define this in the class as @property getter doctstring and get it from it
+    qual_args_help = ["Adaptation rate", "Scaling Factor", "Decay rate", "Memory for current reward", "Memory for previous reward", "Discount rate"]
+    for arg, help in zip(qual_args_names, qual_args_help):
+        parser.add_argument('--' + arg, type=float, default=0, help=help)
+
+
+    # Handle probabilities
+    # FIXME: Use __subclasses__ to find choices.
+    parser.add_argument("--prob_choice", type=int, choices=range(0,4), help="Probability method selected")
+    # FIXME: Use __slots__ to find which parameters need to be defined.
+    prob_args_names = ["p_min", "learning_rate", "error_prob", "p_max"]
+    # FIXME: define this in the class as @property getter doctstring and get it from it
+    prob_args_help = ["Minimum probability of selection of an operator", "Learning Rate", "Probability noise", "Maximum probability of selection of an operator"]
+    for arg, help in zip(prob_args_names, prob_args_help):
+        parser.add_argument('--' + arg, type=float, default=0, help=help)
+
+
+    # Handle Selection
+    # FIXME: Use __subclasses__ to find choices.
+    parser.add_argument("--select_choice", type=int, choices=range(0,2), help="Selection method")
     
     args = parser.parse_args()
 
@@ -502,8 +493,8 @@ if __name__ == '__main__':
     number_of_batches = args.number_of_batches
     
     # MANUEL: How funevals and maxgen interact? which one has precedence?
-    # Doesnot understand your question.
-#     maxgen = args.maxgen
+    # MUDITA: Doesnot understand your question.
+#     max_gen = args.max_gen
 #     delta = args.delta
     instance =  [args.instance]
     trace_file = args.trace
@@ -538,7 +529,7 @@ if __name__ == '__main__':
     prob_args = {}
     for x in prob_args_names:
         prob_args[x] = getattr(args, x)
-
+    #print("p max",prob_args["p_max_prob"])
     # Handle selection
     select_choice = args.select_choice
 

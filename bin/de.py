@@ -23,15 +23,10 @@ import aos
 # f_min = fitness minimum
 # x_min = position minimum
 
-def DE(fun, lbounds, ubounds, budget, instance,
+def DE(fun, lbounds, ubounds, budget, instance, instance_best_value,
        trace_file,
-<<<<<<< HEAD
-       FF, CR, NP, #alpha, W, phi, max_gen, C, c1_quality6, c2_quality6, gamma, delta, decay_reward3, decay_reward4, int_a_reward5, b_reward5, e_reward5, a_reward71, c_reward9, int_b_reward9, int_a_reward9, int_a_reward101, b_reward101, instance_best_value,
+       FF, CR, NP, #W, alpha, phi, max_gen, C, c1_quality6, c2_quality6, gamma, delta, decay_reward3, decay_reward4, int_a_reward5, b_reward5, e_reward5, a_reward71, c_reward9, int_b_reward9, int_a_reward9, int_a_reward101, b_reward101, instance_best_value,
        OM_choice, rew_choice, rew_args, qual_choice, qual_args, prob_choice, prob_args, select_choice):
-=======
-       FF, CR, alpha, W, phi, max_gen, C, c1_quality6, c2_quality6, gamma, delta, decay_reward3, decay_reward4, int_a_reward5, b_reward5, e_reward5, a_reward71, c_reward9, int_b_reward9, int_a_reward9, int_a_reward101, b_reward101, instance_best_value,
-       prob_choice, prob_args):
->>>>>>> 9689958891cbb8e0fec6df86d202c39f597b03a3
     
     def rand1(population, samples, best, scale):
         """DE/rand/1"""
@@ -84,22 +79,13 @@ def DE(fun, lbounds, ubounds, budget, instance,
     n_operators = len(mutations)
     
     # Test different combinations
-<<<<<<< HEAD
 #    OO = 2 # Range from 1-7
 #    RR = 7 # Range from 0-12; window: {3, 4, 8} and max_gen: {5, 6, 7, 9, 10, 11}.
 #    QQ = 4 # Range from 0-5
 #    SS = 0 # Range from 0-1
-    aos_method = aos.Unknown_AOS(chunk, F1, F, u, X, f_min, x_min, best_so_far, best_so_far1,
-                                 #OO, RR, QQ, SS, n_ops = n_operators, adaptation_rate = alpha, phi = phi, max_gen = max_gen, scaling_factor = C, c1_quality6 = c1_quality6, c2_quality6 = c2_quality6, discount_rate = gamma, delta = delta, decay_reward3 = decay_reward3, decay_reward4 = decay_reward4,  int_a_reward5 = int_a_reward5, b_reward5 = b_reward5, e_reward5 = e_reward5, a_reward71 = a_reward71, c_reward9 = c_reward9, int_b_reward9 = int_b_reward9, int_a_reward9 = int_a_reward9, int_a_reward101 = int_a_reward101, b_reward101 = b_reward101, window_size = W,
-        OM_choice = OM_choice, rew_choice = rew_choice, rew_args = rew_args, qual_choice = qual_choice, qual_args = qual_args, prob_choice = prob_choice, prob_args = prob_args, select_choice = select_choice)
-=======
-    OO = 2 # Range from 1-7
-    RR = 7 # Range from 0-12; window: {3, 4, 8} and max_gen: {5, 6, 7, 9, 10, 11}.
-    QQ = 4 # Range from 0-5
-    SS = 0 # Range from 0-1
-    aos_method = aos.Unknown_AOS(chunk, F1, F, u, X, f_min, x_min, best_so_far, best_so_far1, OO, RR, QQ, SS, n_ops = n_operators, adaptation_rate = alpha, phi = phi, max_gen = max_gen, scaling_factor = C, c1_quality6 = c1_quality6, c2_quality6 = c2_quality6, discount_rate = gamma, delta = delta, decay_reward3 = decay_reward3, decay_reward4 = decay_reward4,  int_a_reward5 = int_a_reward5, b_reward5 = b_reward5, e_reward5 = e_reward5, a_reward71 = a_reward71, c_reward9 = c_reward9, int_b_reward9 = int_b_reward9, int_a_reward9 = int_a_reward9, int_a_reward101 = int_a_reward101, b_reward101 = b_reward101, window_size = W,
-                                 prob_choice = prob_choice, prob_args = prob_args)
->>>>>>> 9689958891cbb8e0fec6df86d202c39f597b03a3
+    aos_method = aos.Unknown_AOS(chunk, F1, F, u, X, f_min, x_min, best_so_far, best_so_far1, n_ops = n_operators, OM_choice = OM_choice, rew_choice = rew_choice, rew_args = rew_args, qual_choice = qual_choice, qual_args = qual_args, prob_choice = prob_choice, prob_args = prob_args, select_choice = select_choice)
+                                 #OO, RR, QQ, SS, adaptation_rate = alpha, phi = phi, max_gen = max_gen, scaling_factor = C, c1_quality6 = c1_quality6, c2_quality6 = c2_quality6, discount_rate = gamma, delta = delta, decay_reward3 = decay_reward3, decay_reward4 = decay_reward4,  int_a_reward5 = int_a_reward5, b_reward5 = b_reward5, e_reward5 = e_reward5, a_reward71 = a_reward71, c_reward9 = c_reward9, int_b_reward9 = int_b_reward9, int_a_reward9 = int_a_reward9, int_a_reward101 = int_a_reward101, b_reward101 = b_reward101,
+                                 
 
     
     #output_file = open('output_statistics.txt', 'w+')
@@ -108,10 +94,7 @@ def DE(fun, lbounds, ubounds, budget, instance,
     inst_file = open(trace_file, "w")
     inst_file.write("%fevals"+" "+" error"+" "+" best"+"\n")
     # MANUEL: Where do these numbers come from????
-<<<<<<< HEAD
     # MUDITA: There are 51 targets equidistant between 1e2 and 1e-08 for each problem instance.
-=======
->>>>>>> 9689958891cbb8e0fec6df86d202c39f597b03a3
     target_diff = (1e-8 - 1e2 +1)/ 51
     target = 1e+2
     error = best_so_far - instance_best_value
@@ -119,18 +102,15 @@ def DE(fun, lbounds, ubounds, budget, instance,
     if error <= target:
         #print(budget, error, best_so_far)
         ## MANUEL: Is this exactly what BBOB is doing?
-<<<<<<< HEAD
         ## MUDITA: The numbers corresponding to specific targets generated by our DE algorithm match with the number corresponding to targets generated by bbob code. However, bbob is writing data for more targets. Not sure if they are using all that data to generate graphs.
-=======
->>>>>>> 9689958891cbb8e0fec6df86d202c39f597b03a3
         inst_file.write(str((generation*NP) + index)+" "+str(error)+" "+str(best_so_far)+"\n")
     while budget > 0:
         
         fill_points = np.random.randint(dim, size = NP)
         
         for i in range(NP):
-            SI = aos_method.Selection(); #output_file.write(str(SI)+"\n")
-            assert SI >= 0 and SI <= len(mutations)
+            SI = aos_method.selection_type.perform_selection(aos_method.probability); #output_file.write(str(SI)+"\n")
+            # assert SI >= 0 and SI <= len(mutations)
             mutate = mutations[SI]
             aos_method.opu[i] = SI
             # No mutation strategy needs more than 5.
