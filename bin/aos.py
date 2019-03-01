@@ -676,9 +676,11 @@ class RewardType(ABC):
         return reward
 
     # Please describe this function! Give it a better name!
-    def update_window_and_do_something_else(self):
-        self.window = self.window[(self.window[:, self.off_met] != -1) & (self.window[:, self.off_met] != np.inf)][:int(self.window_size)]
-        return count_op(self.n_ops, self.window, self.off_met) # print(window, window_op_sorted, N, rank)
+    def truncate_window(self):
+        return self.window[(self.window[:, self.off_met] != -1) & (self.window[:, self.off_met] != np.inf)][:int(self.window_size)]
+    
+    def count_op_in_window(self, window):
+        return count_op(self.n_ops, window, self.off_met) # print(window, window_op_sorted, N, rank)
 
     @abstractmethod
     def calc_reward(self):
@@ -742,7 +744,8 @@ class Pareto_Rank(RewardType):
         q_op = np.zeros(self.n_ops)
         self.gen_window = np.array(self.gen_window)
         for i in range(self.n_ops):
-            b = []; count = 0
+            b = []
+            count = 0
             for j in range(len(self.gen_window)-1, 0, -1):
                 if np.any(self.gen_window[j, :, 0] == i):
                     count += 1
@@ -805,7 +808,7 @@ class Area_Under_The_Curve(RewardType):
     
     def calc_reward(self):
         reward = np.zeros(self.n_ops)
-        window_op_sorted, N, rank = update_window_and_do_something_else()
+        window_op_sorted, N, rank = count_op_in_window(truncate_window())
         for op in range(self.n_ops):
             reward[op] = AUC(window_op_sorted, rank, op, self.window_size, self.decay)
             # print("Inside reward: ", reward)
@@ -821,7 +824,7 @@ class Sum_of_Rank(RewardType):
     
     def calc_reward(self):
         reward = np.zeros(self.n_ops)
-        window_op_sorted, N, rank = update_window_and_do_something_else()
+        window_op_sorted, N, rank = count_op_in_window(truncate_window())
         assert len(window_op_sorted) == len(rank)
         # MANUEL: where does this formula come from?
         # MANUEL: Please double-check this code
@@ -958,10 +961,12 @@ class Normalised_success_sum_window(RewardType):
     
     def calc_reward(self):
         reward = np.zeros(self.n_ops)
-        window_op_sorted, N, rank = update_window_and_do_something_else()
+        # Create a local truncated window.
+        window = truncate_window()
+        window_op_sorted, N, rank = count_op_in_window(window)
         for i in range(self.n_ops):
-            if np.any(self.window[:,0] == i):
-                reward[i] += np.sum(self.window[self.window[:, 0] == i][:, self.off_met]); # print(i, reward[i])
+            if np.any(window[:,0] == i):
+                reward[i] += np.sum(window[window[:, 0] == i][:, self.off_met]); # print(i, reward[i])
                 if N[i]!=0:
                     reward[i] = reward[i] / N[i]
         if np.max(reward) != 0:
