@@ -2,24 +2,27 @@ from __future__ import print_function
 import numpy as np
 from scipy.stats import rankdata
 import math
-from collections import Counter
 from scipy.spatial import distance
 import sys
 
+from abc import ABC,abstractmethod
+
 # MANUEL: where is Rec_PM and the other AOS methods you implemented for the PPSN paper?
 # MUDITA: Rec-PM and other are particular combination of these compenents with their default settings. They have independent folders each for an AOS (total 8 AOS).
+# MANUEL: All methods should be here. If they are build with a particular combination, then create a class that instantiates that particular combination.
 
 def debug_print(*args, **kwargs):
     print(*args, file=sys.stderr, **kwargs)
     
 # MANUEL: What is the difference between AOS and unknown AOS?
 # MUDITA: I am referring to a combination of these components as Unknown AOS if that combination is not considered in literature.
+# MANUEL: I don't understand. What do you use AOS for?
 
 class AOS(object):
     def __init__(self, popsize, F1, F, u, X, f_min, x_min, best_so_far, best_so_far1, n_ops):
         self.popsize = int(popsize)
-        self.F1 = F1
-        self.F = F
+        self.F1 = np.array(F1)
+        self.F = np.array(F)
         self.u = u
         self.X = X
         self.f_min = f_min
@@ -28,35 +31,34 @@ class AOS(object):
         self.best_so_far1 = best_so_far1
         self.n_ops = n_ops
         self.max_window_size = 150
-        
-        self.opu = [4 for i in range(int(popsize))]; self.opu = np.array(self.opu)
-        self.old_opu = self.opu.copy(); self.old_opu = np.array(self.old_opu)
+
+        # MANUEL: What is opu?
+        self.opu = np.full(self.popsize, 4)
+        #[4 for i in range(int(popsize))]; self.opu = np.array(self.opu)
+        self.old_opu = self.opu.copy()
         self.number_metric = 7
-        self.window = [[np.inf for j in range(self.number_metric)] for i in range(self.max_window_size)]; self.window = np.array(self.window); self.window[:, 0].fill(-1)
-        
-        self.gen_window = []; # print("Inside AOS", type(self.gen_window), self.gen_window)
+        self.window = np.full((self.max_window_size, self.number_metric), np.inf)
+        self.window[:, 0].fill(-1)
+        #self.window = [[np.inf for j in range(self.number_metric)] for i in range(self.max_window_size)]; self.window = np.array(self.window); self.window[:, 0].fill(-1)
+
+        # MANUEL: What are these?
+        self.gen_window = [] # print("Inside AOS", type(self.gen_window), self.gen_window)
         self.total_success = []
         self.total_unsuccess = []
     
-#        self.area = np.zeros(int(self.n_ops))
-    
-    
-    ##################################################Offspring Metric definitions##################################################################
+##################################################Offspring Metric definitions##################################################################
     def OM_Update(self):
-        """ If offspring improves over parent, Offsping Metric (OM) stores (1)fitness of offspring (2)fitness improvemnt from parent to offsping (3)fitness improvemnt from best parent to offsping (4)fitness improvemnt from best so far to offsping (5)fitness improvemnt from median parent fitness to offsping (6)relative fitness improvemnt """
-        ## MANUEL: describe this function!
-        ## MUDITA: If offspring improves over parent, Offsping Metric (OM) stores (1)fitness of offspring (2)fitness improvemnt from parent to offsping (3)fitness improvemnt from best parent to offsping (4)fitness improvemnt from best so far to offsping (5)fitness improvemnt from median parent fitness to offsping (6)relative fitness improvemnt
+        """If offspring improves over parent, Offsping Metric (OM) stores (1)fitness of offspring (2)fitness improvemnt from parent to offsping (3)fitness improvemnt from best parent to offsping (4)fitness improvemnt from best so far to offsping (5)fitness improvemnt from median parent fitness to offsping (6)relative fitness improvemnt """
         third_dim = []
-        # success = np.zeros(self.n_ops); unsuccess = np.zeros(self.n_ops)
         F_min = np.min(self.F)
         F_median = np.median(self.F)
-        F_absdiff = np.fabs(np.array(self.F1) - np.array(self.F))
+        F_absdiff = np.fabs(self.F1 - self.F)
         for i in range(self.popsize):
-            second_dim = np.full(7, -1.0)
-            second_dim[0] = self.opu[i]
             if self.F1[i] > self.F[i]:
                 continue
-            
+
+            second_dim = np.full(7, -1.0)
+            second_dim[0] = self.opu[i]
             second_dim[1] = np.exp(-self.F1[i])
             second_dim[2] = self.F[i] - self.F1[i]
             if self.F1[i] <= F_min:
@@ -71,6 +73,7 @@ class AOS(object):
             second_dim[6] = (self.best_so_far / (self.F1[i] + 0.001)) * F_absdiff[i]
             
             # MUDITA: Loop for filling the window as improved offsping are generated
+            # MANUEL: What is window? You sometimes index it like a list window[][] and other times like a matrix [, ]
             if np.any(self.window[:, 1] == np.inf):
                 for value in range(self.max_window_size - 1, -1, -1):
                     if self.window[value][0] == -1:
@@ -140,7 +143,7 @@ class AOS(object):
             #     third_dim.append(second_dim)
         
         #print("Outside ", self.window)
-        self.gen_window.append(third_dim); # print("gen_window= ",self.gen_window, type(self.gen_window), np.shape(self.gen_window))
+        self.gen_window.append(third_dim) # print("gen_window= ",self.gen_window, type(self.gen_window), np.shape(self.gen_window))
         # self.gen_window = np.array(self.gen_window)
         # self.total_success.append(success); self.total_unsuccess.append(unsuccess); #print("Su",success); print("Un",unsuccess); print("TSu",self.total_success); print("TUn",self.total_unsuccess);
         #print("call to reward")
@@ -153,29 +156,24 @@ class AOS(object):
 
 ##################################################Other definitions######################################################################
 
-# Return sorted window, number of successful applications of operators and rank
+
 
 def count_op(n_ops, window, Off_met): # ???????Include ranking for minimising case??????? Use W-r in place r
+    '''Return sorted window, number of successful applications of operators and rank'''
     # Gives rank to window[:, Off_met]: largest number will get largest number rank
     rank = rankdata(window[:, Off_met].round(1), method = 'min')
     order = rank.argsort()
     # order gives the index of rank in ascending order. Sort operators and rank in increasing rank.
-    window_op_sorted = window[order, 0];
+    window_op_sorted = window[order, 0]
     rank = rank[order]
     rank = rank[window_op_sorted >= 0]
-    window_op_sorted = window_op_sorted[window_op_sorted >= 0]; # print("window_op_sorted = ",window, window_op_sorted, rank, order)
+    window_op_sorted = window_op_sorted[window_op_sorted >= 0] # print("window_op_sorted = ",window, window_op_sorted, rank, order)
 
     # counts number of times an operator is present in the window
     N = np.zeros(n_ops)
-    # MANUEL: it is already and array!
-    # N = np.array(N); #print(N, window_op_sorted)
     # the number of times each operator appears in the sliding window
-    op, count = np.unique(window_op_sorted, return_counts=True); # print(op, count)
-#    for i in range(len(count)):
-#        N[op[i]] = count[i]
-    # MANUEL: The above loop is not necessary, count is always equal to N, no?
-    # MUDITA: Yes it will be.
-    #N[op] = count
+    op, count = np.unique(window_op_sorted, return_counts=True)
+    N[op] = count
     return window_op_sorted, N, rank
 
 # Count the successful number of applications in fix number of generations
@@ -192,40 +190,31 @@ def count_op(n_ops, window, Off_met): # ???????Include ranking for minimising ca
 # Calculates Transitive Matrix
 
 def TM(n_ops, p):
-    ## MANUEL: I think this loop can be replaced by
-    # tran_matrix = p + p[, np.newaxis]
-    ## search and read about Numpy broadcasting.
-    tran_matrix = np.zeros((n_ops, n_ops))
-#    for i in range(n_ops):
-#        for j in range(n_ops):
-#            tran_matrix[i][j] = p[j] + p[i]; # print(tran_matrix[i][j])
+    ## Numpy broadcasting.
     tran_matrix = p + p[:, np.newaxis]
-    tran_matrix = normalize_matrix(tran_matrix)
-    return tran_matrix
+    return normalize_matrix(tran_matrix)
 
 # Normalise n_ops dimensional matrix
 
 def normalize_matrix(x):
     return x / np.sum(x, axis=1)[:, None]
 
-def calc_delta_r(decay_reward3, W, window_size, ndcg):
-    if decay_reward3 == 0:
+def calc_delta_r(decay, W, window_size, ndcg):
+    if decay == 0:
         return np.ones(window_size)
-    r = np.array(range(W), dtype='float')
+    r = np.arange(float(W))
     if ndcg:
         r += 1
         delta_r = ((2 ** (W - r)) - 1) / np.log(1 + r)
     else:
-        delta_r = (decay_reward3 ** r) * (W - r)
+        delta_r = (decay ** r) * (W - r)
     return delta_r
 
-## MANUEL: Instead of adding comments before functions, add docstrings after
-## the function def. This way one can read the comment by doing ?AUC in Python
-def AUC(operators, rank, op, decay_reward3, window_size, ndcg = True):
+def AUC(operators, rank, op, decay, window_size, ndcg = True):
     """Calculates area under the curve for each operator"""
     assert len(operators) == len(rank)
     W = len(operators)
-    delta_r_vector = calc_delta_r(decay_reward3, W, window_size, ndcg)
+    delta_r_vector = calc_delta_r(decay, W, window_size, ndcg)
     x, y, area = 0, 0, 0
     r = 0
     while r < W:
@@ -254,14 +243,13 @@ def AUC(operators, rank, op, decay_reward3, window_size, ndcg = True):
 # Calculates Upper Confidence Bound as a quality
 
 def UCB(N, C, reward):
-    ucb = reward + C * np.sqrt( 2 * np.log(np.sum(N))/(N))
-    ucb[np.isinf(ucb)] = 0; ucb[np.isnan(ucb)] = 0
+    ucb = reward + C * np.sqrt( 2 * np.log(np.sum(N)) / N)
+    ucb[np.isinf(ucb) | np.isnan(ucb)] = 0
     return ucb
 
-def count_success(gen_window, i, j, Off_met):
-    c_s = 0; c_us = 0
-    c_s = np.sum((gen_window[j, :, 0] == i) & (gen_window[j, :, Off_met] != -1))
-    c_us = np.sum((gen_window[j, :, 0] == i) & (gen_window[j, :, Off_met] == -1))
+def count_success(gen_window, i, j, off_met):
+    c_s = np.sum((gen_window[j, :, 0] == i) & (gen_window[j, :, off_met] != -1))
+    c_us = np.sum((gen_window[j, :, 0] == i) & (gen_window[j, :, off_met] == -1))
     return c_s, c_us
 
 
@@ -636,12 +624,11 @@ def angle_between(p1, p2):
 
 def angle(vec, theta):
     vec = vec * np.sign(vec[1])
-    angle = np.arccos(1-distance.cosine(vec, np.array([1, 0]))) # In radian
+    angle = np.arccos(1 - distance.cosine(vec, np.array([1, 0]))) # In radian
     return angle - np.deg2rad(theta)
 
 ##################################################Reward definitions######################################################################
 
-from abc import ABC,abstractmethod
 
 def build_reward(choice, n_ops, rew_args, gen_window, window, off_met, popsize):
     if choice == 0:
@@ -674,8 +661,10 @@ def build_reward(choice, n_ops, rew_args, gen_window, window, off_met, popsize):
 class RewardType(ABC):
     def __init__(self, n_ops, off_met, max_gen = None, window_size = None, decay = None, fix_appl = None):
         self.n_ops = n_ops
+        # MANUEL: What is this?
         self.off_met = off_met
         self.max_gen = max_gen
+        # MANUEL: So you have window_size here but no window?
         self.window_size = window_size
         self.fix_appl = fix_appl
         self.decay = decay
@@ -685,7 +674,12 @@ class RewardType(ABC):
         # Nothing to check
         self.old_reward[:] = reward
         return reward
-    
+
+    # Please describe this function! Give it a better name!
+    def update_window_and_do_something_else(self):
+        self.window = self.window[(self.window[:, self.off_met] != -1) & (self.window[:, self.off_met] != np.inf)][:int(self.window_size)]
+        return count_op(self.n_ops, self.window, self.off_met) # print(window, window_op_sorted, N, rank)
+
     @abstractmethod
     def calc_reward(self):
         pass
@@ -695,26 +689,30 @@ class RewardType(ABC):
 class Pareto_Dominance(RewardType):
     def __init__(self, n_ops, off_met, gen_window, fix_appl = 20):
         super().__init__(n_ops, off_met, fix_appl = fix_appl)
+        # MANUEL: There are other objects with self.gen_window defined!
         self.gen_window = gen_window
         debug_print("\n {} : fix_appl = {}".format(type(self).__name__, self.fix_appl))
     
     def calc_reward(self):
+        # MANUEL: This function and the one for Pareto_Rank are almost identical! What's the difference?
         reward = np.zeros(self.n_ops)
         s_op = np.zeros(self.n_ops)
         q_op = np.zeros(self.n_ops)
+        # MANUEL: Why does it need to be converted to an array here?
         self.gen_window = np.array(self.gen_window)
         for i in range(self.n_ops):
-            b = []; count = 0
+            b = []
+            count = 0
             for j in range(len(self.gen_window)-1, 0, -1):
                 if np.any(self.gen_window[j, :, 0] == i):
                     count += 1
+                    # MANUEL: What is this doing?
                     b.append(self.gen_window[j, np.where(self.gen_window[j, :, 0] == i) and np.where(self.gen_window[j, :, self.off_met] != -1), self.off_met])
                     if count == fix_appl:
                         break
             if b != []:
-                s_op[i] = np.std(np.hstack(b)); q_op[i] = np.average(np.hstack(b))
-            else:
-                s_op[i] = 0; q_op[i] = 0
+                s_op[i] = np.std(np.hstack(b))
+                q_op[i] = np.mean(np.hstack(b))
         #print("b", b)
         #a.append(b)
         #print("a", s_op, q_op)
@@ -722,12 +720,13 @@ class Pareto_Dominance(RewardType):
             for j in range(self.n_ops):
                 if i != j:
                     #print(gen_window[len(gen_window)-1], i, j)
+                    # MANUEL: This comparison is very strange! What are you trying to do?
                     if s_op[i] != [] and s_op[j] != []:
                         #print("D, Q:  ",A1, A2, op_Diversity(gen_window, j, Off_met), op_Quality(gen_window, j, Off_met))
                         if s_op[i] > s_op[j] and q_op[i] > q_op[j]:
                             reward[i] += 1
         if np.sum(reward) != 0:
-            reward = (reward / np.sum(reward))
+            reward /= np.sum(reward)
         return super().check_reward(reward)
 
 
@@ -752,8 +751,6 @@ class Pareto_Rank(RewardType):
                         break
             if b != []:
                 s_op[i] = np.std(np.hstack(b)); q_op[i] = np.average(np.hstack(b))
-            else:
-                s_op[i] = 0; q_op[i] = 0
         for i in range(self.n_ops):
             for j in range(self.n_ops):
                 if i != j:
@@ -764,7 +761,7 @@ class Pareto_Rank(RewardType):
                             reward[i] += 1
         #print(reward)
         if np.sum(reward) != 0:
-            reward = (reward / np.sum(reward))
+            reward /= np.sum(reward)
         return super().check_reward(-reward)
 
 
@@ -777,11 +774,13 @@ class Compass_projection(RewardType):
     
     def calc_reward(self):
         reward = np.zeros(self.n_ops)
+        # MANUEL: This should be an array alreadY?
         self.gen_window = np.array(self.gen_window)
         # Projection on line B with thetha = pi/4
 #        B = [1, 1]
         for i in range(self.n_ops):
-            b = []; count = 0
+            b = []
+            count = 0
             for j in range(len(self.gen_window)-1, 0, -1):
                 if np.any(self.gen_window[len(self.gen_window)-1, :, 0] == i):
                     count += 1
@@ -790,8 +789,9 @@ class Compass_projection(RewardType):
                         break
             if b != []:
                 # Diversity: np.std(np.hstack(b)) and Quality: np.average(np.hstack(b))
-                SD = np.std(np.hstack(b)); AVG = np.average(np.hstack(b))
+                SD = np.std(np.hstack(b)); AVG = np.mean(np.hstack(b))
                 #reward[i] = (np.sqrt(np.std(np.hstack(b))**2 + np.average(np.hstack(b))**2)) * np.cosine(np.fabs(np.angle(SD + AVGj) - np.deg2rad(self.theta)))
+                # Where does this formula come from?
                 reward[i] = (np.sqrt(SD**2 + AVG**2)) * angle(np.array([SD, AVG]), theta)
         reward = reward - np.min(reward)
         return super().check_reward(reward)
@@ -799,13 +799,13 @@ class Compass_projection(RewardType):
 class Area_Under_The_Curve(RewardType):
     def __init__(self, n_ops, off_met, window, window_size = 50, decay = 0.4):
         super().__init__(n_ops, off_met, window_size = window_size, decay = decay)
+        # MANUEL: This window is not the same object as the one in AOS!
         self.window = window
         debug_print("\n {} : window_size = {}, decay = {}".format(type(self).__name__, self.window_size, self.decay))
     
     def calc_reward(self):
         reward = np.zeros(self.n_ops)
-        self.window = self.window[(self.window[:, self.off_met] != -1) & (self.window[:, self.off_met] != np.inf)][:int(self.window_size)]
-        window_op_sorted, N, rank = count_op(self.n_ops, self.window, self.off_met); # print(window, window_op_sorted, N, rank)
+        window_op_sorted, N, rank = update_window_and_do_something_else()
         for op in range(self.n_ops):
             reward[op] = AUC(window_op_sorted, rank, op, self.window_size, self.decay)
             # print("Inside reward: ", reward)
@@ -814,24 +814,40 @@ class Area_Under_The_Curve(RewardType):
 class Sum_of_Rank(RewardType):
     def __init__(self, n_ops, off_met, window, window_size = 50, decay = 0.4):
         super().__init__(n_ops, off_met, window_size = window_size, decay = decay)
-        self.window = window; self.window = np.array(self.window)
+        self.window = window
+        # MANUEL: Isn't it an array already? What is it?
+        self.window = np.array(self.window)
         debug_print("\n {} : window_size = {}, decay = {}".format(type(self).__name__, self.window_size, self.decay))
     
     def calc_reward(self):
         reward = np.zeros(self.n_ops)
-        self.window = self.window[(self.window[:, self.off_met] != -1) & (self.window[:, self.off_met] != np.inf)][:int(self.window_size)]
-        window_op_sorted, N, rank = count_op(self.n_ops, self.window, self.off_met)
-        for i in range(len(window_op_sorted)):
-            value = (self.decay ** rank[i]) * (self.window_size - rank[i])
-            ## MANUEL: If window_op_sorted only contains values from 0 to n_ops, then this loop can be simply:
-            # reward[window_op_sorted] += value
-            ## Test it!
-            for j in range(self.n_ops):
-                if window_op_sorted[i] == j:
-                    reward[j] += value
+        window_op_sorted, N, rank = update_window_and_do_something_else()
+        assert len(window_op_sorted) == len(rank)
+        # MANUEL: where does this formula come from?
+        # MANUEL: Please double-check this code
+        value = (self.decay ** rank) * (self.window_size - rank)
+        reward[window_op_sorted] += value
+        # for i in range(len(window_op_sorted)):
+        #     ## MANUEL: If window_op_sorted only contains values from 0 to n_ops, then this loop can be simply:
+        #     # reward[window_op_sorted] += value
+        #     ## Test it!
+        #     for j in range(self.n_ops):
+        #         if window_op_sorted[i] == j:
+        #             reward[j] += value[i]
         if np.sum(reward) != 0:
             reward /= np.sum(reward)
         return super().check_reward(reward)
+
+# MANUEL: Create a new class SuccessRateType. That should contain the gen_window and this common function:
+def count_total_succ_unsucc(n_ops, gen_window, j, off_met):
+    total_success = np.zeros(n_ops)
+    total_unsuccess = np.zeros(n_ops)
+    for i in range(n_ops):
+        # MANUEL: What is gen_window? Is it a matrix, a list, a cube?
+        if np.any(gen_window[j, :, 0] == i):
+            total_success[i], total_unsuccess[i] = count_success(gen_window, i, j, off_met)
+    return total_success, total_unsuccess
+
 
 class Success_Rate1(RewardType):
     def __init__(self, n_ops, off_met, gen_window, max_gen = 10, succ_lin_quad = 1, frac = 0.01, noise = 0.0):
@@ -844,19 +860,25 @@ class Success_Rate1(RewardType):
     
     def calc_reward(self):
         reward = np.zeros(self.n_ops)
+        # MANUEL: Should be an array already?
         self.gen_window = np.array(self.gen_window)
-        if len(self.gen_window) < self.max_gen:
-            self.max_gen = len(self.gen_window)
-        for j in range(len(self.gen_window)-1, len(self.gen_window)-self.max_gen-1, -1):
-            total_success = np.zeros(self.n_ops); total_unsuccess = np.zeros(self.n_ops)
-            for i in range(self.n_ops):
-                if np.any(self.gen_window[j, :, 0] == i):
-                    total_success[i], total_unsuccess[i] = count_success(self.gen_window, i, j, self.off_met)
-            for i in range(self.n_ops):
-                if total_success[i] + total_unsuccess[i] != 0:
-                    reward[i] += (total_success[i]**self.succ_lin_quad + self.frac * np.sum(total_success)) / (total_success[i] + total_unsuccess[i])
-                else:
-                    reward[i] += 0
+        gen_window_len = len(self.gen_window)
+        if gen_window_len < self.max_gen:
+            self.max_gen = gen_window_len
+        for j in range(gen_window_len-1, gen_window_len-self.max_gen-1, -1):
+            total_success, total_unsuccess = count_total_succ_unsucc(n_ops, gen_window, j, off_met)
+            total = total_success + total_unsuccess
+            # Avoid division by zero. If total == 0, then total_success is zero.
+            total[total == 0] = 1
+            # MANUEL Where does this formula come from?
+            reward += (total_success ** self.succ_lin_quad + self.frac * np.sum(total_success)) / total
+            # MANUEL: The loop below replaced by the line above
+            # for i in range(self.n_ops):
+            #     if total_success[i] + total_unsuccess[i] != 0:
+            #         reward[i] += (total_success[i]**self.succ_lin_quad + self.frac * np.sum(total_success)) / total[i]
+                # MANUEL: Summing zero is useless
+                # else:
+                #     reward[i] += 0
         reward += self.noise
         return super().check_reward(reward)
 
@@ -868,13 +890,14 @@ class Success_Rate2(RewardType):
         self.popsize = popsize
     
     def calc_reward(self):
-        reward = np.zeros(self.n_ops)
         self.gen_window = np.array(self.gen_window)
-        for i in range(self.n_ops):
-            total_success = 0; total_unsuccess = 0
-            if np.any(self.gen_window[len(self.gen_window)-1, :, 0] == i):
-                total_success, total_unsuccess = count_success(self.gen_window, i, len(self.gen_window)-1, self.off_met); #print(total_unsuccess, total_success)
-                reward[i] = (np.array(total_success) / self.popsize)
+        total_success, total_unsuccess = count_total_succ_unsucc(n_ops, gen_window,
+                                                                len(self.gen_window) - 1, off_met)
+        # for i in range(self.n_ops):
+        #     if np.any(self.gen_window[len(self.gen_window)-1, :, 0] == i):
+        #         total_success, total_unsuccess = count_success(self.gen_window, i, len(self.gen_window)-1, self.off_met); #print(total_unsuccess, total_success)
+        #         reward[i] = np.array(total_success) / self.popsize
+        reward = total_success / self.popsize
         return super().check_reward(reward)
 
 class Success_sum(RewardType):
@@ -889,6 +912,8 @@ class Success_sum(RewardType):
         appl = np.zeros(self.n_ops)
         if len(self.gen_window) < self.max_gen:
             self.max_gen = len(self.gen_window)
+        # MANUEL: Why is this looping first over n_ops, then over the window? It is so different from SuccessRate1????
+        # MANUEL: Can this use count_total_succ_unsucc()?
         for i in range(self.n_ops):
             appl = 0
             for j in range(len(self.gen_window)-1, len(self.gen_window)-self.max_gen-1, -1):
@@ -900,8 +925,6 @@ class Success_sum(RewardType):
                     appl += total_success + total_unsuccess
             if appl != 0:
                 reward[i] = np.array(reward[i]) / (np.array(appl))
-            else:
-                reward[i] = 0
         return super().check_reward(reward)
 
 class Normalised_success_sum_window(RewardType):
@@ -913,15 +936,14 @@ class Normalised_success_sum_window(RewardType):
     
     def calc_reward(self):
         reward = np.zeros(self.n_ops)
-        self.window = self.window[(self.window[:, self.off_met] != -1) & (self.window[:, self.off_met] != np.inf)][:int(self.window_size)]
-        window_op_sorted, N, rank = count_op(self.n_ops, self.window, self.off_met)
+        window_op_sorted, N, rank = update_window_and_do_something_else()
         for i in range(self.n_ops):
             if np.any(self.window[:,0] == i):
                 reward[i] += np.sum(self.window[self.window[:, 0] == i][:, self.off_met]); # print(i, reward[i])
                 if N[i]!=0:
                     reward[i] = reward[i] / N[i]
         if np.max(reward) != 0:
-            reward = reward / np.max(reward)**self.normal_factor
+            reward /= np.max(reward)**self.normal_factor
         return super().check_reward(reward)
 
 class Normalised_success_sum_gen(RewardType):
@@ -937,6 +959,7 @@ class Normalised_success_sum_gen(RewardType):
             max_gen = len(self.gen_window)
         for i in range(self.n_ops):
             for j in range(len(self.gen_window)-1, len(self.gen_window)-self.max_gen-1, -1):
+                # PLease use count_total_succ_and_unsucc()
                 total_success = 0; total_unsuccess = 0
                 #print("first: ",gen_window, np.shape(gen_window), len(gen_window), i, j);print(gen_window[j,0,0])
                 if np.any(self.gen_window[j,:,0] == i):
@@ -955,11 +978,13 @@ class Best2gen(RewardType):
         debug_print("\n {} : scaling constant = {}, choice2 = {}, choice3 = {}".format(type(self).__name__, self.scaling_constant, self.choice2, self.choice3))
     
     def calc_reward(self):
+        # MANUEL: Don't use ";" it makes code harder to read!
         reward = np.zeros(self.n_ops)
         best_t = np.zeros(self.n_ops); best_t_1 = np.zeros(self.n_ops);
         self.gen_window = np.array(self.gen_window);
         for i in range(self.n_ops):
             n_applications = np.zeros(2) # for last 2 generations
+            # MANUEL: Use count_total_succ_unsucc()
             # Calculating best in current generation
             if np.any(self.gen_window[len(self.gen_window)-1, :, 0] == i):
                 total_success, total_unsuccess = count_success(self.gen_window, i, len(self.gen_window)-1, self.off_met)
@@ -967,19 +992,28 @@ class Best2gen(RewardType):
                 if np.any(self.gen_window[len(self.gen_window)-1, :, self.off_met] != -1):
                     best_t[i] = np.max(self.gen_window[len(self.gen_window)-1, np.where((self.gen_window[len(self.gen_window)-1, :, 0] == i) & (self.gen_window[len(self.gen_window)-1, :, self.off_met] != -1)), self.off_met]); # print(i, best_t[i])
             # Calculating best in last generation
+            # MANUEL: Use count_total_succ_unsucc()
             if len(self.gen_window)>=2 and np.any(self.gen_window[len(self.gen_window)-2,:,0] == i):
                 total_success, total_unsuccess = count_success(self.gen_window, i, len(self.gen_window)-2, self.off_met)
                 n_applications[1] = total_success + total_unsuccess
                 if np.any(gen_window[len(gen_window)-2, :, self.off_met] != -1):
                     best_t_1[i] = np.max(self.gen_window[len(self.gen_window)-2, np.where((self.gen_window[len(gen_window)-2, :, 0] == i) & (self.gen_window[len(gen_window)-2, :, self.off_met] != -1)), self.off_met]); # print(i, best_t_1[i])
-            if best_t_1[i] != 0 and np.fabs(n_applications[0] - n_applications[1]) != 0:
-                reward[i] = self.scaling_constant * np.fabs(best_t[i] - best_t_1[i]) / (((best_t_1[i])**self.choice2) * (np.fabs(n_applications[0] - n_applications[1])**self.choice3))
-            elif best_t_1[i] != 0 and np.fabs(n_applications[0] - n_applications[1]) == 0:
-                reward[i] = self.scaling_constant * np.fabs(best_t[i] - best_t_1[i]) / ((best_t_1[i])**self.choice2)
-            elif best_t_1[i] == 0 and np.fabs(n_applications[0] - n_applications[1]) != 0:
-                reward[i] = self.scaling_constant * np.fabs(best_t[i] - best_t_1[i]) / (np.fabs(n_applications[0] - n_applications[1])**self.choice3)
-            else:
-                reward[i] = self.scaling_constant * np.fabs(best_t[i] - best_t_1[i])
+            # MANUEL: Use vector operations!
+            reward[i] = self.scaling_constant * np.fabs(best_t[i] - best_t_1[i])
+            if best_t_1[i] != 0:
+                reward[i] /= best_t_1[i]**self.choice2
+            if np.fabs(n_applications[0] - n_applications[1]) != 0:
+                reward[i] /= np.fabs(n_applications[0] - n_applications[1])**self.choice3
+
+            # MANUEL: Please compare the above with what you wrote below! What is clearer? You need to spend a bit more effort on things and on thinking.
+            # if best_t_1[i] != 0 and np.fabs(n_applications[0] - n_applications[1]) != 0:
+            #     reward[i] = self.scaling_constant * np.fabs(best_t[i] - best_t_1[i]) / (((best_t_1[i])**self.choice2) * (np.fabs(n_applications[0] - n_applications[1])**self.choice3))
+            # elif best_t_1[i] != 0 and np.fabs(n_applications[0] - n_applications[1]) == 0:
+            #     reward[i] = self.scaling_constant * np.fabs(best_t[i] - best_t_1[i]) / ((best_t_1[i])**self.choice2)
+            # elif best_t_1[i] == 0 and np.fabs(n_applications[0] - n_applications[1]) != 0:
+            #     reward[i] = self.scaling_constant * np.fabs(best_t[i] - best_t_1[i]) / (np.fabs(n_applications[0] - n_applications[1])**self.choice3)
+            # else:
+            #     reward[i] = self.scaling_constant * np.fabs(best_t[i] - best_t_1[i])
         return super().check_reward(reward)
 
 class Normalised_best_sum(RewardType):
@@ -1000,6 +1034,7 @@ class Normalised_best_sum(RewardType):
             for j in range(len(self.gen_window)-1, len(self.gen_window)-self.max_gen-1, -1):
                 # print(gen_window)
                 # print("first: ", i, j, np.hstack(gen_window[j, np.where((gen_window[j,:,0] == i) & (gen_window[j, :, Off_met] != -1)), Off_met]))
+                # MANUEL: Use count_total_succ_unsucc()
                 if np.any((self.gen_window[j,:,0] == i) & (self.gen_window[j, :, self.off_met] != -1)):
                     # print("inside")
                     gen_best.append(np.max(np.hstack(self.gen_window[j, np.where((self.gen_window[j,:,0] == i) & (self.gen_window[j, :, self.off_met] != -1)), self.off_met])))
@@ -1021,7 +1056,7 @@ def build_quality(choice, n_ops, qual_args, window, off_met):
     elif choice == 3:
         return Weighted_normalised_reward(n_ops, qual_args["decay_rate"])
     elif choice == 4:
-        return Markov_reward_process(n_ops, qual_args["memory_parameter1"], qual_args["memory_parameter2"], qual_args["discount_rate"])
+        return Markov_reward_process(n_ops, qual_args["memory_curr_reward"], qual_args["memory_prev_reward"], qual_args["discount_rate"])
     else:
         raise ValueError("choice {} unknown".format(choice))
 
@@ -1062,6 +1097,8 @@ class Upper_confidence_bound(QualityType):
     def __init__(self, n_ops, off_met, window, scaling_factor = 0.5):
         super().__init__(n_ops)
         self.off_met = off_met
+        # MANUEL: There is a window here, but which object handles it?
+        # MANUEL: This window is not the same object as the one in AOS nor the one in RewardType!
         self.window = window
         self.scaling_factor = scaling_factor
         debug_print("\n {} : scaling_factor = {}".format(type(self).__name__, self.scaling_factor))
@@ -1087,27 +1124,36 @@ class Weighted_normalised_reward(QualityType):
     
     def calc_quality(self, old_reward, reward, old_probability):
         if np.sum(reward) > 0:
-            quality = self.decay_rate * (reward /np.sum(reward))  + (1 - self.decay_rate) * self.old_quality
+            reward /= np.sum(reward)
         else:
-            quality = self.decay_rate * self.n_ops + (1 - self.decay_rate) * self.old_quality
+            reward = self.n_ops
+        quality = self.decay_rate * reward  + (1 - self.decay_rate) * self.old_quality
+        # if np.sum(reward) > 0:
+        #     quality = self.decay_rate * (reward / np.sum(reward))  + (1 - self.decay_rate) * self.old_quality
+        # else:
+        #     quality = self.decay_rate * self.n_ops + (1 - self.decay_rate) * self.old_quality
         return super().check_quality(quality)
 
 class Markov_reward_process(QualityType):
-    def __init__(self, n_ops, memory_parameter1 = 1, memory_parameter2 = 0.9, discount_rate = 0.0):
+    def __init__(self, n_ops, memory_curr_reward = 1, memory_prev_reward = 0.9, discount_rate = 0.0):
         super().__init__(n_ops)
-        self.memory_parameter1 = memory_parameter1
-        self.memory_parameter2 = memory_parameter2
+        self.memory_curr_reward = memory_curr_reward
+        self.memory_prev_reward = memory_prev_reward
         self.discount_rate = discount_rate
-        debug_print("\n {} : memory_parameter1 = {}, memory_parameter2 = {}, discount_rate = {}".format(type(self).__name__, self.memory_parameter1, self.memory_parameter2, self.discount_rate))
+        debug_print("\n {} : memory_curr_reward = {}, memory_prev_reward = {}, discount_rate = {}".format(type(self).__name__, self.memory_curr_reward, self.memory_prev_reward, self.discount_rate))
     
     def calc_quality(self, old_reward, reward, old_probability):
         tran_matrix = TM(self.n_ops, old_probability)
+        # MANUEL: you overwrite the line above?
         tran_matrix = normalize_matrix(np.random.rand(self.n_ops, self.n_ops)); # print(old_probability)
     
-        quality = self.memory_parameter1 * reward + self.memory_parameter2 * old_reward
+        quality = self.memory_curr_reward * reward + self.memory_prev_reward * old_reward
         if self.discount_rate != 0:
+            # MANUEL: Where does this formula come from?
             quality = np.matmul(np.linalg.pinv(np.array(1 - self.discount_rate * tran_matrix)), np.array(Q))
+            # MANUEL: you overwrite the line above?
             quality = Q - np.max(Q)
+            # MANUEL: you overwrite the line above?
             quality = np.exp(Q)
         return super().check_quality(quality)
 
@@ -1222,9 +1268,9 @@ class SelectionType(ABC):
         self.n_ops = n_ops
         self.op_init_list = list(np.random.permutation(n_ops))
     
-    def check_selection(self, SI):
-        assert SI>=0 and SI<=self.n_ops
-        return SI
+    def check_selection(self, selected):
+        assert selected >= 0 and selected <= self.n_ops
+        return selected
     
     @abstractmethod
     def perform_selection(self, probability):
@@ -1346,10 +1392,12 @@ class Unknown_AOS(AOS):
         #self.c2_quality6 = c2_quality6
         
         #self.Reward_fun = R_list[Rewar]
-        self.reward = np.zeros(self.n_ops); self.old_reward = self.reward.copy()
+        self.reward = np.zeros(self.n_ops)
+        self.old_reward = self.reward.copy()
         self.reward_type = build_reward(rew_choice, n_ops, rew_args, self.gen_window, self.window, OM_choice, popsize)
         #self.Quality_fun = Q_list[Qual]
-        self.quality = np.zeros(self.n_ops); self.quality[:] = 1.0; self.old_quality = self.quality.copy()
+        self.quality = np.full(n_ops, 1.0)
+        self.old_quality = self.quality.copy()
         self.quality_type = build_quality(qual_choice, n_ops, qual_args, self.window, OM_choice)
         # self.probability = np.zeros(self.n_ops); self.probability[:] = 1.0 / len(self.probability)
         self.probability = np.full(n_ops, 1.0 / n_ops)
