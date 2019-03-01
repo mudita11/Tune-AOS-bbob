@@ -454,6 +454,7 @@ if __name__ == '__main__':
 #    rew_args_help = ["Reward0,1,5,7,9,11", "Reward2 hyperparameter", "Reward2 hyperparameter" "Reward3, 4, 8 hyper-parameter", "Reward3,4 hyper-parameter", "Reward5 hyper-parameter", "Reward5 hyper-parameter", "Reward5 hyper-parameter", "Reward8 hyper-parameter", "Reward10 hyper-parameter", "Reward10 hyper-parameter", "Reward10 hyper-parameter", "Reward11 hyper-parameter", "Reward11 hyper-parameter"]
     for arg, help in zip(rew_args_names, rew_args_help):
         # MUDITA: Not all hyperparameters are of type float
+        # MANUEL: Then, create a rew_args_type and use it in the zip.
         parser.add_argument('--' + arg, type=float, default=0, help=help)
 
 
@@ -471,13 +472,8 @@ if __name__ == '__main__':
     # Handle probabilities
     # FIXME: Use __subclasses__ to find choices.
     parser.add_argument("--prob_choice", type=int, choices=range(0,4), help="Probability method selected")
-    # FIXME: Use __slots__ to find which parameters need to be defined.
-    prob_args_names = ["p_min", "learning_rate", "error_prob", "p_max"]
-    # FIXME: define this in the class as @property getter doctstring and get it from it
-    prob_args_help = ["Minimum probability of selection of an operator", "Learning Rate", "Probability noise", "Maximum probability of selection of an operator"]
-    for arg, help in zip(prob_args_names, prob_args_help):
-        parser.add_argument('--' + arg, type=float, default=0, help=help)
-
+    # MANUEL: Use this technique to add arguments instead of the above.
+    prob_args_names = aos.ProbabilityType.add_argument(parser)
 
     # Handle Selection
     # FIXME: Use __subclasses__ to find choices.

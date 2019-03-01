@@ -1174,12 +1174,24 @@ def build_probability(choice, n_ops, prob_args):
         raise ValueError("choice {} unknown".format(choice))
  
 class ProbabilityType(ABC):
+    # Static variables
+    # FIXME: Use __slots__ to find which parameters need to be defined.
+    args_names = ["p_min", "learning_rate", "error_prob", "p_max"]
+    # FIXME: define this in the class as @property getter doctstring and get it from it
+    args_help = ["Minimum probability of selection of an operator", "Learning Rate", "Probability noise", "Maximum probability of selection of an operator"]
     def __init__(self, n_ops, p_min = None, learning_rate = None):
         # n_ops, p_min_prob and beta_prob used in more than one probability definition
         self.p_min = p_min
         self.learning_rate = learning_rate
         self.old_probability = np.full(n_ops, 1.0 / n_ops)
         self.eps = np.finfo(self.old_probability.dtype).eps
+
+    @classmethod
+    def add_argument(cls, parser):
+        "Add arguments to an ArgumentParser"
+        for arg, help in zip(cls.args_names, cls.args_help):
+            parser.add_argument('--' + arg, type=float, default=0, help=help)
+        return cls.args_names
 
     def check_probability(self, probability):
         print("proba",probability)
