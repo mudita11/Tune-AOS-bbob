@@ -850,6 +850,28 @@ def count_total_succ_unsucc(n_ops, gen_window, j, off_met):
 
 
 class Success_Rate1(RewardType):
+    """ 
+
+A Kai Qin, Vicky Ling Huang, and Ponnuthurai N Suganthan. “Differ-
+ential evolution algorithm with strategy adaptation for global numeri-
+cal optimization”. In: IEEE transactions on Evolutionary Computation
+13.2 (2009). https://www.researchgate.net/profile/Ponnuthurai_
+Suganthan/publication/224330344_Differential_Evolution_Algorithm_
+With_Strategy_Adaptation_for_Global_Numerical_Optimization/
+links/0c960525d39935a20c000000.pdf, pp. 398–417.
+
+With noise == 0, we get
+
+Bryant A Julstrom. “Adaptive operator probabilities in a genetic algo-
+rithm that applies three operators”. In: Proceedings of the 1997 ACM
+symposium on Applied computing. http://delivery.acm.org/10.1145/
+340000/331746/p233-julstrom.pdf?ip=144.32.48.138&id=331746&
+acc=ACTIVE%20SERVICE&key=BF07A2EE685417C5%2E26BE4091F5AC6C0A%
+2E4D4702B0C3E38B35 % 2E4D4702B0C3E38B35 & _ _ acm _ _ = 1540905461 _
+4567820ac9495f6bfbb8462d1c4244a3. ACM. 1997, pp. 233–238.
+
+"""
+    
     def __init__(self, n_ops, off_met, gen_window, max_gen = 10, succ_lin_quad = 1, frac = 0.01, noise = 0.0):
         super().__init__(n_ops, off_met, max_gen = max_gen)
         self.gen_window = gen_window
@@ -1224,6 +1246,13 @@ class Probability0(ProbabilityType):
         
 
 class Probability1(ProbabilityType):
+    """ Proposed by:
+
+Dirk Thierens. “An adaptive pursuit strategy for allocating operator prob-
+abilities”. In: Proceedings of the 7th annual conference on Genetic and
+evolutionary computation. http://www.cs.bham.ac.uk/~wbl/biblio/gecco2005/docs/p1539.pdf. ACM. 2005, pp. 1539–1546.
+
+"""
     def __init__(self, n_ops, p_min = 0.1, p_max = 0.9, learning_rate = 0.1):
         super().__init__(n_ops, p_min = p_min, learning_rate = learning_rate)
         self.p_max = p_max
@@ -1237,6 +1266,7 @@ class Probability1(ProbabilityType):
         return super().check_probability(probability)
 
 class Probability2(ProbabilityType):
+    """ """
     def __init__(self, n_ops, p_min = 0.025, learning_rate = 0.5):
         super().__init__(n_ops, p_min = p_min, learning_rate = learning_rate)
         debug_print("\n {} : p_min = {}, learning_rate = {}".format(type(self).__name__, self.p_min, self.learning_rate))
