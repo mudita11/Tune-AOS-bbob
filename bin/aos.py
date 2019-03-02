@@ -680,9 +680,11 @@ class RewardType(ABC):
         return reward
 
     # Please describe this function! Give it a better name!
-    def update_window_and_do_something_else(self):
-        self.window = self.window[(self.window[:, self.off_met] != -1) & (self.window[:, self.off_met] != np.inf)][:int(self.window_size)]
-        return count_op(self.n_ops, self.window, self.off_met) # print(window, window_op_sorted, N, rank)
+    def truncate_window(self):
+        return self.window[(self.window[:, self.off_met] != -1) & (self.window[:, self.off_met] != np.inf)][:int(self.window_size)]
+    
+    def count_op_in_window(self, window):
+        return count_op(self.n_ops, window, self.off_met) # print(window, window_op_sorted, N, rank)
 
     @abstractmethod
     def calc_reward(self):
@@ -746,7 +748,8 @@ class Pareto_Rank(RewardType):
         q_op = np.zeros(self.n_ops)
         self.gen_window = np.array(self.gen_window)
         for i in range(self.n_ops):
-            b = []; count = 0
+            b = []
+            count = 0
             for j in range(len(self.gen_window)-1, 0, -1):
                 if np.any(self.gen_window[j, :, 0] == i):
                     count += 1
@@ -809,7 +812,7 @@ class Area_Under_The_Curve(RewardType):
     
     def calc_reward(self):
         reward = np.zeros(self.n_ops)
-        window_op_sorted, N, rank = update_window_and_do_something_else()
+        window_op_sorted, N, rank = count_op_in_window(truncate_window())
         for op in range(self.n_ops):
             reward[op] = AUC(window_op_sorted, rank, op, self.window_size, self.decay)
             # print("Inside reward: ", reward)
@@ -825,7 +828,7 @@ class Sum_of_Rank(RewardType):
     
     def calc_reward(self):
         reward = np.zeros(self.n_ops)
-        window_op_sorted, N, rank = update_window_and_do_something_else()
+        window_op_sorted, N, rank = count_op_in_window(truncate_window())
         assert len(window_op_sorted) == len(rank)
         # MANUEL: where does this formula come from?
         # MANUEL: Please double-check this code
@@ -854,6 +857,28 @@ def count_total_succ_unsucc(n_ops, gen_window, j, off_met):
 
 
 class Success_Rate1(RewardType):
+    """ 
+
+A Kai Qin, Vicky Ling Huang, and Ponnuthurai N Suganthan. “Differ-
+ential evolution algorithm with strategy adaptation for global numeri-
+cal optimization”. In: IEEE transactions on Evolutionary Computation
+13.2 (2009). https://www.researchgate.net/profile/Ponnuthurai_
+Suganthan/publication/224330344_Differential_Evolution_Algorithm_
+With_Strategy_Adaptation_for_Global_Numerical_Optimization/
+links/0c960525d39935a20c000000.pdf, pp. 398–417.
+
+With noise == 0, we get
+
+Bryant A Julstrom. “Adaptive operator probabilities in a genetic algo-
+rithm that applies three operators”. In: Proceedings of the 1997 ACM
+symposium on Applied computing. http://delivery.acm.org/10.1145/
+340000/331746/p233-julstrom.pdf?ip=144.32.48.138&id=331746&
+acc=ACTIVE%20SERVICE&key=BF07A2EE685417C5%2E26BE4091F5AC6C0A%
+2E4D4702B0C3E38B35 % 2E4D4702B0C3E38B35 & _ _ acm _ _ = 1540905461 _
+4567820ac9495f6bfbb8462d1c4244a3. ACM. 1997, pp. 233–238.
+
+"""
+    
     def __init__(self, n_ops, off_met, gen_window, max_gen = 10, succ_lin_quad = 1, frac = 0.01, noise = 0.0):
         super().__init__(n_ops, off_met, max_gen = max_gen)
         self.gen_window = gen_window
@@ -940,10 +965,12 @@ class Normalised_success_sum_window(RewardType):
     
     def calc_reward(self):
         reward = np.zeros(self.n_ops)
-        window_op_sorted, N, rank = update_window_and_do_something_else()
+        # Create a local truncated window.
+        window = truncate_window()
+        window_op_sorted, N, rank = count_op_in_window(window)
         for i in range(self.n_ops):
-            if np.any(self.window[:,0] == i):
-                reward[i] += np.sum(self.window[self.window[:, 0] == i][:, self.off_met]); # print(i, reward[i])
+            if np.any(window[:,0] == i):
+                reward[i] += np.sum(window[window[:, 0] == i][:, self.off_met]); # print(i, reward[i])
                 if N[i]!=0:
                     reward[i] = reward[i] / N[i]
         if np.max(reward) != 0:
@@ -1228,6 +1255,13 @@ class Probability0(ProbabilityType):
         
 
 class Probability1(ProbabilityType):
+    """ Proposed by:
+
+Dirk Thierens. “An adaptive pursuit strategy for allocating operator prob-
+abilities”. In: Proceedings of the 7th annual conference on Genetic and
+evolutionary computation. http://www.cs.bham.ac.uk/~wbl/biblio/gecco2005/docs/p1539.pdf. ACM. 2005, pp. 1539–1546.
+
+"""
     def __init__(self, n_ops, p_min = 0.1, p_max = 0.9, learning_rate = 0.1):
         super().__init__(n_ops, p_min = p_min, learning_rate = learning_rate)
         self.p_max = p_max
@@ -1241,6 +1275,7 @@ class Probability1(ProbabilityType):
         return super().check_probability(probability)
 
 class Probability2(ProbabilityType):
+    """ """
     def __init__(self, n_ops, p_min = 0.025, learning_rate = 0.5):
         super().__init__(n_ops, p_min = p_min, learning_rate = learning_rate)
         debug_print("\n {} : p_min = {}, learning_rate = {}".format(type(self).__name__, self.p_min, self.learning_rate))
