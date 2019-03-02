@@ -17,8 +17,9 @@ def debug_print(*args, **kwargs):
 # MANUEL: What is the difference between AOS and unknown AOS?
 # MUDITA: I am referring to a combination of these components as Unknown AOS if that combination is not considered in literature.
 # MANUEL: I don't understand. What do you use AOS for?
+# MUDITA: I think more appropriate name for AOS class is AOS_Update because this class is basically updating components of AOS. Its not an AOS method.
 
-class AOS(object):
+class AOS_Update(object):
     def __init__(self, popsize, F1, F, u, X, f_min, x_min, best_so_far, best_so_far1, n_ops):
         self.popsize = int(popsize)
         self.F1 = np.array(F1)
@@ -33,6 +34,7 @@ class AOS(object):
         self.max_window_size = 150
 
         # MANUEL: What is opu?
+        # MUDITA: opu represents (op)erator that produced offspring (u).
         self.opu = np.full(self.popsize, 4)
         #[4 for i in range(int(popsize))]; self.opu = np.array(self.opu)
         self.old_opu = self.opu.copy()
@@ -42,6 +44,8 @@ class AOS(object):
         #self.window = [[np.inf for j in range(self.number_metric)] for i in range(self.max_window_size)]; self.window = np.array(self.window); self.window[:, 0].fill(-1)
 
         # MANUEL: What are these?
+        # MUDITA: gen_window stores the offspring metric data for each offspring when offspring is better than parent. It stores -1 otherwise for that offspring. Its a list. Its structre is as follows: [[[second_dim], [second_dim], [second_dim]], [[],[],[]], ...]. Second_dim has data for each offspring. Three second dim represents population size as 3, contained in third_dim. Third_dim represents a generation. Thus, this [[],[],[]] has data of all offsprings in a generation.
+        # MUDITA: total_success 
         self.gen_window = [] # print("Inside AOS", type(self.gen_window), self.gen_window)
         self.total_success = []
         self.total_unsuccess = []
@@ -1374,7 +1378,7 @@ class Selection1(SelectionType):
 #P_list = [Probability0, Probability1, Probability2, Probability3]
 #S_list = [Selection0, Selection1]
 
-class Unknown_AOS(AOS):
+class Unknown_AOS(AOS_Update):
     def __init__(self, popsize, F1, F, u, X, f_min, x_min, best_so_far, best_so_far1, #Off_met, Rewar, Qual, n_ops, adaptation_rate, phi, max_gen, scaling_factor, c1_quality6, c2_quality6, discount_rate, delta, decay_reward3, decay_reward4, int_a_reward5, b_reward5, e_reward5, a_reward71, c_reward9, int_b_reward9, int_a_reward9, int_a_reward101, b_reward101, window_size,
                  n_ops,  OM_choice, rew_choice, rew_args, qual_choice, qual_args, prob_choice, prob_args, select_choice):
         # print("Inside unknown AOS-init before super")
