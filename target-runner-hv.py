@@ -46,7 +46,7 @@ seed = sys.argv[3]
 instance = sys.argv[4]
 cand_params = sys.argv[5:]
 
-#cand_params = ['--FF', '0.3', '--CR', '0.2', '--NP', '50', '--OM_choice', '1', '--rew_choice', '11', '--qual_choice', '2', '--prob_choice', '3', '--select_choice', '1', '--window_size', '50', '--decay', '0.4', '--adaptation_rate', '0.57', '--p_min', '0.05', '--error_prob','0.1']
+cand_params = ['--FF', '0.3', '--CR', '0.2', '--NP', '50', '--OM_choice', '1', '--rew_choice', '3', '--qual_choice', '2', '--prob_choice', '0', '--select_choice', '1', '--fix_appl', '10', '--adaptation_rate', '0.57', '--p_min', '0.05', '--error_prob','0.1']
 #print(cand_params)
 
 #cand_params=[str(c1), str(c2), str(c3), str(c4), str(c5), str(c6), str(c7), str(c8), str(c9), str(c10), str(c11), str(c12), str(c13), str(c14), str(c15), str(c16), str(c17), str(c18), str(c19), str(c20), str(c21), str(c22), str(c23), str(c24), str(c25), str(c26), str(c27), str(c28), str(c29), str(c30), str(c31), str(c32)]

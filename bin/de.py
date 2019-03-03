@@ -59,7 +59,7 @@ def DE(fun, lbounds, ubounds, budget, instance, instance_best_value,
     generation = 0
     lbounds, ubounds = np.array(lbounds), np.array(ubounds)
     dim, x_min, f_min = len(lbounds), (lbounds + ubounds) / 2, None
-    NP = 10 * dim
+    NP = 10 #* dim
     chunk = NP
     X = lbounds + (ubounds - lbounds) * np.random.rand(chunk, dim)
     F = [fun(x) for x in X];

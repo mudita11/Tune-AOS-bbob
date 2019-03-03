@@ -471,7 +471,7 @@ if __name__ == '__main__':
 
     # Handle probabilities
     # FIXME: Use __subclasses__ to find choices.
-    parser.add_argument("--prob_choice", type=int, choices=range(0,4), help="Probability method selected")
+    parser.add_argument("--prob_choice", type=int, choices=range(0,3), help="Probability method selected")
     # MANUEL: Use this technique to add arguments instead of the above.
     prob_args_names = aos.ProbabilityType.add_argument(parser)
 
