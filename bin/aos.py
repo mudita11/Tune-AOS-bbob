@@ -628,7 +628,7 @@ def angle(vec, theta):
 ##################################################Reward definitions######################################################################
 
 
-def build_reward(choice, n_ops, rew_args, gen_window, window, off_met, popsize):
+def build_reward(choice, n_ops, rew_args, gen_window, window, off_met):
     if choice == 0:
         return Pareto_Dominance(n_ops, off_met, gen_window, rew_args["fix_appl"])
     elif choice == 1:
@@ -642,7 +642,7 @@ def build_reward(choice, n_ops, rew_args, gen_window, window, off_met, popsize):
     elif choice == 5:
         return Success_Rate1(n_ops, off_met, gen_window, rew_args["max_gen"], rew_args["succ_lin_quad"], rew_args["frac"], rew_args["noise"])
     elif choice == 6:
-        return Success_Rate2(n_ops, off_met, gen_window, popsize)
+        return Success_Rate2(n_ops, off_met, gen_window, rew_args["popsize"])
     elif choice == 7:
         return Success_sum(n_ops, off_met, gen_window, rew_args["max_gen"])
     elif choice == 8:
@@ -1285,7 +1285,7 @@ class ProbabilityType(ABC):
     # FIXME: define this in the class as @property getter doctstring and get it from it
     args_help = ["Minimum probability of selection of an operator", "Learning Rate", "Probability noise", "Maximum probability of selection of an operator"]
     def __init__(self, n_ops, p_min = None, learning_rate = None):
-        # n_ops, p_min_prob and beta_prob used in more than one probability definition
+        # n_ops, p_min_prob and learning_rate used in more than one probability definition
         self.p_min = p_min
         self.learning_rate = learning_rate
         self.old_probability = np.full(n_ops, 1.0 / n_ops)
@@ -1481,7 +1481,8 @@ class Unknown_AOS(AOS_Update):
         super(Unknown_AOS,self).__init__(popsize, F1, F, u, X, f_min, x_min, best_so_far, best_so_far1, n_ops)
         self.reward = np.zeros(self.n_ops)
         self.old_reward = self.reward.copy()
-        self.reward_type = build_reward(rew_choice, n_ops, rew_args, self.gen_window, self.window, OM_choice, popsize)
+        rew_args["popsize"] = popsize
+        self.reward_type = build_reward(rew_choice, n_ops, rew_args, self.gen_window, self.window, OM_choice)
         self.quality = np.full(n_ops, 1.0)
         # MANUEL: This old_quality is not the same used by QualityType()
         self.old_quality = self.quality.copy()
