@@ -28,7 +28,9 @@ class AOS_Update(object):
         self.X = X
         self.f_min = f_min
         self.x_min = x_min
+        # MANUEL: What is the difference between these two bsf ?
         self.best_so_far = best_so_far
+        # MANUEL: This is never used?
         self.best_so_far1 = best_so_far1
         self.n_ops = n_ops
         self.max_window_size = 10
@@ -189,14 +191,13 @@ def count_op(n_ops, window, Off_met):
 
 
 def TM(n_ops, p):
-    # Calculates Transitive Matrix.
+    """Calculates Transitive Matrix."""
     ## Numpy broadcasting.
     tran_matrix = p + p[:, np.newaxis]
     return normalize_matrix(tran_matrix)
 
-# Normalise n_ops dimensional matrix
-
 def normalize_matrix(x):
+    """Normalise n_ops dimensional matrix""" 
     return x / np.sum(x, axis=1)[:, None]
 
 def calc_delta_r(decay, W, window_size, ndcg):
@@ -252,18 +253,16 @@ def UCB(N, C, reward):
 #    return c_s, c_us
 
 
-'''
-def angle_between(p1, p2):
-    # arctan2(y, x) computes the clockwise angle  (a value in radians between -pi and pi) between the origin and the point (x, y)
-    ang1 = np.arctan2(*p1[::-1]); # print("ang1", np.rad2deg(ang1))
-    ang2 = np.arctan2(*p2[::-1]); # print("ang2", np.rad2deg(ang2))
-    # second angle is subtracted from the first to get signed clockwise angular difference, that will be between -2pi and 2pi. Thus to get positive angle between 0 and 2pi, take the modulo against 2pi. Finally radians can be optionally converted to degrees using np.rad2deg.
-    #print("angle", np.rad2deg((ang1 - ang2) % (2 * np.pi)))
-    if (ang1 - ang2) % (2 * np.pi) > np.pi:
-        return 2 * np.pi - ((ang1 - ang2) % (2 * np.pi))
-    else:
-        return (ang1 - ang2) % (2 * np.pi)
-'''
+# def angle_between(p1, p2):
+#     # arctan2(y, x) computes the clockwise angle  (a value in radians between -pi and pi) between the origin and the point (x, y)
+#     ang1 = np.arctan2(*p1[::-1]); # print("ang1", np.rad2deg(ang1))
+#     ang2 = np.arctan2(*p2[::-1]); # print("ang2", np.rad2deg(ang2))
+#     # second angle is subtracted from the first to get signed clockwise angular difference, that will be between -2pi and 2pi. Thus to get positive angle between 0 and 2pi, take the modulo against 2pi. Finally radians can be optionally converted to degrees using np.rad2deg.
+#     #print("angle", np.rad2deg((ang1 - ang2) % (2 * np.pi)))
+#     if (ang1 - ang2) % (2 * np.pi) > np.pi:
+#         return 2 * np.pi - ((ang1 - ang2) % (2 * np.pi))
+#     else:
+#         return (ang1 - ang2) % (2 * np.pi)
 
 
 ##################################################Reward definitions######################################################################
@@ -675,9 +674,6 @@ class RewardType(ABC):
         self.old_reward[:] = reward
         return reward
 
-    def generation_window(self):
-        return self.gen_window
-    
     # Please describe this function! Give it a better name!
     def truncate_window(self):
         return self.window[(self.window[:, self.off_met] != -1) & (self.window[:, self.off_met] != np.inf)][:int(self.window_size)]
@@ -709,7 +705,6 @@ Jorge Maturana, Fr ́ed ́eric Lardeux, and Frederic Saubion. “Autonomousopera
 
     def __init__(self, n_ops, off_met, gen_window, fix_appl = 20):
         super().__init__(n_ops, off_met, fix_appl = fix_appl)
-        # MANUEL: There are other objects with self.gen_window defined!
         self.gen_window = gen_window
         debug_print("\n {} : fix_appl = {}".format(type(self).__name__, self.fix_appl))
     
@@ -719,7 +714,7 @@ Jorge Maturana, Fr ́ed ́eric Lardeux, and Frederic Saubion. “Autonomousopera
         reward = np.zeros(self.n_ops)
         s_op = np.zeros(self.n_ops)
         q_op = np.zeros(self.n_ops)
-        gen_window = super().generation_window()
+        gen_window = self.gen_window
         # MANUEL: Why does it need to be converted to an array here?
         # MUDITA: In AOS_Update class, it is list because append works on list not array. So here I converted list to array.
         gen_window = np.array(gen_window)
@@ -768,7 +763,7 @@ Jorge Maturana, Fr ́ed ́eric Lardeux, and Frederic Saubion. “Autonomousopera
         reward = np.zeros(self.n_ops)
         s_op = np.zeros(self.n_ops)
         q_op = np.zeros(self.n_ops)
-        gen_window = super().generation_window()
+        gen_window = self.gen_window
         gen_window = np.array(gen_window)
         for i in range(self.n_ops):
             b = []
@@ -807,7 +802,7 @@ class Compass_projection(RewardType):
     
     def calc_reward(self):
         reward = np.zeros(self.n_ops)
-        gen_window = super().generation_window()
+        gen_window = self.gen_window
         # MANUEL: This should be an array alreadY?
         # MUDITA: No, in AOS_Update class, it is list because append works on list not array. So here I converted list to array.
         gen_window = np.array(gen_window)
@@ -932,7 +927,7 @@ acc=ACTIVE%20SERVICE&key=BF07A2EE685417C5%2E26BE4091F5AC6C0A%
     
     def calc_reward(self):
         reward = np.zeros(self.n_ops)
-        gen_window = super().generation_window()
+        gen_window = self.gen_window
         # MANUEL: Should be an array already?
         # MUDITA: No, in AOS_Update class, it is list because append works on list not array. So here I converted list to array.
         gen_window = np.array(gen_window)
@@ -969,7 +964,7 @@ class Success_Rate2(RewardType):
         self.popsize = popsize
     
     def calc_reward(self):
-        gen_window = super().generation_window()
+        gen_window = self.gen_window
         gen_window = np.array(gen_window)
         total_success, total_unsuccess = super().count_total_succ_unsucc(n_ops, gen_window, len(gen_window) - 1, off_met)
         # for i in range(self.n_ops):
@@ -990,7 +985,7 @@ class Success_sum(RewardType):
     
     def calc_reward(self):
         reward = np.zeros(self.n_ops)
-        gen_window = super().generation_window()
+        gen_window = self.gen_window
         gen_window = np.array(gen_window)
         total_appl = np.zeros(self.n_ops)
         gen_window_len = len(gen_window)
@@ -1056,7 +1051,7 @@ Christian Igel and Martin Kreutz. “Using fitness distributions to improvethe e
     
     def calc_reward(self):
         reward = np.zeros(self.n_ops)
-        gen_window = super().generation_window()
+        gen_window = self.gen_window
         gen_window = np.array(gen_window)
         gen_window_len = len(gen_window)
         if gen_window_len < self.max_gen:
@@ -1076,7 +1071,7 @@ Christian Igel and Martin Kreutz. “Using fitness distributions to improvethe e
 
 class Best2gen(RewardType):
     """
- Giorgos Karafotias, Agoston Endre Eiben, and Mark Hoogendoorn. “Genericparameter  control  with  reinforcement  learning”.  In:Proceedings of the2014 Annual Conference on Genetic and Evolutionary Computation.http://www.few.vu.nl/~gks290/papers/GECCO2014-RLControl.pdf. ACM.2014, pp. 1319–1326.
+Giorgos Karafotias, Agoston Endre Eiben, and Mark Hoogendoorn. “Genericparameter  control  with  reinforcement  learning”.  In:Proceedings of the2014 Annual Conference on Genetic and Evolutionary Computation.http://www.few.vu.nl/~gks290/papers/GECCO2014-RLControl.pdf. ACM.2014, pp. 1319–1326.
  """
     def __init__(self, n_ops, off_met, gen_window, scaling_constant = 1, choice2 = 0, choice3 = 1):
         super().__init__(n_ops, off_met)
@@ -1092,7 +1087,7 @@ class Best2gen(RewardType):
         reward = np.zeros(self.n_ops)
         best_t = np.zeros(self.n_ops)
         best_t_1 = np.zeros(self.n_ops)
-        gen_window = super().generation_window()
+        gen_window = self.gen_window
         gen_window = np.array(gen_window)
         gen_window_len = len(gen_window)
         n_applications = np.zeros(2)
@@ -1114,17 +1109,6 @@ class Best2gen(RewardType):
         best_t_1[best_t_1 == 0] = 1
         n_applications[n_applications == 0] = 1
         reward = (self.scaling_constant * np.fabs(best_t - best_t_1)) / (best_t_1**self.choice2) * (np.fabs(n_applications[0] - n_applications[1])**self.choice3)
-   
-            # MANUEL: Please compare the above with what you wrote below! What is clearer? You need to spend a bit more effort on things and on thinking.
-            # MUDITA: Thanks. I will.
-            # if best_t_1[i] != 0 and np.fabs(n_applications[0] - n_applications[1]) != 0:
-            #     reward[i] = self.scaling_constant * np.fabs(best_t[i] - best_t_1[i]) / (((best_t_1[i])**self.choice2) * (np.fabs(n_applications[0] - n_applications[1])**self.choice3))
-            # elif best_t_1[i] != 0 and np.fabs(n_applications[0] - n_applications[1]) == 0:
-            #     reward[i] = self.scaling_constant * np.fabs(best_t[i] - best_t_1[i]) / ((best_t_1[i])**self.choice2)
-            # elif best_t_1[i] == 0 and np.fabs(n_applications[0] - n_applications[1]) != 0:
-            #     reward[i] = self.scaling_constant * np.fabs(best_t[i] - best_t_1[i]) / (np.fabs(n_applications[0] - n_applications[1])**self.choice3)
-            # else:
-            #     reward[i] = self.scaling_constant * np.fabs(best_t[i] - best_t_1[i])
         return super().check_reward(reward)
 
 class Normalised_best_sum(RewardType):
@@ -1140,7 +1124,7 @@ Alvaro Fialho, Marc Schoenauer, and Mich`ele Sebag. “Analysis of adaptiveopera
     
     def calc_reward(self):
         reward = np.zeros(self.n_ops)
-        gen_window = super().generation_window()
+        gen_window = self.gen_window
         gen_window = np.array(gen_window)
         gen_window_len = len(gen_window)
         if gen_window_len < self.max_gen:
@@ -1318,9 +1302,8 @@ class ProbabilityType(ABC):
         probability /= np.sum(probability)
         assert np.allclose(np.sum(probability), 1.0, equal_nan = True)
         assert np.all(probability >= -0.0)
-        # MANUEL: This is wrong! It creates a view of an array and not a copy
-        # self.old_probability = self.probability
-        self.old_probability = probability
+        # Just copy the values.
+        self.old_probability[:] = probability[:]
         return(probability)
 
     @abstractmethod
@@ -1500,6 +1483,7 @@ class Unknown_AOS(AOS_Update):
         self.old_reward = self.reward.copy()
         self.reward_type = build_reward(rew_choice, n_ops, rew_args, self.gen_window, self.window, OM_choice, popsize)
         self.quality = np.full(n_ops, 1.0)
+        # MANUEL: This old_quality is not the same used by QualityType()
         self.old_quality = self.quality.copy()
         self.quality_type = build_quality(qual_choice, n_ops, qual_args, self.window, OM_choice)
         # self.probability = np.zeros(self.n_ops); self.probability[:] = 1.0 / len(self.probability)
