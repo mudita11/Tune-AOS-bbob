@@ -20,7 +20,7 @@ decay			"--decay "		r		(0.0, 1.0)					| rew_choice %in% c(3, 4)
 succ_lin_quad		"--succ_lin_quad "	c		(0, 1)						| rew_choice == 5
 frac			"--frac "		r		(0.0, 1.0)					| rew_choice == 5
 noise			"--noise "		r		(0.0, 1.0)					| rew_choice == 5
-normal_factor		"--normal_factor "	r		(0.0, 1.0)					| rew_choice == 8
+normal_factor		"--normal_factor "	c		(0, 1)						| rew_choice == 8
 scaling_constant	"--scaling_constant "	r		(0.0, 1.0)					| rew_choice == 10
 choice2			"--choice2 "		c		(0, 1)						| rew_choice == 10
 choice3			"--choice3 "		c		(0, 1)						| rew_choice == 10
@@ -29,8 +29,8 @@ intensity		"--intensity "		r		(0.0, 1.0)					| rew_choice == 11
 adaptation_rate		"--adaptation_rate "	r		(0.0, 1.0)					| qual_choice == 0
 scaling_factor		"--scaling_factor "	r		(0.0, 1.0)					| qual_choice == 1
 decay_rate		"--decay_rate "		r		(0.0, 1.0)					| qual_choice == 2
-memory_parameter1	"--memory_parameter1 "	r		(0.0, 1.0)					| qual_choice == 4
-memory_parameter2	"--memory_parameter2 "	r		(0.0, 1.0)					| qual_choice == 5
+memory_curr_reward	"--memory_curr_reward "	r		(0.0, 1.0)					| qual_choice == 4
+memory_prev_reward	"--memory_prev_reward "	r		(0.0, 1.0)					| qual_choice == 5
 discount_rate		"--discount_rate "	r		(0.0, 1.0)					| qual_choice == 5
 p_min			"--p_min "		r		(0.0, 0.25)					| prob_choice %in% c(0, 1, 2)
 learning_rate		"--learning_rate "	r		(0.0, 1.0)					| prob_choice %in% c(1, 2)

@@ -26,7 +26,7 @@ import numpy as np
 
 max_obj = 8.977281728e+01
 # fevals * dimension f-evaluations
-fevals = 10000
+fevals = 1000
 # Options are: suite_name fevals batch total_batches
 exe = "python3 ../bin/DE_AOS.py bbob {} 1 1".format(fevals)
 
@@ -46,8 +46,8 @@ seed = sys.argv[3]
 instance = sys.argv[4]
 cand_params = sys.argv[5:]
 
-cand_params = ['--FF', '0.3', '--CR', '0.2', '--NP', '50', '--OM_choice', '1', '--rew_choice', '3', '--qual_choice', '2', '--prob_choice', '0', '--select_choice', '1', '--fix_appl', '10', '--adaptation_rate', '0.57', '--p_min', '0.05', '--error_prob','0.1']
-#print(cand_params)
+#cand_params = ['--FF', '0.3', '--CR', '0.2', '--NP', '50', '--OM_choice', '1', '--rew_choice', '0', '--qual_choice', '2', '--prob_choice', '0', '--select_choice', '1', '--fix_appl', '10', '--adaptation_rate', '0.57', '--p_min', '0.05', '--error_prob','0.1']
+print(cand_params)
 
 #cand_params=[str(c1), str(c2), str(c3), str(c4), str(c5), str(c6), str(c7), str(c8), str(c9), str(c10), str(c11), str(c12), str(c13), str(c14), str(c15), str(c16), str(c17), str(c18), str(c19), str(c20), str(c21), str(c22), str(c23), str(c24), str(c25), str(c26), str(c27), str(c28), str(c29), str(c30), str(c31), str(c32)]
 #print("cand_params", cand_params)
@@ -85,8 +85,7 @@ if not os.path.isfile(out_file):
 # FIXME: We cannot normalize per dataset, we need to include an upper bound of
 # fevals and fitness.
 points = np.loadtxt(trace_file, comments = "%", usecols = (0,1))
-#points = (points[:,0] - np.min(points[:,0])) / (np.max(points[:,0]) - np.min(points[:,0]))
-points = points[:,0] / fevals
+points[:, 0] = points[:, 0] / fevals
 if (np.max(points[:,1]) - np.min(points[:,1])) != 0:
     points[:,1] = (points[:,1] - np.min(points[:,1])) / (np.max(points[:,1]) - np.min(points[:,1]))
 else:

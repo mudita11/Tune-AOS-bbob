@@ -222,7 +222,7 @@ class ShortInfo(object):
 
 def EA_AOS(fun, lbounds, ubounds, budget, instance):
     # MANUEL: What is the difference between fun and instance?
-    # there are five classes in bbob each consisting of functions with different properties. For instance a fun, f1, from first class is sphere function. Now there are 15 instances of each fun. Eg. for f1 translated or shifted versions are instances.
+    # MUDITA: There are five classes in bbob each consisting of functions with different properties. For instance a fun, f1, from first class is sphere function. Now there are 15 instances of each fun. Eg. for f1 translated or shifted versions are instances.
     # Problem is represented as (f_i, n, j, t): f_i is i-fun, n is dimension, j is instance number and t is target.
     cost = de.DE(fun, lbounds, ubounds, budget, instance, instance_best_value,
                  trace_file,
@@ -427,47 +427,26 @@ if __name__ == '__main__':
     parser.add_argument('number_of_batches', type=int, default=1, help='number of batches')
     parser.add_argument('-i', '--instance', type=int, help='problem instance to train on')
     parser.add_argument('--seed', type=int, default=0, help='seed to initialise population')
-#   parser.add_argument('--max_gen', type=int, default=-1, help='data for maximum generation stored (history information)')
-#   parser.add_argument('--delta', type=float, default=0, help='selected quality hyper-parameter')
     parser.add_argument('--trace', help='current file to write data in')
-
 
     # DE parameters
     parser.add_argument('--FF', type=float, default=0.5, help='Scaling factor (DE parameter)')
     parser.add_argument('--CR', type=float, default=1.0, help='Crossover rate (DE parameter)')
     parser.add_argument('--NP', type=int, default=200, help='Population size (DE parameter)')
-#    parser.add_argument('--W', type=int, default=150, help='Window size')
-
 
     # Handle Offspring metric
     # FIXME: Use __subclasses__ to find choices.
     parser.add_argument("--OM_choice", type=int, choices=range(1,7), help="Offspring metric selected")
 
-
     # Handle rewards
     # FIXME: Use __subclasses__ to find choices.
     parser.add_argument("--rew_choice", type=int, choices=range(0,12), help="Reward method selected")
-    # FIXME: Use __slots__ to find which parameters need to be defined.
-    rew_args_names = ["max_gen", "fix_appl", "theta", "window_size", "decay", "succ_lin_quad", "frac", "noise", "normal_factor", "scaling_constant", "choice2", "choice3", "choice4", "intensity"]
-    # FIXME: define this in the class as @property getter doctstring and get it from it
-    rew_args_help = ["Maximum number of previous generation", "Fix number of applications of an operator", "Defines search direction", "Size of window", "Decay value to emphasise the choice better operator", "Choice to success of operator as linear or quadratic", "Fraction of sum of successes of all operators", "Small noise for randomness", "Choice to normalise", "Scaling constant", "Choice to normalise by best produced by any operator", "Choice to include the difference between budget used by an operator in previous two generations", "Choice to normalise by best produced by any operator", "Intensify the changes of best fitness value"]
-#    rew_args_help = ["Reward0,1,5,7,9,11", "Reward2 hyperparameter", "Reward2 hyperparameter" "Reward3, 4, 8 hyper-parameter", "Reward3,4 hyper-parameter", "Reward5 hyper-parameter", "Reward5 hyper-parameter", "Reward5 hyper-parameter", "Reward8 hyper-parameter", "Reward10 hyper-parameter", "Reward10 hyper-parameter", "Reward10 hyper-parameter", "Reward11 hyper-parameter", "Reward11 hyper-parameter"]
-    for arg, help in zip(rew_args_names, rew_args_help):
-        # MUDITA: Not all hyperparameters are of type float
-        # MANUEL: Then, create a rew_args_type and use it in the zip.
-        parser.add_argument('--' + arg, type=float, default=0, help=help)
-
+    rew_args_names = aos.RewardType.add_argument(parser)
 
     # Handle qualities
     # FIXME: Use __subclasses__ to find choices.
     parser.add_argument("--qual_choice", type=int, choices=range(0,5), help="Quality method selected")
-    # FIXME: Use __slots__ to find which parameters need to be defined.
-    qual_args_names = ["adaptation_rate", "scaling_factor", "decay_rate", "memory_curr_reward", "memory_prev_reward", "discount_rate"]
-    # FIXME: define this in the class as @property getter doctstring and get it from it
-    qual_args_help = ["Adaptation rate", "Scaling Factor", "Decay rate", "Memory for current reward", "Memory for previous reward", "Discount rate"]
-    for arg, help in zip(qual_args_names, qual_args_help):
-        parser.add_argument('--' + arg, type=float, default=0, help=help)
-
+    qual_args_names = aos.QualityType.add_argument(parser)
 
     # Handle probabilities
     # FIXME: Use __subclasses__ to find choices.
@@ -488,15 +467,12 @@ if __name__ == '__main__':
     
     # MANUEL: How funevals and maxgen interact? which one has precedence?
     # MUDITA: Doesnot understand your question.
-#     max_gen = args.max_gen
-#     delta = args.delta
     instance =  [args.instance]
     trace_file = args.trace
 
     FF = args.FF
     CR = args.CR
     NP = args.NP
-#    W = args.W
     seed = args.seed
     # If no seed is given, we generate one.
     if seed == 0:
@@ -528,47 +504,9 @@ if __name__ == '__main__':
     select_choice = args.select_choice
 
     # MANUEL: Where does this come from?
+    # MUDITA: These numbers are present in the files generated by BBOB.
     opt = {4:-2.525000000000e+01, 15: -2.098800000000e+02, 27: -5.688800000000e+02, 30: -4.620900000000e+02, 44: 4.066000000000e+01, 50: -3.930000000000e+01, 65: -6.639000000000e+01, 70: 9.953000000000e+01, 81: 3.085000000000e+01, 90: 9.294000000000e+01, 92: 3.820000000000e+00, 111: -1.897900000000e+02, 120: 1.238300000000e+02, 130: -4.840000000000e+00, 140: -5.191000000000e+01, 158: -2.033000000000e+01, 179: 7.789000000000e+01, 188: -2.229800000000e+02, 200: 3.270000000000e+01, 201: -3.943000000000e+01, 203: 7.640000000000e+00, 209: -9.925000000000e+01, 217: -3.475000000000e+01, 219: -9.247000000000e+01, 244: -1.479000000000e+02, 250: 4.739000000000e+01, 255: -1.694000000000e+01, 257: 2.731500000000e+02, 277: -2.602000000000e+01, 281: -1.035000000000e+01, 290: -1.367600000000e+02, 299: -1.455800000000e+02, 311: -4.860000000000e+01, 321: 9.980000000000e+01, 333: -2.231200000000e+02, 349: -1.335900000000e+02}
     instance_best_value = opt[args.instance]
 
     main(instance, budget, max_runs, current_batch, number_of_batches)
-
-    # MANUEL: Please convert all these options to use the parser.
-    # Reward3 (index = 3)
-#    decay_reward3 = 0.4;
-    # Reward4 (index = 4)
-#    decay_reward4 = 0.4;
-    # Reward5 (index = 5)
-#    int_a_reward5 = 1; b_reward5 = 0.01; e_reward5 = 0.0;
-    # Reward 71 (index = 8)
-#    a_reward71 =0.1
-    # Reward9 (index = 10)
-#    c_reward9 = 1; int_b_reward9 =0; int_a_reward9 = 1;
-    # Reward101 (index = 11)
-#    int_a_reward101 = 0; b_reward101 = 3;
-    
-    # Quality0 (index = 0)
-#    alpha=0.6; # or adaptation_rate
-    # Quality1 (index = 1)
-#    C = 0.5 # or scaling_factor
-    # Quality2 (index = 2)
-#    phi = 0.002
-    # Quality4 (index = 3)
-#    delta = 0.3
-    # Quality5 (index = 4)
-#    c1_quality6 = 1
-#    c2_quality6 = 0.9
-#    gamma = 0.0 # or discount_rate
-
-    ## MANUEL: Move all this info to each class and default value of the arguments! 
-    # Probability0 (index = 0)
-    # p_min_prob0 = 0.1
-    # MANUEL: Implement this check in the code!!!
-    # e_prob0 = 0.0; # p_min_prob0 should never be taken as 0.25 when K = 4 as this will lead all probabilities to 0.25 all the time.
-    # # Probability1 (index = 1)
-    # p_min_prob1 = 0.1
-    # p_max_prob1 = 0.9
-    # beta_prob1 = 0.1
-    # # Probability2 (index = 2)
-    # p_min_prob2 = 0.025; beta_prob2 = 0.5;
 
