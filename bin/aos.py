@@ -193,17 +193,19 @@ class Unknown_AOS(object):
 ##################################################Other definitions######################################################################
 
 
-def count_op(n_ops, window, Off_met):
+def count_op(n_ops, window, off_met):
     '''Return sorted window, number of successful applications of operators and rank'''
-    # Gives rank to window[:, Off_met]: largest number will get largest number rank
+    # Gives rank to window[:, off_met]: largest number will get largest number rank
     assert len(window.shape) == 2
     assert window.shape[0] > 0
     assert window.shape[1] == 7
-    rank = rankdata(window[:, Off_met].round(1), method = 'min')
+    #print(window)
+    rank = rankdata(window[:, off_met].round(1), method = 'min')
     order = rank.argsort()
     # order gives the index of rank in ascending order. Sort operators and rank in increasing rank.
     # window_op_sorted is the window sorted from lowest Off_met value to highest and only consists of operators (first column in window).
-    window_op_sorted = window[order, 0]
+    ## MANUEL: Having to do this conversion suggests to me that the design of window is wrong.
+    window_op_sorted = window[order, 0].astype(int)
     rank = rank[order]
     rank = rank[window_op_sorted >= 0]
     window_op_sorted = window_op_sorted[window_op_sorted >= 0] # print("window_op_sorted = ",window, window_op_sorted, rank, order)
@@ -211,7 +213,7 @@ def count_op(n_ops, window, Off_met):
     N = np.zeros(n_ops)
     # the number of times each operator appears in the sliding window
     op, count = np.unique(window_op_sorted, return_counts=True)
-    N[op.astype(np.int32)] = count
+    N[op] = count
     return window_op_sorted, N, rank
 
 
@@ -382,10 +384,12 @@ class RewardType(ABC):
         print("reward",reward)
         return reward
 
-    # Please describe this function! Give it a better name!
     def truncate_window(self):
-        """ Returns the truncated window after removing the offspring entry with unimproved off_met (-1) from winodw"""
-        return self.window[(self.window[:, self.off_met] != -1) & (self.window[:, self.off_met] != np.inf)][:int(self.window_size)]
+        """ Returns the truncated window after removing the offspring entry with unimproved off_met (-1) from window"""
+        trunc_window = self.window[(self.window[:, self.off_met] != -1) & (self.window[:, self.off_met] != np.inf)][:int(self.window_size)]
+        assert trunc_window.shape[0] > 0
+        assert trunc_window.shape[1] == 7
+        return trunc_window 
     
     def count_op_in_window(self, window):
         return count_op(self.n_ops, window, self.off_met) # print(window, window_op_sorted, N, rank)
@@ -563,8 +567,6 @@ Alvaro Fialho, Marc Schoenauer, and Mich`ele Sebag. “Toward comparison-based a
     def __init__(self, n_ops, off_met, window, window_size = 50, decay = 0.4):
         super().__init__(n_ops, off_met, window_size = window_size, decay = decay)
         self.window = window
-        # MANUEL: Isn't it an array already? What is it?
-        self.window = np.array(self.window)
         debug_print("\n {} : window_size = {}, decay = {}".format(type(self).__name__, self.window_size, self.decay))
     
     def calc_reward(self):
@@ -577,7 +579,6 @@ Alvaro Fialho, Marc Schoenauer, and Mich`ele Sebag. “Toward comparison-based a
         # MUDITA: Its correct. Please check: https://tel.archives-ouvertes.fr/tel-00578431/document (pg. 79).
         value = (self.decay ** rank) * (self.window_size - rank)
         # MUDITA: Not working as expected.
-        print(window_op_sorted)
         reward[window_op_sorted] += value
         # for i in range(len(window_op_sorted)):
         #     ## MANUEL: If window_op_sorted only contains values from 0 to n_ops, then this loop can be simply:
@@ -850,6 +851,7 @@ Alvaro Fialho, Marc Schoenauer, and Mich`ele Sebag. “Analysis of adaptiveopera
                 if np.any((gen_window[j,:,0] == i) & (gen_window[j, :, self.off_met] != -1)):
                     gen_best.append(np.max(np.hstack(gen_window[j, np.where((gen_window[j,:,0] == i) & (gen_window[j, :, self.off_met] != -1)), self.off_met])))
                     reward[i] += np.sum(gen_best)
+        assert len(gen_best) > 0
         reward = (1/max_gen) * reward**self.intensity / np.max(gen_best)**self.choice4
         return super().check_reward(reward)
 
