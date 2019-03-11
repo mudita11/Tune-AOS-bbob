@@ -14,11 +14,17 @@ from abc import ABC,abstractmethod
 def debug_print(*args, **kwargs):
     print(*args, file=sys.stderr, **kwargs)
 
-def parser_add_arguments(cls, parser):
-    "Helper function to add arguments of a class to an ArgumentParser"
+
+def get_choices(cls):
+    """Get all possible choices of a component of AOS framework"""
     subclasses = [x.__name__ for x in cls.__subclasses__()]
     choices = range(0, len(subclasses))
     choices_help = ', '.join("{0}:{1}".format(i,j) for i,j in zip(choices, subclasses))
+    return choices, choices_help
+  
+def parser_add_arguments(cls, parser):
+    "Helper function to add arguments of a class to an ArgumentParser"
+    choices, choices_help = get_choices(cls)
     parser.add_argument("--"  + cls.arg_choice, type=int, choices=choices,
                         help=cls.arg_choice_help + " (" + choices_help + ")")
     group = parser.add_argument_group(title=cls.__name__)
@@ -30,9 +36,7 @@ def parser_add_arguments(cls, parser):
 
 def aos_irace_parameters(cls):
     """All AOS components may call this function"""
-    subclasses = [x.__name__ for x in cls.__subclasses__()]
-    choices = range(0, len(subclasses))
-    choices_help = ', '.join("{0}:{1}".format(i,j) for i,j in zip(choices, subclasses))
+    choices, choices_help = get_choices(cls)
     output = "# {}\n".format(cls.__name__)
     output += irace_parameter(name=cls.arg_choice, type=str, domain=choices, help=choices_help)
     for i in range(0, len(cls.args), 3):
@@ -83,7 +87,6 @@ class Unknown_AOS(object):
         self.X = X
         self.f_min = f_min
         self.x_min = x_min
-        # MANUEL: What is the difference between these two bsf ?
         self.best_so_far = best_so_far
         self.n_ops = n_ops
         self.max_window_size = 50
@@ -193,6 +196,9 @@ class Unknown_AOS(object):
 def count_op(n_ops, window, Off_met):
     '''Return sorted window, number of successful applications of operators and rank'''
     # Gives rank to window[:, Off_met]: largest number will get largest number rank
+    assert len(window.shape) == 2
+    assert window.shape[0] > 0
+    assert window.shape[1] == 7
     rank = rankdata(window[:, Off_met].round(1), method = 'min')
     order = rank.argsort()
     # order gives the index of rank in ascending order. Sort operators and rank in increasing rank.
@@ -571,6 +577,7 @@ Alvaro Fialho, Marc Schoenauer, and Mich`ele Sebag. “Toward comparison-based a
         # MUDITA: Its correct. Please check: https://tel.archives-ouvertes.fr/tel-00578431/document (pg. 79).
         value = (self.decay ** rank) * (self.window_size - rank)
         # MUDITA: Not working as expected.
+        print(window_op_sorted)
         reward[window_op_sorted] += value
         # for i in range(len(window_op_sorted)):
         #     ## MANUEL: If window_op_sorted only contains values from 0 to n_ops, then this loop can be simply:
@@ -765,7 +772,7 @@ Christian Igel and Martin Kreutz. “Using fitness distributions to improvethe e
             for j in range(gen_window_len-1, gen_window_len-max_gen-1, -1):
                 # PLease use count_total_succ_and_unsucc()
                 #total_success = 0; total_unsuccess = 0
-                total_success, total_unsuccess = super().count_total_succ_unsucc(self.n_ops, gen_window, j, off_met)
+                total_success, total_unsuccess = super().count_total_succ_unsucc(self.n_ops, gen_window, j, self.off_met)
                 total = total_success + total_unsuccess
                 if np.any(gen_window[j,:,0] == i):
 #                    total_success, total_unsuccess = count_success(self.gen_window, i, j, self.off_met)
@@ -892,6 +899,10 @@ class QualityType(ABC):
     def add_argument(cls, parser):
         "Add arguments to an ArgumentParser"
         return parser_add_arguments(cls, parser)
+
+    @classmethod
+    def irace_parameters(cls):
+        return aos_irace_parameters(cls)
 
     def check_quality(self, quality):
         assert np.sum(quality) >= 0
@@ -1033,7 +1044,7 @@ class ProbabilityType(ABC):
         
     arg_choice = "prob_choice"
     arg_choice_help = "Probability method selected"
- 
+
     def __init__(self, n_ops, p_min = None, learning_rate = None):
         # n_ops, p_min_prob and learning_rate used in more than one probability definition
         self.p_min = p_min
@@ -1150,6 +1161,10 @@ class SelectionType(ABC):
     def add_argument(cls, parser):
         "Add arguments to an ArgumentParser"
         return parser_add_arguments(cls, parser)
+
+    @classmethod
+    def irace_parameters(cls):
+        return aos_irace_parameters(cls)
 
     def check_selection(self, selected):
         assert selected >= 0 and selected <= self.n_ops

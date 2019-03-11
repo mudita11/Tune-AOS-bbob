@@ -435,6 +435,9 @@ if __name__ == '__main__':
             print(de.DE_irace_parameters())
             print(aos.Unknown_AOS.irace_parameters())
             print(aos.ProbabilityType.irace_parameters())
+            #print(aos.RewardType.irace_parameters())
+            #print(aos.QualityType.irace_parameters())
+            print(aos.SelectionType.irace_parameters())
             parser.exit(1)
         
     parser.add_argument('--irace', action=dump_irace_parameters, help='dump parameters.txt for irace')
