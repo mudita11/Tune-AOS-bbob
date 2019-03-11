@@ -15,6 +15,19 @@ from numpy.linalg import inv
 
 import aos
 
+def DE_add_arguments(parser):
+    group = parser.add_argument_group(title="DE parameters")
+    group.add_argument('--FF', type=float, default=0.5, help='Scaling factor (DE parameter)')
+    group.add_argument('--CR', type=float, default=1.0, help='Crossover rate (DE parameter)')
+    group.add_argument('--NP', type=int, default=200, help='Population size (DE parameter)')
+
+def DE_irace_parameters():
+    output = "\n# DE parameters\n"
+    output += aos.irace_parameter("FF", float, [0.1, 2.0], help = 'Scaling factor (DE parameter)')
+    output += aos.irace_parameter("CR", float, [0.1, 1.0], help = 'Crossover rate (DE parameter)')
+    output += aos.irace_parameter("NP", int,   [50, 400],  help='Population size (DE parameter)')
+    return output
+    
 # chunk is popsize
 # F1 child fitness
 # X parent population
@@ -27,7 +40,8 @@ def DE(fun, lbounds, ubounds, budget, instance, instance_best_value,
        trace_file,
        FF, CR, NP, #W, alpha, phi, max_gen, C, c1_quality6, c2_quality6, gamma, delta, decay_reward3, decay_reward4, int_a_reward5, b_reward5, e_reward5, a_reward71, c_reward9, int_b_reward9, int_a_reward9, int_a_reward101, b_reward101, instance_best_value,
        OM_choice, rew_choice, rew_args, qual_choice, qual_args, prob_choice, prob_args, select_choice):
-    
+
+        
     def rand1(population, samples, best, scale):
         """DE/rand/1"""
         r0, r1, r2 = samples[:3]

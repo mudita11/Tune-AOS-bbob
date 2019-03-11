@@ -13,13 +13,68 @@ from abc import ABC,abstractmethod
 
 def debug_print(*args, **kwargs):
     print(*args, file=sys.stderr, **kwargs)
-    
+
+def parser_add_arguments(cls, parser):
+    "Helper function to add arguments of a class to an ArgumentParser"
+    subclasses = [x.__name__ for x in cls.__subclasses__()]
+    choices = range(0, len(subclasses))
+    choices_help = ', '.join("{0}:{1}".format(i,j) for i,j in zip(choices, subclasses))
+    parser.add_argument("--"  + cls.arg_choice, type=int, choices=choices,
+                        help=cls.arg_choice_help + " (" + choices_help + ")")
+    group = parser.add_argument_group(title=cls.__name__)
+    for i in range(0, len(cls.args), 3):
+        arg, type, help = cls.args[i:i+3]
+        group.add_argument('--' + arg, type=type, default=0, help=help)
+    # Return the names
+    return cls.args[0::3]
+
+def aos_irace_parameters(cls):
+    """All AOS components may call this function"""
+    subclasses = [x.__name__ for x in cls.__subclasses__()]
+    choices = range(0, len(subclasses))
+    choices_help = ', '.join("{0}:{1}".format(i,j) for i,j in zip(choices, subclasses))
+    output = "# {}\n".format(cls.__name__)
+    output += irace_parameter(name=cls.arg_choice, type=str, domain=choices, help=choices_help)
+    for i in range(0, len(cls.args), 3):
+        arg, type, help = cls.args[i:i+3]
+        condition = irace_condition(cls.arg_choice, cls.args_conditions[arg])
+        output += irace_parameter(name=arg, type=type, domain=cls.args_ranges[arg],
+                                  condition=condition, help=help)
+    return output
+
+
+def irace_parameter(name, type, domain, condition="", help=""):
+    """Return a string representation of an irace parameter"""
+    irace_types = {int:"i", float:"r", str: "c"}
+    arg = '"--{} "'.format(name)
+    domain = "(" + ", ".join([str(x) for x in domain]) + ")"
+    if condition != "":
+        condition = "| " + condition
+    if help != "":
+        help = "# " + help
+    return '{name:20} {arg:25} {type} {domain:20} {condition:30} {help}\n'.\
+        format(name=name, arg=arg, type=irace_types[type], domain=domain,
+               condition=condition, help=help)
+
+def irace_condition(what, values):
+    """Return a string representation of the condition of an irace parameter"""
+    if not values:
+        return ""
+    if len(values) == 1:
+        return what + " == " + str(values[0])
+    return what + " %in% c(" + ", ".join([str(x) for x in values]) + ")"
+
+
 # MANUEL: What is the difference between AOS and unknown AOS?
 # MUDITA: I am referring to a combination of these components as Unknown AOS if that combination is not considered in literature.
 # MANUEL: I don't understand. What do you use AOS for?
 # MUDITA: I think more appropriate name for AOS class is AOS_Update because this class is basically updating components of AOS. Its not an AOS method.
 
 class Unknown_AOS(object):
+
+    arg_choice = "OM_choice"
+    arg_choice_help = "Offspring metric selected"
+
     def __init__(self, popsize, F1, F, u, X, f_min, x_min, best_so_far, n_ops, OM_choice, rew_choice, rew_args, qual_choice, qual_args, prob_choice, prob_args, select_choice):
         self.popsize = int(popsize)
         self.F1 = np.array(F1)
@@ -60,7 +115,17 @@ class Unknown_AOS(object):
         self.probability_type = build_probability(prob_choice, n_ops, prob_args)
         self.selection_type = build_selection(select_choice, n_ops)
     
-    
+
+    @classmethod
+    def add_argument(cls, parser):
+        # FIXME: Document what 1...7 means
+        parser.add_argument("--" + cls.arg_choice, type=int, choices=range(1,7), help=cls.arg_choice_help)
+
+    @classmethod
+    def irace_parameters(cls):
+        output = "# " + cls.__name__ + "\n"
+        return output + irace_parameter(cls.arg_choice, str, range(1,7), help=cls.arg_choice_help)
+
 ##################################################Offspring Metric definitions##################################################################
     def OM_Update(self):
         """If offspring improves over parent, Offsping Metric (OM) stores (1)fitness of offspring (2)fitness improvemnt from parent to offsping (3)fitness improvemnt from best parent to offsping (4)fitness improvemnt from best so far to offsping (5)fitness improvemnt from median parent fitness to offsping (6)relative fitness improvemnt """
@@ -225,6 +290,7 @@ def angle(vec, theta):
     return angle - np.deg2rad(theta)
 
 ##################################################Reward definitions######################################################################
+    
 
 
 def build_reward(choice, n_ops, rew_args, gen_window, window, off_met):
@@ -258,13 +324,34 @@ def build_reward(choice, n_ops, rew_args, gen_window, window, off_met):
 class RewardType(ABC):
     # Static variables
     # FIXME: Use __slots__ to find which parameters need to be defined.
-    args_names = ["max_gen", "fix_appl", "theta", "window_size", "decay", "succ_lin_quad", "frac", "noise", "normal_factor", "scaling_constant", "choice2", "choice3", "choice4", "intensity"]
     # FIXME: define this in the class as @property getter doctstring and get it from it
-    args_help = ["Maximum number of previous generation", "Fix number of applications of an operator", "Defines search direction", "Size of window", "Decay value to emphasise the choice better operator", "Choice to success of operator as linear or quadratic", "Fraction of sum of successes of all operators", "Small noise for randomness", "Choice to normalise", "Scaling constant", "Choice to normalise by best produced by any operator", "Choice to include the difference between budget used by an operator in previous two generations", "Choice to normalise by best produced by any operator", "Intensify the changes of best fitness value"]
+    args = [
+        "max_gen",          int,   "Maximum number of previous generation",
+        "fix_appl",         int,   "Fix number of applications of an operator",
+        "theta",            int,   "Defines search direction",
+        "window_size",      int,   "Size of window",
+        "decay",            float, "Decay value to emphasise the choice better operator",
+        "succ_lin_quad",    int,   "Choice to success of operator as linear or quadratic",
+        "frac",             float, "Fraction of sum of successes of all operators",
+        "noise",            float, "Small noise for randomness",
+        "normal_factor",    int,   "Choice to normalise",
+        "scaling_constant", float, "Scaling constant",
+        "choice2",          int,   "Choice to normalise by best produced by any operator",
+        "choice3",          int,   "Choice to include the difference between budget used by an operator in previous two generations",
+        "choice4",          int,   "Choice to normalise by best produced by any operator",
+        "intensity",        float, "Intensify the changes of best fitness value"
+    ]
+    # TODO:
+    args_ranges = []
+    # TODO:
+    args_conditions = []
+    
+    arg_choice = "rew_choice"
+    arg_choice_help = "Reward method selected"
+    
     def __init__(self, n_ops, off_met, max_gen = None, window_size = None, decay = None, fix_appl = None):
         self.n_ops = n_ops
-        # MANUEL: What is this?
-        # MUDITA: Offpsing metric in range [1,7] stored in gen_window.
+        # Offspring metric in range [1,7] stored in gen_window.
         self.off_met = off_met
         self.max_gen = max_gen
         # MANUEL: So you have window_size here but no window?
@@ -276,12 +363,11 @@ class RewardType(ABC):
     @classmethod
     def add_argument(cls, parser):
         "Add arguments to an ArgumentParser"
-        # MUDITA: Not all hyperparameters are of type float
-        # MANUEL: Then, create a rew_args_type and use it in the zip.
-        args_type = [int, int, int, int, float, int, float, float, int, float, int, int, int, float]
-        for arg, help, type in zip(cls.args_names, cls.args_help, args_type):
-            parser.add_argument('--' + arg, type=type, default=0, help=help)
-        return cls.args_names
+        return parser_add_arguments(cls, parser)
+
+    @classmethod
+    def irace_parameters(cls):
+        return aos_irace_parameters(cls)
 
     def check_reward(self, reward):
         # Nothing to check
@@ -777,23 +863,35 @@ def build_quality(choice, n_ops, qual_args, window, off_met):
     else:
         raise ValueError("choice {} unknown".format(choice))
 
+
 class QualityType(ABC):
     # Static variables
     # FIXME: Use __slots__ to find which parameters need to be defined.
-    args_names = ["adaptation_rate", "scaling_factor", "decay_rate", "memory_curr_reward", "memory_prev_reward", "discount_rate"]
     # FIXME: define this in the class as @property getter doctstring and get it from it
-    args_help = ["Adaptation rate", "Scaling Factor", "Decay rate", "Memory for current reward", "Memory for previous reward", "Discount rate"]
+    args = [
+        "adaptation_rate",    float,"Adaptation rate",           
+        "scaling_factor",     float,"Scaling Factor",            
+        "decay_rate",         float,"Decay rate",                
+        "memory_curr_reward", float,"Memory for current reward", 
+        "memory_prev_reward", float,"Memory for previous reward", 
+        "discount_rate",      float,"Discount rate"
+    ]
+    # TODO:
+    args_ranges = []
+    # TODO:
+    args_conditions = []
+
+    arg_choice = "qual_choice"
+    arg_choice_help = "Quality method selected"
+    
     def __init__(self, n_ops):
         self.n_ops = n_ops
         self.old_quality = np.zeros(n_ops)
-        pass
-    
+        
     @classmethod
     def add_argument(cls, parser):
         "Add arguments to an ArgumentParser"
-        for arg, help in zip(cls.args_names, cls.args_help):
-            parser.add_argument('--' + arg, type=float, default=0, help=help)
-        return cls.args_names
+        return parser_add_arguments(cls, parser)
 
     def check_quality(self, quality):
         assert np.sum(quality) >= 0
@@ -916,9 +1014,26 @@ def build_probability(choice, n_ops, prob_args):
 class ProbabilityType(ABC):
     # Static variables
     # FIXME: Use __slots__ to find which parameters need to be defined.
-    args_names = ["p_min", "learning_rate", "error_prob", "p_max"]
     # FIXME: define this in the class as @property getter doctstring and get it from it
-    args_help = ["Minimum probability of selection of an operator", "Learning Rate", "Probability noise", "Maximum probability of selection of an operator"]
+    args = [
+        "p_min",         float,"Minimum probability of selection of an operator",
+        "learning_rate", float,"Learning Rate",                                 
+        "error_prob",    float,"Probability noise",                             
+        "p_max",         float,"Maximum probability of selection of an operator"
+    ]
+    args_ranges = {"p_min" : [0.0, 0.25],
+                   "learning_rate": [0.0, 1.0],
+                   "error_prob": [0.0, 1.0],
+                   "p_max": [0.0, 1.0]}
+    # FIXME: We should use explicit class names or a function that converts from names to numbers
+    args_conditions = {"p_min": [],
+                       "learning_rate": [1,2],
+                       "error_prob": [0],
+                       "p_max": [1]}
+        
+    arg_choice = "prob_choice"
+    arg_choice_help = "Probability method selected"
+ 
     def __init__(self, n_ops, p_min = None, learning_rate = None):
         # n_ops, p_min_prob and learning_rate used in more than one probability definition
         self.p_min = p_min
@@ -929,9 +1044,11 @@ class ProbabilityType(ABC):
     @classmethod
     def add_argument(cls, parser):
         "Add arguments to an ArgumentParser"
-        for arg, help in zip(cls.args_names, cls.args_help):
-            parser.add_argument('--' + arg, type=float, default=0, help=help)
-        return cls.args_names
+        return parser_add_arguments(cls, parser)
+
+    @classmethod
+    def irace_parameters(cls):
+        return aos_irace_parameters(cls)
 
     def check_probability(self, probability):
         probability /= np.sum(probability)
@@ -1012,18 +1129,28 @@ Christian Igel and Martin Kreutz. “Using fitness distributions to improvethe e
 
 def build_selection(choice, n_ops):
     if choice == 0:
-        return Propotional_Selection(n_ops)
+        return Proportional_Selection(n_ops)
     elif choice == 1:
         return Greedy_Selection(n_ops)
     else:
         raise ValueError("choice {} unknown".format(choice))
 
 class SelectionType(ABC):
+
+    args = []
+    arg_choice = "select_choice"
+    arg_choice_help = "Selection method"
+
     def __init__(self, n_ops):
         # The initial list of operators (randomly permuted)
         self.n_ops = n_ops
         self.op_init_list = list(np.random.permutation(n_ops))
-    
+
+    @classmethod
+    def add_argument(cls, parser):
+        "Add arguments to an ArgumentParser"
+        return parser_add_arguments(cls, parser)
+
     def check_selection(self, selected):
         assert selected >= 0 and selected <= self.n_ops
         return selected
@@ -1034,7 +1161,7 @@ class SelectionType(ABC):
 
 # MANUEL: These should have more descriptive names and a doctstring documenting
 # where they come from (references) and what they do.
-class Propotional_Selection(SelectionType):
+class Proportional_Selection(SelectionType):
     def __init__(self, n_ops):
         super().__init__(n_ops)
     

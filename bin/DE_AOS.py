@@ -411,7 +411,7 @@ def main(instance, budget=budget,
             (time.asctime(), ascetime(time.clock() - t0)))
 
 # ===============================================
-from argparse import ArgumentParser,RawDescriptionHelpFormatter
+from argparse import ArgumentParser,RawDescriptionHelpFormatter,_StoreTrueAction
 
 if __name__ == '__main__':
     """read input parameters and call `main()`"""
@@ -429,34 +429,30 @@ if __name__ == '__main__':
     parser.add_argument('--seed', type=int, default=0, help='seed to initialise population')
     parser.add_argument('--trace', help='current file to write data in')
 
+
+    class dump_irace_parameters(_StoreTrueAction):
+        def __call__(self, parser, namespace, values, option_string=None):
+            print(de.DE_irace_parameters())
+            print(aos.Unknown_AOS.irace_parameters())
+            print(aos.ProbabilityType.irace_parameters())
+            parser.exit(1)
+        
+    parser.add_argument('--irace', action=dump_irace_parameters, help='dump parameters.txt for irace')
+
     # DE parameters
-    parser.add_argument('--FF', type=float, default=0.5, help='Scaling factor (DE parameter)')
-    parser.add_argument('--CR', type=float, default=1.0, help='Crossover rate (DE parameter)')
-    parser.add_argument('--NP', type=int, default=200, help='Population size (DE parameter)')
-
+    de.DE_add_arguments(parser)
     # Handle Offspring metric
-    # FIXME: Use __subclasses__ to find choices.
-    parser.add_argument("--OM_choice", type=int, choices=range(1,7), help="Offspring metric selected")
-
+    aos.Unknown_AOS.add_argument(parser)
     # Handle rewards
-    # FIXME: Use __subclasses__ to find choices.
-    parser.add_argument("--rew_choice", type=int, choices=range(0,12), help="Reward method selected")
+    # This uses __subclasses__ to find choices.
     rew_args_names = aos.RewardType.add_argument(parser)
-
     # Handle qualities
-    # FIXME: Use __subclasses__ to find choices.
-    parser.add_argument("--qual_choice", type=int, choices=range(0,5), help="Quality method selected")
     qual_args_names = aos.QualityType.add_argument(parser)
-
     # Handle probabilities
-    # FIXME: Use __subclasses__ to find choices.
-    parser.add_argument("--prob_choice", type=int, choices=range(0,3), help="Probability method selected")
-    # MANUEL: Use this technique to add arguments instead of the above.
     prob_args_names = aos.ProbabilityType.add_argument(parser)
-
     # Handle Selection
-    # FIXME: Use __subclasses__ to find choices.
-    parser.add_argument("--select_choice", type=int, choices=range(0,2), help="Selection method")
+    aos.SelectionType.add_argument(parser)
+
     
     args = parser.parse_args()
 
@@ -470,9 +466,14 @@ if __name__ == '__main__':
     instance =  [args.instance]
     trace_file = args.trace
 
+    ## FIXME: At some moment we could replace explicit parsing by implicit DE(**de_args)
+    # de_args = dict.fromkeys(de_args, None)
+    # for x in de_args.keys():
+    #     de_args[x] = getattr(args, x)
     FF = args.FF
     CR = args.CR
     NP = args.NP
+    
     seed = args.seed
     # If no seed is given, we generate one.
     if seed == 0:
