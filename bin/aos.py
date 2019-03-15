@@ -15,6 +15,12 @@ def debug_print(*args, **kwargs):
     print(*args, file=sys.stderr, **kwargs)
 
 
+def softmax(x):
+    """TODO"""
+    x = x - np.max(quality)
+    x = np.exp(x)
+    return(x)
+
 def get_choices(cls):
     """Get all possible choices of a component of AOS framework"""
     subclasses = [x.__name__ for x in cls.__subclasses__()]
@@ -217,7 +223,7 @@ def count_op(n_ops, window, off_met):
     return window_op_sorted, N, rank
 
 
-def TM(n_ops, p):
+def transitive_matrix(p):
     """Calculates Transitive Matrix."""
     ## Numpy broadcasting.
     tran_matrix = p + p[:, np.newaxis]
@@ -868,7 +874,7 @@ def build_quality(choice, n_ops, qual_args, window, off_met):
     elif choice == 3:
         return Weighted_normalised_reward(n_ops, qual_args["decay_rate"])
     elif choice == 4:
-        return Markov_reward_process(n_ops, qual_args["memory_curr_reward"], qual_args["memory_prev_reward"], qual_args["discount_rate"])
+        return Markov_reward_process(n_ops, qual_args["weight_reward"], qual_args["weight_old_reward"], qual_args["discount_rate"])
     else:
         raise ValueError("choice {} unknown".format(choice))
 
@@ -881,8 +887,8 @@ class QualityType(ABC):
         "adaptation_rate",    float,"Adaptation rate",           
         "scaling_factor",     float,"Scaling Factor",            
         "decay_rate",         float,"Decay rate",                
-        "memory_curr_reward", float,"Memory for current reward", 
-        "memory_prev_reward", float,"Memory for previous reward", 
+        "weight_reward", float,"Memory for current reward", 
+        "weight_old_reward", float,"Memory for previous reward", 
         "discount_rate",      float,"Discount rate"
     ]
     # TODO:
@@ -986,28 +992,23 @@ Christian  Igel  and  Martin  Kreutz.  “Operator  adaptation  in  evolution-ar
 
 class Markov_reward_process(QualityType):
     """
- Mudita  Sharma,  Manuel  L ́opez-Ib ́a ̃nez,  and  Dimitar  Kazakov.  “Perfor-mance Assessment of Recursive Probability Matching for Adaptive Oper-ator Selection in Differential Evolution”. In:International Conference onParallel Problem Solving from Nature.http://eprints.whiterose.ac.uk/135483/1/paper_66_1_.pdf. Springer. 2018, pp. 321–333.
+Mudita Sharma,  Manuel Lopez-Ibanez, and  Dimitar  Kazakov. “Performance Assessment of Recursive Probability Matching for Adaptive Oper-ator Selection in Differential Evolution”. In:International Conference onParallel Problem Solving from Nature.http://eprints.whiterose.ac.uk/135483/1/paper_66_1_.pdf. Springer. 2018, pp. 321–333.
  """
-    def __init__(self, n_ops, memory_curr_reward = 1, memory_prev_reward = 0.9, discount_rate = 0.0):
+    def __init__(self, n_ops, weight_reward = 1, weight_old_reward = 0.9, discount_rate = 0.0):
         super().__init__(n_ops)
-        self.memory_curr_reward = memory_curr_reward
-        self.memory_prev_reward = memory_prev_reward
+        self.weight_reward = weight_reward
+        self.weight_old_reward = weight_old_reward
         self.discount_rate = discount_rate
         #tran_matrix = normalize_matrix(np.random.rand(self.n_ops, self.n_ops))
-        debug_print("\n {} : memory_curr_reward = {}, memory_prev_reward = {}, discount_rate = {}".format(type(self).__name__, self.memory_curr_reward, self.memory_prev_reward, self.discount_rate))
+        debug_print("\n {} : weight_reward = {}, weight_old_reward = {}, discount_rate = {}".format(type(self).__name__, self.weight_reward, self.weight_old_reward, self.discount_rate))
     
     def calc_quality(self, old_reward, reward, old_probability):
-        tran_matrix = TM(self.n_ops, old_probability)
-        quality = self.memory_curr_reward * reward + self.memory_prev_reward * old_reward
-        # MANUEL: Where does this formula come from?
-        # MUDITA: This is from our PPSN paper.
-        quality = np.matmul(np.linalg.pinv(np.array(1 - self.discount_rate * tran_matrix)), np.array(Q))
-        # MANUEL: you overwrite the line above?
-        # MUDITA: Which line?
-        quality = quality - np.max(quality)
-        # MANUEL: you overwrite the line above?
-        # MUDITA: Which line?
-        quality = np.exp(quality)
+        # This was called P in the original RecPM paper.
+        tran_matrix = transitive_matrix(old_probability)
+        quality = self.weight_reward * reward + self.weight_old_reward * old_reward
+        # Rec_PM formula:  Q_t+1 = (1 - gamma * P)^-1 x Q_t+1
+        quality = np.matmul(np.linalg.pinv(1.0 - self.discount_rate * tran_matrix), quality)
+        quality = softmax(quality)
         return super().check_quality(quality)
 
 
