@@ -1113,8 +1113,7 @@ evolutionary computation. http://www.cs.bham.ac.uk/~wbl/biblio/gecco2005/docs/p1
     def calc_probability(self, quality):
         delta = np.full(quality.shape[0], self.p_min)
         delta[np.argmax(quality)] = self.p_max
-        probability = self.old_probability + self.learning_rate  * (delta - self.old_probability)
-        probability += self.eps
+        probability = self.learning_rate * delta + (1.0  - self.learning_rate) * self.old_probability
         return super().check_probability(probability)
 
 class Adaptation_rule(ProbabilityType):
