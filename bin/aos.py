@@ -866,7 +866,7 @@ Alvaro Fialho, Marc Schoenauer, and Mich`ele Sebag. “Analysis of adaptiveopera
 
 def build_quality(choice, n_ops, qual_args, window, off_met):
     if choice == 0:
-        return Weighted_sum(n_ops, qual_args["adaptation_rate"])
+        return Weighted_sum(n_ops, qual_args["decay_rate"])
     elif choice == 1:
         return Upper_confidence_bound(n_ops, off_met, window, qual_args["scaling_factor"])
     elif choice == 2:
@@ -884,12 +884,11 @@ class QualityType(ABC):
     # FIXME: Use __slots__ to find which parameters need to be defined.
     # FIXME: define this in the class as @property getter doctstring and get it from it
     args = [
-        "adaptation_rate",    float,"Adaptation rate",           
-        "scaling_factor",     float,"Scaling Factor",            
-        "decay_rate",         float,"Decay rate",                
-        "weight_reward", float,"Memory for current reward", 
+        "scaling_factor",    float,"Scaling Factor",            
+        "decay_rate",        float,"Decay rate",                
+        "weight_reward",     float,"Memory for current reward", 
         "weight_old_reward", float,"Memory for previous reward", 
-        "discount_rate",      float,"Discount rate"
+        "discount_rate",     float,"Discount rate"
     ]
     # TODO:
     args_ranges = []
@@ -932,14 +931,13 @@ class Weighted_sum(QualityType):
     """
  Dirk Thierens. “An adaptive pursuit strategy for allocating operator prob-abilities”.  In:Proceedings of the 7th annual conference on Genetic andevolutionary computation.http://www.cs.bham.ac.uk/~wbl/biblio/gecco2005/docs/p1539.pdf. ACM. 2005, pp. 1539–1546.
  """
-    def __init__(self, n_ops, adaptation_rate = 0.6):
+    def __init__(self, n_ops, decay_rate = 0.6):
         super().__init__(n_ops)
-        self.adaptation_rate = adaptation_rate
-        debug_print("\n {} : adaptation_rate = {}".format(type(self).__name__, self.adaptation_rate))
+        self.decay_rate = decay_rate
+        debug_print("\n {} : decay_rate = {}".format(type(self).__name__, self.decay_rate))
     
     def calc_quality(self, old_reward, reward, old_probability):
-        quality = self.old_quality + self.adaptation_rate * (reward - self.old_quality)
-        # Q = Q - np.max(Q)
+        quality = self.decay_rate * reward + (1.0 - self.decay_rate) * self.old_quality
         return super().check_quality(quality)
 
 class Upper_confidence_bound(QualityType):
@@ -949,8 +947,6 @@ Alvaro Fialho et al. “Extreme value based adaptive operator selection”.In:In
     def __init__(self, n_ops, off_met, window, scaling_factor = 0.5):
         super().__init__(n_ops)
         self.off_met = off_met
-        # MANUEL: There is a window here, but which object handles it?
-        # MANUEL: This window is not the same object as the one in AOS nor the one in RewardType!
         self.window = window
         self.scaling_factor = scaling_factor
         debug_print("\n {} : scaling_factor = {}".format(type(self).__name__, self.scaling_factor))
