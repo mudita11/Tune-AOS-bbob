@@ -1064,8 +1064,9 @@ class ProbabilityType(ABC):
         return aos_irace_parameters(cls)
 
     def check_probability(self, probability):
+        probability += self.eps
         probability /= np.sum(probability)
-        assert self.p_min != 1.0/len(probability)
+        assert self.p_min != 1.0/ l en(probability)
         assert np.allclose(np.sum(probability), 1.0, equal_nan = True)
         assert np.all(probability >= -0.0)
         # Just copy the values.
@@ -1125,20 +1126,16 @@ Christian Igel and Martin Kreutz. “Using fitness distributions to improvethe e
         debug_print("\n {} : p_min = {}, learning_rate = {}".format(type(self).__name__, self.p_min, self.learning_rate))
         
     def calc_probability(self, quality):
-        # MANUEL: Why do this?
-        #if np.sum(quality) != 0:
-        #quality = quality.copy()
         # Normalize
         quality += self.eps
         quality /= np.sum(quality)
 
         # np.maximum is element-wise
         probability = self.learning_rate * np.maximum(self.p_min, quality) + (1.0 - self.learning_rate) * self.old_probability
-        probability += self.eps
         return super().check_probability(probability)
 
 
-##################################################Selection definitions######################################################################
+#############Selection definitions##############################################
 
 def build_selection(choice, n_ops):
     if choice == 0:
@@ -1179,6 +1176,7 @@ class SelectionType(ABC):
 # MANUEL: These should have more descriptive names and a doctstring documenting
 # where they come from (references) and what they do.
 class Proportional_Selection(SelectionType):
+    '''TODO'''
     def __init__(self, n_ops):
         super().__init__(n_ops)
     
@@ -1192,6 +1190,7 @@ class Proportional_Selection(SelectionType):
 
 
 class Greedy_Selection(SelectionType):
+    '''TODO'''
     def __init__(self, n_ops):
         super().__init__(n_ops)
     
