@@ -842,6 +842,7 @@ Alvaro Fialho, Marc Schoenauer, and Mich`ele Sebag. “Analysis of adaptiveopera
         debug_print("\n {} : max_gen = {}, intensity = {}, choice4 = {}".format(type(self).__name__, self.max_gen, self.intensity, self.choice4))
     
     def calc_reward(self):
+        # Normalised best sum
         reward = np.zeros(self.n_ops)
         gen_window = self.gen_window
         gen_window = np.array(gen_window)
@@ -850,15 +851,18 @@ Alvaro Fialho, Marc Schoenauer, and Mich`ele Sebag. “Analysis of adaptiveopera
         if gen_window_len < max_gen:
             max_gen = gen_window_len
         for i in range(self.n_ops):
+            # list of best metric value produce by operator i at each generation.
             gen_best = []
             for j in range(gen_window_len-1, gen_window_len-max_gen-1, -1):
                 # MANUEL: Use count_total_succ_unsucc()
                 # MUDITA: We donot use this information (number of applications of an operator) here.
                 if np.any((gen_window[j,:,0] == i) & (gen_window[j, :, self.off_met] != -1)):
+                    # -1 means unsuccess, it should np.nan
                     gen_best.append(np.max(np.hstack(gen_window[j, np.where((gen_window[j,:,0] == i) & (gen_window[j, :, self.off_met] != -1)), self.off_met])))
-                    reward[i] += np.sum(gen_best)
-        assert len(gen_best) > 0
-        reward = (1/max_gen) * reward**self.intensity / np.max(gen_best)**self.choice4
+            if len(gen_best) > 0:
+                reward[i] = np.sum(gen_best)
+
+        reward = (1.0 / max_gen) * (reward**self.intensity) / (np.max(reward)**self.choice4)
         return super().check_reward(reward)
 
 
@@ -916,7 +920,6 @@ class QualityType(ABC):
         if np.sum(quality) != 0:
             quality /= np.sum(quality)
         assert np.all(quality >= 0.0)
-        # MUDITA: Old_quality is working fine
         self.old_quality = quality
         debug_print("{}: quality: {}".format(type(self).__name__, quality))
         return(quality)
