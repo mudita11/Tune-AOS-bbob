@@ -201,11 +201,11 @@ class Unknown_AOS(object):
 
 def count_op(n_ops, window, off_met):
     '''Return sorted window, number of successful applications of operators and rank'''
-    # Gives rank to window[:, off_met]: largest number will get largest number rank
     assert len(window.shape) == 2
     assert window.shape[0] > 0
     assert window.shape[1] == 7
-    #print(window)
+    # Gives rank to window[:, off_met]: largest number will get largest number rank.
+    # MANUEL: Why round(1), this may be problematic if metric values are very small
     rank = rankdata(window[:, off_met].round(1), method = 'min')
     order = rank.argsort()
     # order gives the index of rank in ascending order. Sort operators and rank in increasing rank.
@@ -916,10 +916,10 @@ class QualityType(ABC):
         assert np.sum(quality) >= 0
         if np.sum(quality) != 0:
             quality /= np.sum(quality)
-        assert np.all(quality >= -0.0)
+        assert np.all(quality >= 0.0)
         # MUDITA: Old_quality is working fine
         self.old_quality = quality
-        print("quality",quality)
+        debug_print("{}: quality: {}".format(type(self).__name__, quality))
         return(quality)
     
     @abstractmethod
@@ -957,7 +957,7 @@ Alvaro Fialho et al. “Extreme value based adaptive operator selection”.In:In
     
     def calc_quality(self, old_reward, reward, old_probability):
         window_op_sorted, N, rank = count_op(self.n_ops, self.window, self.off_met)
-        quality = UCB(N, self.scaling_factor, reward); # print(window_op_sorted, N, rank, reward, Q)
+        quality = UCB(N, self.scaling_factor, reward)
         return super().check_quality(quality)
 
 class Identity(QualityType):
@@ -965,7 +965,7 @@ class Identity(QualityType):
         super().__init__(n_ops)
     
     def calc_quality(self, old_reward, reward, old_probability):
-        quality = reward
+        quality[:] = reward[:]
         #print("In definition",quality)
         return super().check_quality(quality)
 
