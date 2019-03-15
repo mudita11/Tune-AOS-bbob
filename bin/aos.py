@@ -852,15 +852,12 @@ Alvaro Fialho, Marc Schoenauer, and Mich`ele Sebag. “Analysis of adaptiveopera
             max_gen = gen_window_len
         for i in range(self.n_ops):
             # list of best metric value produce by operator i at each generation.
-            gen_best = []
             for j in range(gen_window_len-1, gen_window_len-max_gen-1, -1):
                 # MANUEL: Use count_total_succ_unsucc()
                 # MUDITA: We donot use this information (number of applications of an operator) here.
                 if np.any((gen_window[j,:,0] == i) & (gen_window[j, :, self.off_met] != -1)):
                     # -1 means unsuccess, it should np.nan
-                    gen_best.append(np.max(np.hstack(gen_window[j, np.where((gen_window[j,:,0] == i) & (gen_window[j, :, self.off_met] != -1)), self.off_met])))
-            if len(gen_best) > 0:
-                reward[i] = np.sum(gen_best)
+                    reward[i] += (np.max(np.hstack(gen_window[j, np.where((gen_window[j,:,0] == i) & (gen_window[j, :, self.off_met] != -1)), self.off_met])))
 
         reward = (1.0 / max_gen) * (reward**self.intensity) / (np.max(reward)**self.choice4)
         return super().check_reward(reward)
