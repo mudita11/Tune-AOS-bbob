@@ -1093,7 +1093,8 @@ class Probability_Matching(ProbabilityType):
         debug_print("\n {} : p_min = {}, error_prob = {}".format(type(self).__name__, self.p_min, self.error_prob))
         
     def calc_probability(self, quality):
-        probability = self.p_min + (1 - len(quality) * self.p_min) * ((quality + self.error_prob) / np.sum(quality + self.error_prob))
+        quality += self.error_prob
+        probability = self.p_min + (1 - len(quality) * self.p_min) * (quality / np.sum(quality))
         return super().check_probability(probability)
         
 
