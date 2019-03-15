@@ -1050,6 +1050,7 @@ class ProbabilityType(ABC):
     def __init__(self, n_ops, p_min = None, learning_rate = None):
         # n_ops, p_min_prob and learning_rate used in more than one probability definition
         self.p_min = p_min
+        assert self.p_min != 1.0 / len(probability)
         self.learning_rate = learning_rate
         self.old_probability = np.full(n_ops, 1.0 / n_ops)
         self.eps = np.finfo(self.old_probability.dtype).eps
@@ -1066,12 +1067,11 @@ class ProbabilityType(ABC):
     def check_probability(self, probability):
         probability += self.eps
         probability /= np.sum(probability)
-        assert self.p_min != 1.0/ l en(probability)
         assert np.allclose(np.sum(probability), 1.0, equal_nan = True)
-        assert np.all(probability >= -0.0)
+        assert np.all(probability >= 0.0)
         # Just copy the values.
         self.old_probability[:] = probability[:]
-        print("probability", probability)
+        debug_print("check_probability(): probability: ", probability, "\n")
         return(probability)
 
     @abstractmethod
@@ -1089,7 +1089,6 @@ class Probability_Matching(ProbabilityType):
         super().__init__(n_ops, p_min = p_min)
         # np.finfo(np.float32).eps adds a small epsilon number that doesn't make any difference but avoids 0.
         self.error_prob = error_prob + self.eps
-        # MANUEL: Please do this in every class so one can debug what is actually running.
         debug_print("\n {} : p_min = {}, error_prob = {}".format(type(self).__name__, self.p_min, self.error_prob))
         
     def calc_probability(self, quality):
