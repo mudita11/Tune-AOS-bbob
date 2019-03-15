@@ -982,12 +982,8 @@ Christian  Igel  and  Martin  Kreutz.  “Operator  adaptation  in  evolution-ar
         if np.sum(reward) > 0:
             reward /= np.sum(reward)
         else:
-            reward = self.n_ops
-        quality = self.decay_rate * reward  + (1 - self.decay_rate) * self.old_quality
-        # if np.sum(reward) > 0:
-        #     quality = self.decay_rate * (reward / np.sum(reward))  + (1 - self.decay_rate) * self.old_quality
-        # else:
-        #     quality = self.decay_rate * self.n_ops + (1 - self.decay_rate) * self.old_quality
+            reward[:] = 1.0 / self.n_ops
+        quality = self.decay_rate * reward  + (1.0 - self.decay_rate) * self.old_quality
         return super().check_quality(quality)
 
 class Markov_reward_process(QualityType):
