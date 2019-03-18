@@ -489,13 +489,6 @@ class RewardType(ABC):
         print("reward",reward)
         return reward
 
-    # def truncate_window(self):
-    #     """ Returns the truncated window after removing the offspring entry with unimproved off_met (nan) from window"""
-    #     trunc_window = self.window[(self.window[:, self.off_met] != np.nan) & (self.window[:, self.off_met] != np.inf)][:int(self.window_size)]
-    #     assert trunc_window.shape[0] > 0
-    #     assert trunc_window.shape[1] == 7
-    #     return trunc_window 
-    
     def count_op_in_window(self, window):
         return count_op(self.n_ops, window, self.off_met) # print(window, window_op_sorted, N, rank)
     
@@ -801,10 +794,8 @@ class Success_sum(RewardType):
         debug_print("\n {} : max_gen = {}".format(type(self).__name__, self.max_gen))
     
     def calc_reward(self):
-        reward = np.zeros(self.n_ops)
         gen_window = self.gen_window
         gen_window = np.array(gen_window)
-        total_appl = np.zeros(self.n_ops)
         gen_window_len = len(gen_window)
         max_gen = self.max_gen
         if gen_window_len < max_gen:
@@ -823,17 +814,16 @@ class Success_sum(RewardType):
 #                    appl += total_success + total_unsuccess
 #            if appl != 0:
 #                reward[i] = reward[i] / appl
+        napplications = np.zeros(self.n_ops)
+        reward = np.zeros(self.n_ops)
         for j in range(gen_window_len - max_gen, gen_window_len):
             total_success, total_unsuccess = super().count_total_succ_unsucc(self.n_ops, gen_window, j, self.off_met)
-            # Followinf operation changes total_appl from array to list
-            total_appl = [sum(x) for x in zip(total_appl, [sum(x) for x in zip(total_success, total_unsuccess)])]
+            napplications += total_success + total_unsuccess
+            #total_appl = [sum(x) for x in zip(total_appl, [sum(x) for x in zip(total_success, total_unsuccess)])]
             for i in range(self.n_ops):
-                if np.any(gen_window[j, :, 0] == i):
-                    reward[i] += np.sum(gen_window[j, np.where((gen_window[j, :, 0] == i) & (gen_window[j, :, self.off_met] != np.nan)), self.off_met])
-        # total_appl is converted to an array to make "total_appl[total_appl == 0] = 1" possible
-        total_appl = np.array(total_appl)
-        total_appl[total_appl == 0] = 1
-        reward = reward/total_appl
+                reward[i] += np.sum(gen_window[j, np.where((gen_window[j, :, 0] == i) & (gen_window[j, :, self.off_met] != np.nan)), self.off_met])
+        napplications[napplications == 0] = 1
+        reward /= napplications
         return super().check_reward(reward)
 
 class Normalised_success_sum_window(RewardType):
@@ -851,15 +841,9 @@ Alvaro Fialho, Marc Schoenauer, and Mich`ele Sebag. “Analysis of adaptiveopera
         reward = np.zeros(self.n_ops)
         # Create a local truncated window.
         window = self.window.truncate(self.window_size)
-        # N = super().count_op_in_window(super().truncate_window())
         N = window.count_ops()
         N[N == 0] = 1
         reward = window.sum_per_op() / N
-        # for i in range(self.n_ops):
-        #     if np.any(window[:,0] == i):
-        #         reward[i] += np.sum(window[window[:, 0] == i][:, self.off_met]); # print(i, reward[i])
-        #         if N[i]!=0:
-        #             reward[i] = reward[i] / N[i]
         if np.max(reward) != 0:
             reward /= np.max(reward)**self.normal_factor
         return super().check_reward(reward)
