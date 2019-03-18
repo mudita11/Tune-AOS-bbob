@@ -496,7 +496,7 @@ def op_metric_for_fix_appl(gen_window, gen_window_len, op, fix_appl, off_met):
         if np.any(gen_window[gen_window_len-1, :, 0] == i):
             value = gen_window[j, np.where((gen_window[j, :, 0] == i) & (gen_window[j, :, self.off_met] != np.nan)), self.off_met]
             b.append(value)
-            if len(b) == fix_appl:
+            if len(np.array(b).ravel()) == fix_appl:
                 break
     b = np.array(b).ravel()
     return(b)
@@ -525,16 +525,7 @@ Jorge Maturana, Fr ́ed ́eric Lardeux, and Frederic Saubion. “Autonomousopera
         gen_window = np.array(gen_window)
         #print(type(gen_window), np.shape(gen_window), gen_window)
         for i in range(self.n_ops):
-            b = []
-            count = 0
-            for j in range(len(gen_window)-1, 0, -1):
-                if np.any(gen_window[j, :, 0] == i):
-                    count += 1
-                    # MANUEL: What is this doing?
-                    # MUDITA: List b collects all the offspring metric data produced by operator i when offspring metric value is not -1.
-                    b.append(gen_window[j, np.where((gen_window[j, :, 0] == i) & (gen_window[j, :, self.off_met] != np.nan)), self.off_met])
-                    if count == self.fix_appl:
-                        break
+            b = op_metric_for_fix_appl(gen_window, gen_window_len, op, fix_appl, off_met)
             if b != []:
                 s_op[i] = np.std(np.hstack(b))
                 q_op[i] = np.mean(np.hstack(b))
@@ -572,14 +563,7 @@ Jorge Maturana, Fr ́ed ́eric Lardeux, and Frederic Saubion. “Autonomous oper
         gen_window = np.array(gen_window)
         gen_window_len = len(gen_window)
         for i in range(self.n_ops):
-            b = []
-            count = 0
-            for j in range(gen_window_len - 1, 0, -1):
-                if np.any(gen_window[j, :, 0] == i):
-                    count += 1
-                    b.append(gen_window[j, np.where((gen_window[j, :, 0] == i) & (gen_window[j, :, self.off_met] != np.nan)), self.off_met])
-                    if count == self.fix_appl:
-                        break
+            b = op_metric_for_fix_appl(gen_window, gen_window_len, op, fix_appl, off_met)
             if b != []:
                 s_op[i] = np.std(np.hstack(b)); q_op[i] = np.average(np.hstack(b))
         for i in range(self.n_ops):
