@@ -74,26 +74,41 @@ def irace_condition(what, values):
         return what + " == " + str(values[0])
     return what + " %in% c(" + ", ".join([str(x) for x in values]) + ")"
 
+import copy
 
 class OpWindow():
 
-    metrics = {"": 0, "": 1, "": 2, "": 3}
+    metrics = {"a": 0, "b": 1, "c": 2, "d": 3}
     
-    def __init__(self, n_ops, max_size = 50, metric):
+    def __init__(self, n_ops, metric, max_size = 50):
         self.max_size = max_size
         self.n_ops = n_ops
-        self.metric = metrics[metric]
+        self.metric = self.metrics[metric]
         # Vector of operators
         self._window_op = np.full(max_size, -1)
         # Matrix of metrics
-        self._window_met = np.full((max_size, len(metrics)), np.nan)
+        self._window_met = np.full((max_size, len(self.metrics)), np.nan)
 
-    def count_ops(self, truncate_size = 0):
-        N = np.zeros(self.n_ops)
-        op, count = np.unique(self.get_ops(truncate_size), return_counts=True)
-        N[op] = count
-        return N
+    def truncate_window(self, size):
+        where = self.where_truncate(size)
+        truncated = copy.copy(self)
+        truncated._window_op = truncated._window_op[where]
+        truncated._window_met = truncated._window_met[where, :]
+        return truncated
     
+    def where_truncate(self, size):
+        """Returns the indexes of a truncated window after removing the offspring entry with unimproved metric from window and truncating to size"""
+        assert size > 0
+        where = np.where(np.isfinite(self._window_met[:, self.metric]))
+        return where[:size]
+
+    def sum_per_op(self):
+        # FIXME: there is probably a faster way to do this.
+        value = np.zeros(self.n_ops)
+        for i in range(self.n_ops):
+            value[i] = np.sum(self._window_met[self._window_op == i, self.metric])
+        return value
+
     def append(self, op, values):
         # MUDITA: Loop for filling the window as improved offsping are generated
         # MANUEL: What is window? You sometimes index it like a list window[][] and other times like a matrix [, ]
@@ -124,18 +139,9 @@ class OpWindow():
         assert metric >= 0 && metric < len(self.metrics)
         return(self._window_met[:, metric])
 
-    def get_ops(self, truncate_size = 0):
-        if truncate > 0:
-            where = self.where_truncate(truncate_size)
-            return self._window_op[where]
+    def get_ops(self):
         return(self._window_op)
 
-    def where_truncate(self, size):
-        """Returns the indexes of a truncated window after removing the offspring entry with unimproved metric from window and truncating to size"""
-        assert size > 0
-        where = np.where(np.isfinite(self._window[:, self.metric]))
-        return where[:size]
-        
 # MANUEL: What is the difference between AOS and unknown AOS?
 # MUDITA: I am referring to a combination of these components as Unknown AOS if that combination is not considered in literature.
 # MANUEL: I don't understand. What do you use AOS for?
@@ -844,14 +850,16 @@ Alvaro Fialho, Marc Schoenauer, and Mich`ele Sebag. “Analysis of adaptiveopera
     def calc_reward(self):
         reward = np.zeros(self.n_ops)
         # Create a local truncated window.
-        # window = super().truncate_window()
+        window = self.window.truncate(self.window_size)
         # N = super().count_op_in_window(super().truncate_window())
-        N = self.window.count_ops(truncate_size = self.window_size)
-        for i in range(self.n_ops):
-            if np.any(window[:,0] == i):
-                reward[i] += np.sum(window[window[:, 0] == i][:, self.off_met]); # print(i, reward[i])
-                if N[i]!=0:
-                    reward[i] = reward[i] / N[i]
+        N = window.count_ops()
+        N[N == 0] = 1
+        reward = window.sum_per_op() / N
+        # for i in range(self.n_ops):
+        #     if np.any(window[:,0] == i):
+        #         reward[i] += np.sum(window[window[:, 0] == i][:, self.off_met]); # print(i, reward[i])
+        #         if N[i]!=0:
+        #             reward[i] = reward[i] / N[i]
         if np.max(reward) != 0:
             reward /= np.max(reward)**self.normal_factor
         return super().check_reward(reward)
