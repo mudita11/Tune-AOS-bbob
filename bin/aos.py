@@ -207,17 +207,19 @@ def count_op(n_ops, window, off_met):
     assert len(window.shape) == 2
     assert window.shape[0] > 0
     assert window.shape[1] == 8
-    # Gives rank to window[:, off_met]: largest number will get largest number rank.
+    # Gives rank to window[:, off_met]: largest number will get smallest number rank.
     # MANUEL: Why round(1), this may be problematic if metric values are very small
-    rank = rankdata(window[:, off_met].round(1), method = 'min')
+    rank = np.full(len(window), len(window)+1) - rankdata(window[:, off_met].round(1), method = 'max')
+    # If rank is [3, 1, 2]; then order of rank will be [1, 2, 0] because value ranked 3 is present at index 0. Thus, order[3] = 0 or order[rank] = index of rank.
     order = rank.argsort()
-    # order gives the index of rank in ascending order. Sort operators and rank in increasing rank.
-    # window_op_sorted is the window sorted from lowest Off_met value to highest and only consists of operators (first column in window).
+    # window_op_sorted is the operator vector sorted according to order i.e. highest Off_metrix to lowest
     ## MANUEL: Having to do this conversion suggests to me that the design of window is wrong.
     window_op_sorted = window[order, 0].astype(int)
     rank = rank[order]
+    # MUDITA: What is the role of this?
     rank = rank[window_op_sorted >= 0]
-    window_op_sorted = window_op_sorted[window_op_sorted >= 0] # print("window_op_sorted = ",window, window_op_sorted, rank, order)
+    # MUDITA: This won't be needs becuase this is truncated window.
+    window_op_sorted = window_op_sorted[window_op_sorted >= 0]
     # counts number of times an operator is present in the window
     N = np.zeros(n_ops)
     # the number of times each operator appears in the sliding window
@@ -322,9 +324,9 @@ def build_reward(choice, n_ops, rew_args, gen_window, window, off_met):
     elif choice == 4:
         return Sum_of_Rank(n_ops, off_met, window, rew_args["window_size"], rew_args["decay"])
     elif choice == 5:
-        return Success_Rate1(n_ops, off_met, gen_window, rew_args["max_gen"], rew_args["succ_lin_quad"], rew_args["frac"], rew_args["noise"])
+        return Success_Rate(n_ops, off_met, gen_window, rew_args["max_gen"], rew_args["succ_lin_quad"], rew_args["frac"], rew_args["noise"])
     elif choice == 6:
-        return Success_Rate2(n_ops, off_met, gen_window, rew_args["popsize"])
+        return Immediate_Success(n_ops, off_met, gen_window, rew_args["popsize"])
     elif choice == 7:
         return Success_sum(n_ops, off_met, gen_window, rew_args["max_gen"])
     elif choice == 8:
@@ -637,7 +639,7 @@ Alvaro Fialho, Marc Schoenauer, and Mich`ele Sebag. “Toward comparison-based a
 #    return total_success, total_unsuccess
 
 
-class Success_Rate1(RewardType):
+class Success_Rate(RewardType):
     """ 
 
 A Kai Qin, Vicky Ling Huang, and Ponnuthurai N Suganthan. “Differ-
@@ -698,7 +700,7 @@ acc=ACTIVE%20SERVICE&key=BF07A2EE685417C5%2E26BE4091F5AC6C0A%
         return super().check_reward(reward)
 
 
-class Success_Rate2(RewardType):
+class Immediate_Success(RewardType):
     """
  Mudita  Sharma,  Manuel  L ́opez-Ib ́a ̃nez,  and  Dimitar  Kazakov.  “Perfor-mance Assessment of Recursive Probability Matching for Adaptive Oper-ator Selection in Differential Evolution”. In:International Conference onParallel Problem Solving from Nature.http://eprints.whiterose.ac.uk/135483/1/paper_66_1_.pdf. Springer. 2018, pp. 321–333.
  """
@@ -752,10 +754,12 @@ class Success_sum(RewardType):
 #                reward[i] = reward[i] / appl
         for j in range(gen_window_len-1, gen_window_len-int(max_gen)-1, -1):
             total_success, total_unsuccess = super().count_total_succ_unsucc(self.n_ops, gen_window, j, self.off_met)
+            # Followinf operation changes total_appl from array to list
             total_appl = [sum(x) for x in zip(total_appl, [sum(x) for x in zip(total_success, total_unsuccess)])]
             for i in range(self.n_ops):
                 if np.any(gen_window[j, :, 0] == i):
                     reward[i] += np.sum(gen_window[j, np.where((gen_window[j, :, 0] == i) & (gen_window[j, :, self.off_met] != np.nan)), self.off_met])
+        # total_appl is converted to an array to make "total_appl[total_appl == 0] = 1" possible
         total_appl = np.array(total_appl)
         total_appl[total_appl == 0] = 1
         reward = reward/total_appl
@@ -854,7 +858,7 @@ Giorgos Karafotias, Agoston Endre Eiben, and Mark Hoogendoorn. “Genericparamet
         # MANUEL: Use vector operations!
         best_t_1[best_t_1 == 0] = 1
         n_applications[n_applications == 0] = 1
-        reward = (self.scaling_constant * np.fabs(best_t - best_t_1)) / (best_t_1**self.alpha) * (np.fabs(n_applications[0] - n_applications[1])**self.beta)
+        reward = (self.scaling_constant * np.fabs(best_t - best_t_1)) / ((best_t_1**self.alpha) * (np.fabs(n_applications[0] - n_applications[1])**self.beta))
         return super().check_reward(reward)
 
 class Normalised_best_sum(RewardType):
