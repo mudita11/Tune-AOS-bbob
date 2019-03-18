@@ -128,12 +128,12 @@ class Unknown_AOS(object):
     @classmethod
     def add_argument(cls, parser):
         # FIXME: Document what 1...7 means
-        parser.add_argument("--" + cls.arg_choice, type=int, choices=range(1,7), help=cls.arg_choice_help)
+        parser.add_argument("--" + cls.arg_choice, type=int, choices=range(1,8), help=cls.arg_choice_help)
 
     @classmethod
     def irace_parameters(cls):
         output = "# " + cls.__name__ + "\n"
-        return output + irace_parameter(cls.arg_choice, str, range(1,7), help=cls.arg_choice_help)
+        return output + irace_parameter(cls.arg_choice, str, range(1,8), help=cls.arg_choice_help)
 
 ##################################################Offspring Metric definitions##################################################################
     def OM_Update(self):
@@ -143,21 +143,24 @@ class Unknown_AOS(object):
         F_median = np.median(self.F)
         F_absdiff = np.fabs(self.F1 - self.F)
         for i in range(self.popsize):
-            second_dim = np.full(7, -1.0)
+#            second_dim = np.full(7, -1.0)
+            second_dim = np.full(8, np.nan)
+            second_dim[0] = -1
             if self.F1[i] <= self.F[i]:
                 second_dim[0] = self.opu[i]
-                second_dim[1] = np.exp(-self.F1[i])
-                second_dim[2] = self.F[i] - self.F1[i]
+                second_dim[1] = -self.F1[i]
+                second_dim[2] = np.exp(-self.F1[i])
+                second_dim[3] = self.F[i] - self.F1[i]
                 if self.F1[i] <= F_min:
-                    second_dim[3] = F_min - self.F1[i]
+                    second_dim[4] = F_min - self.F1[i]
                 
                 if self.F1[i] <= self.best_so_far:
-                    second_dim[4] = self.best_so_far - self.F1[i]
+                    second_dim[5] = self.best_so_far - self.F1[i]
             
                 if self.F1[i] <= F_median:
-                        second_dim[5] = F_median - self.F1[i]
+                        second_dim[6] = F_median - self.F1[i]
                 
-                second_dim[6] = (self.best_so_far / (self.F1[i] + 0.001)) * F_absdiff[i]
+                second_dim[7] = (self.best_so_far / (self.F1[i] + 0.001)) * F_absdiff[i]
             
                 # MUDITA: Loop for filling the window as improved offsping are generated
                 # MANUEL: What is window? You sometimes index it like a list window[][] and other times like a matrix [, ]
@@ -203,7 +206,7 @@ def count_op(n_ops, window, off_met):
     '''Return sorted window, number of successful applications of operators and rank'''
     assert len(window.shape) == 2
     assert window.shape[0] > 0
-    assert window.shape[1] == 7
+    assert window.shape[1] == 8
     # Gives rank to window[:, off_met]: largest number will get largest number rank.
     # MANUEL: Why round(1), this may be problematic if metric values are very small
     rank = rankdata(window[:, off_met].round(1), method = 'min')
@@ -298,10 +301,10 @@ def UCB(N, C, reward):
 #         return (ang1 - ang2) % (2 * np.pi)
 
 
-def angle(vec, theta):
-    vec = vec * np.sign(vec[1])
-    angle = np.arccos(1 - distance.cosine(vec, np.array([1, 0]))) # In radian
-    return angle - np.deg2rad(theta)
+#   def angle(vec, theta):
+#       vec = vec * np.sign(vec[1])
+#       angle = np.arccos(1 - distance.cosine(vec, np.array([1, 0]))) # In radian
+#       return angle - np.deg2rad(theta)
 
 ##################################################Reward definitions######################################################################
     
@@ -329,9 +332,9 @@ def build_reward(choice, n_ops, rew_args, gen_window, window, off_met):
     elif choice == 9:
         return Normalised_success_sum_gen(n_ops, off_met, gen_window, rew_args["max_gen"])
     elif choice == 10:
-        return Best2gen(n_ops, off_met, gen_window, rew_args["scaling_constant"], rew_args["choice2"], rew_args["choice3"])
+        return Best2gen(n_ops, off_met, gen_window, rew_args["scaling_constant"], rew_args["alpha"], rew_args["alpha"])
     elif choice == 11:
-        return Normalised_best_sum(n_ops, off_met, gen_window, rew_args["max_gen"], rew_args["intensity"], rew_args["choice4"])
+        return Normalised_best_sum(n_ops, off_met, gen_window, rew_args["max_gen"], rew_args["intensity"], rew_args["alpha"])
     else:
         raise ValueError("choice {} unknown".format(choice))
 
@@ -350,15 +353,38 @@ class RewardType(ABC):
         "noise",            float, "Small noise for randomness",
         "normal_factor",    int,   "Choice to normalise",
         "scaling_constant", float, "Scaling constant",
-        "choice2",          int,   "Choice to normalise by best produced by any operator",
-        "choice3",          int,   "Choice to include the difference between budget used by an operator in previous two generations",
-        "choice4",          int,   "Choice to normalise by best produced by any operator",
+        "alpha",            int,   "Choice to normalise by best produced by any operator",
+        "beta",             int,   "Choice to include the difference between budget used by an operator in previous two generations",
         "intensity",        float, "Intensify the changes of best fitness value"
     ]
     # TODO:
-    args_ranges = []
+    args_ranges = {"max_gen": [1, 15, 30, 50],
+                   "fix_appl": [50, 100, 150],
+                   "theta": [36, 45, 54, 90],
+                   "window_size": [20, 50],
+				   "decay": [0.0, 1.0],
+				   "succ_lin_quad" : [0, 1],
+                   "frac": [0.0, 1.0],
+                   "noise": [0.0, 1.0],
+                   "normal_factor": [0, 1],
+				   "scaling_constant": [0.0, 1.0],
+				   "alpha" : [0, 1],
+                   "beta": [0, 1],
+                   "intensity": [0.0, 1.0]}
     # TODO:
-    args_conditions = []
+    args_conditions = {"max_gen": [5, 7, 9, 11],
+                   "fix_appl": [0, 1, 2],
+                   "theta": [2],
+                   "window_size": [3, 4, 8],
+				   "decay": [3, 4],
+				   "succ_lin_quad" : [5],
+                   "frac": [5],
+                   "noise": [5],
+                   "normal_factor": [8],
+				   "scaling_constant": [10],
+				   "alpha" : [10, 11],
+                   "beta": [10],
+                   "intensity": [11]}
     
     arg_choice = "rew_choice"
     arg_choice_help = "Reward method selected"
@@ -391,8 +417,8 @@ class RewardType(ABC):
         return reward
 
     def truncate_window(self):
-        """ Returns the truncated window after removing the offspring entry with unimproved off_met (-1) from window"""
-        trunc_window = self.window[(self.window[:, self.off_met] != -1) & (self.window[:, self.off_met] != np.inf)][:int(self.window_size)]
+        """ Returns the truncated window after removing the offspring entry with unimproved off_met (nan) from window"""
+        trunc_window = self.window[(self.window[:, self.off_met] != np.nan) & (self.window[:, self.off_met] != np.inf)][:int(self.window_size)]
         assert trunc_window.shape[0] > 0
         assert trunc_window.shape[1] == 7
         return trunc_window 
@@ -407,8 +433,8 @@ class RewardType(ABC):
         for i in range(n_ops):
             if np.any(gen_window[j, :, 0] == i):
                 # total_success[i], total_unsuccess[i] = count_success(gen_window, i, j, off_met)
-                total_success[i] = np.sum((gen_window[j, :, 0] == i) & (gen_window[j, :, off_met] != -1))
-                total_unsuccess[i] = np.sum((gen_window[j, :, 0] == i) & (gen_window[j, :, off_met] == -1))
+                total_success[i] = np.sum((gen_window[j, :, 0] == i) & (gen_window[j, :, off_met] != np.nan))
+                total_unsuccess[i] = np.sum((gen_window[j, :, 0] == i) & (gen_window[j, :, off_met] == np.nan))
         return total_success, total_unsuccess
 
     @abstractmethod
@@ -446,7 +472,7 @@ Jorge Maturana, Fr ́ed ́eric Lardeux, and Frederic Saubion. “Autonomousopera
                     count += 1
                     # MANUEL: What is this doing?
                     # MUDITA: List b collects all the offspring metric data produced by operator i when offspring metric value is not -1.
-                    b.append(gen_window[j, np.where((gen_window[j, :, 0] == i) & (gen_window[j, :, self.off_met] != -1)), self.off_met])
+                    b.append(gen_window[j, np.where((gen_window[j, :, 0] == i) & (gen_window[j, :, self.off_met] != np.nan)), self.off_met])
                     if count == self.fix_appl:
                         break
             if b != []:
@@ -490,7 +516,7 @@ Jorge Maturana, Fr ́ed ́eric Lardeux, and Frederic Saubion. “Autonomousopera
             for j in range(len(gen_window)-1, 0, -1):
                 if np.any(gen_window[j, :, 0] == i):
                     count += 1
-                    b.append(gen_window[j, np.where((gen_window[j, :, 0] == i) & (gen_window[j, :, self.off_met] != -1)), self.off_met])
+                    b.append(gen_window[j, np.where((gen_window[j, :, 0] == i) & (gen_window[j, :, self.off_met] != np.nan)), self.off_met])
                     if count == self.fix_appl:
                         break
             if b != []:
@@ -534,7 +560,7 @@ class Compass_projection(RewardType):
             for j in range(gen_window_len-1, 0, -1):
                 if np.any(gen_window[gen_window_len-1, :, 0] == i):
                     count += 1
-                    b.append(gen_window[j, np.where((gen_window[j, :, 0] == i) & (gen_window[j, :, self.off_met] != -1)), self.off_met])
+                    b.append(gen_window[j, np.where((gen_window[j, :, 0] == i) & (gen_window[j, :, self.off_met] != np.nan)), self.off_met])
                     if count == self.fix_appl:
                         break
             if b != []:
@@ -542,7 +568,8 @@ class Compass_projection(RewardType):
                 SD = np.std(np.hstack(b)); AVG = np.mean(np.hstack(b))
                 #reward[i] = (np.sqrt(np.std(np.hstack(b))**2 + np.average(np.hstack(b))**2)) * np.cosine(np.fabs(np.angle(SD + AVGj) - np.deg2rad(self.theta)))
                 # Where does this formula come from?
-                reward[i] = (np.sqrt(SD**2 + AVG**2)) * angle(np.array([SD, AVG]), self.theta)
+                angle = np.mod(np.arctan(np.deg2rad(AVG/SD)))
+                reward[i] = (np.sqrt(SD**2 + AVG**2)) * np.cos(angle)#angle(np.array([SD, AVG]), self.theta)
         reward = reward - np.min(reward)
         return super().check_reward(reward)
 
@@ -728,7 +755,7 @@ class Success_sum(RewardType):
             total_appl = [sum(x) for x in zip(total_appl, [sum(x) for x in zip(total_success, total_unsuccess)])]
             for i in range(self.n_ops):
                 if np.any(gen_window[j, :, 0] == i):
-                    reward[i] += np.sum(gen_window[j, np.where((gen_window[j, :, 0] == i) & (gen_window[j, :, self.off_met] != -1)), self.off_met])
+                    reward[i] += np.sum(gen_window[j, np.where((gen_window[j, :, 0] == i) & (gen_window[j, :, self.off_met] != np.nan)), self.off_met])
         total_appl = np.array(total_appl)
         total_appl[total_appl == 0] = 1
         reward = reward/total_appl
@@ -785,20 +812,20 @@ Christian Igel and Martin Kreutz. “Using fitness distributions to improvethe e
 #                    total_success, total_unsuccess = count_success(self.gen_window, i, j, self.off_met)
                     total[total == 0] = 1
 #                    if total_success + total_unsuccess != 0:
-                    reward[i] += np.sum(gen_window[j, np.where(gen_window[j,:,0] == i) & np.where(gen_window[j, :, self.off_met] != -1) , self.off_met]) / total
+                    reward[i] += np.sum(gen_window[j, np.where(gen_window[j,:,0] == i) & np.where(gen_window[j, :, self.off_met] != np.nan) , self.off_met]) / total
         return super().check_reward(reward)
 
 class Best2gen(RewardType):
     """
 Giorgos Karafotias, Agoston Endre Eiben, and Mark Hoogendoorn. “Genericparameter  control  with  reinforcement  learning”.  In:Proceedings of the2014 Annual Conference on Genetic and Evolutionary Computation.http://www.few.vu.nl/~gks290/papers/GECCO2014-RLControl.pdf. ACM.2014, pp. 1319–1326.
  """
-    def __init__(self, n_ops, off_met, gen_window, scaling_constant = 1, choice2 = 0, choice3 = 1):
+    def __init__(self, n_ops, off_met, gen_window, scaling_constant = 1, alpha = 0, beta = 1):
         super().__init__(n_ops, off_met)
         self.gen_window = gen_window
         self.scaling_constant = scaling_constant
-        self.choice2 = choice2
-        self.choice3 = choice3
-        debug_print("\n {} : scaling constant = {}, choice2 = {}, choice3 = {}".format(type(self).__name__, self.scaling_constant, self.choice2, self.choice3))
+        self.alpha = alpha
+        self.beta = beta
+        debug_print("\n {} : scaling constant = {}, alpha = {}, beta = {}".format(type(self).__name__, self.scaling_constant, self.alpha, self.beta))
     
     def calc_reward(self):
         # Involves calculation of best in previous two generations.
@@ -819,27 +846,27 @@ Giorgos Karafotias, Agoston Endre Eiben, and Mark Hoogendoorn. “Genericparamet
         n_applications = n_applications[0] - n_applications[1]
         for i in range(self.n_ops):
             # Calculating best in current generation
-            if np.any(gen_window[gen_window_len-1, :, self.off_met] != -1):
-                best_t[i] = np.max(gen_window[gen_window_len-1, np.where((gen_window[gen_window_len-1, :, 0] == i) & (gen_window[gen_window_len-1, :, self.off_met] != -1)), self.off_met])
+            if np.any(gen_window[gen_window_len-1, :, self.off_met] != np.nan):
+                best_t[i] = np.max(gen_window[gen_window_len-1, np.where((gen_window[gen_window_len-1, :, 0] == i) & (gen_window[gen_window_len-1, :, self.off_met] != np.nan)), self.off_met])
             # Calculating best in last generation
-            if np.any(gen_window[gen_window_len-2, :, self.off_met] != -1):
-                best_t_1[i] = np.max(gen_window[gen_window_len-2, np.where((gen_window[gen_window_len-2, :, 0] == i) & (gen_window[gen_window_len-2, :, self.off_met] != -1)), self.off_met])
+            if np.any(gen_window[gen_window_len-2, :, self.off_met] != np.nan):
+                best_t_1[i] = np.max(gen_window[gen_window_len-2, np.where((gen_window[gen_window_len-2, :, 0] == i) & (gen_window[gen_window_len-2, :, self.off_met] != np.nan)), self.off_met])
         # MANUEL: Use vector operations!
         best_t_1[best_t_1 == 0] = 1
         n_applications[n_applications == 0] = 1
-        reward = (self.scaling_constant * np.fabs(best_t - best_t_1)) / (best_t_1**self.choice2) * (np.fabs(n_applications[0] - n_applications[1])**self.choice3)
+        reward = (self.scaling_constant * np.fabs(best_t - best_t_1)) / (best_t_1**self.alpha) * (np.fabs(n_applications[0] - n_applications[1])**self.beta)
         return super().check_reward(reward)
 
 class Normalised_best_sum(RewardType):
     """
 Alvaro Fialho, Marc Schoenauer, and Mich`ele Sebag. “Analysis of adaptiveoperator selection techniques on the royal road and long k-path problems”.In:Proceedings of the 11th Annual conference on Genetic and evolutionarycomputation.https://hal.archives-ouvertes.fr/docs/00/37/74/49/PDF/banditGECCO09.pdf. ACM. 2009, pp. 779–786.
 """
-    def __init__(self, n_ops, off_met, gen_window, max_gen = 10, intensity = 0, choice4 = 1):
+    def __init__(self, n_ops, off_met, gen_window, max_gen = 10, intensity = 0, alpha = 1):
         super().__init__(n_ops, off_met, max_gen = max_gen)
         self.gen_window = gen_window
         self.intensity = intensity
-        self.choice4 = choice4
-        debug_print("\n {} : max_gen = {}, intensity = {}, choice4 = {}".format(type(self).__name__, self.max_gen, self.intensity, self.choice4))
+        self.alpha = alpha
+        debug_print("\n {} : max_gen = {}, intensity = {}, alpha = {}".format(type(self).__name__, self.max_gen, self.intensity, self.alpha))
     
     def calc_reward(self):
         # Normalised best sum
@@ -855,11 +882,11 @@ Alvaro Fialho, Marc Schoenauer, and Mich`ele Sebag. “Analysis of adaptiveopera
             for j in range(gen_window_len-1, gen_window_len-max_gen-1, -1):
                 # MANUEL: Use count_total_succ_unsucc()
                 # MUDITA: We donot use this information (number of applications of an operator) here.
-                if np.any((gen_window[j,:,0] == i) & (gen_window[j, :, self.off_met] != -1)):
+                if np.any((gen_window[j,:,0] == i) & (gen_window[j, :, self.off_met] != np.nan)):
                     # -1 means unsuccess, it should np.nan
-                    reward[i] += (np.max(np.hstack(gen_window[j, np.where((gen_window[j,:,0] == i) & (gen_window[j, :, self.off_met] != -1)), self.off_met])))
-
-        reward = (1.0 / max_gen) * (reward**self.intensity) / (np.max(reward)**self.choice4)
+#                    reward[i] += (np.max(np.hstack(gen_window[j, np.where((gen_window[j,:,0] == i) & (gen_window[j, :, self.off_met] != np.nan)), self.off_met])))
+                    reward[i] += np.max(gen_window[j, np.where((gen_window[j,:,0] == i) & (gen_window[j, :, self.off_met] != np.nan)), self.off_met])
+        reward = (1.0 / max_gen) * (reward**self.intensity) / (np.max(reward)**self.alpha)
         return super().check_reward(reward)
 
 
@@ -873,7 +900,7 @@ def build_quality(choice, n_ops, qual_args, window, off_met):
     elif choice == 2:
         return Identity(n_ops)
     elif choice == 3:
-        return Weighted_normalised_reward(n_ops, qual_args["decay_rate"])
+        return Weighted_normalised_sum(n_ops, qual_args["decay_rate"])
     elif choice == 4:
         return Markov_reward_process(n_ops, qual_args["weight_reward"], qual_args["weight_old_reward"], qual_args["discount_rate"])
     else:
@@ -892,9 +919,17 @@ class QualityType(ABC):
         "discount_rate",     float,"Discount rate"
     ]
     # TODO:
-    args_ranges = []
+    args_ranges = {"scaling_factor" : [0.0, 1.0],
+                   "decay_rate": [0.0, 1.0],
+                   "weight_reward": [0.0, 1.0],
+                   "weight_old_reward": [0.0, 1.0],
+				   "discount_rate": [0.0, 1.0]}
     # TODO:
-    args_conditions = []
+    args_conditions = {"scaling_factor" : [1],
+                   "decay_rate": [0, 3],
+                   "weight_reward": [4],
+                   "weight_old_reward": [4],
+				   "discount_rate": [4]}
 
     arg_choice = "qual_choice"
     arg_choice_help = "Quality method selected"
@@ -965,7 +1000,7 @@ class Identity(QualityType):
         #print("In definition",quality)
         return super().check_quality(quality)
 
-class Weighted_normalised_reward(QualityType):
+class Weighted_normalised_sum(QualityType):
     """
 Christian  Igel  and  Martin  Kreutz.  “Operator  adaptation  in  evolution-ary  computation  and  its  application  to  structure  optimization  of  neu-ral  networks”.  In:Neurocomputing55.1-2  (2003).https : / / ac . els -cdn.com/S0925231202006288/1-s2.0-S0925231202006288-main.pdf?_tid=c6274e78-02dc-4bf6-8d92-573ce0bed4c4&acdnat=1540907096_d0cc1e2b4ca56a49587b4d55e1008a84, pp. 347–361
 """
