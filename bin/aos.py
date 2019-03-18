@@ -89,7 +89,7 @@ class OpWindow():
         # Matrix of metrics
         self._window_met = np.full((max_size, len(self.metrics)), np.nan)
 
-    def truncate_window(self, size):
+    def truncate(self, size):
         where = self.where_truncate(size)
         truncated = copy.copy(self)
         truncated._window_op = truncated._window_op[where]
