@@ -109,6 +109,21 @@ class OpWindow():
             value[i] = np.sum(self._window_met[self._window_op == i, self.metric])
         return value
 
+    def get_ops_sorted_and_rank(self):
+        '''Return sorted window, number of successful applications of operators and rank'''
+        assert np.all(np.isfinite(self._window_met[:, self.metric]))
+        assert np.all(self._window_op >= 0)
+        x = self._window_met[:, self.metric]
+        # Gives rank to window[:, off_met]: largest number will get smallest number rank.
+        rank = rankdata(-x, method="min")
+        order = rank.argsort()
+        # If rank is [3, 1, 2]; then order of rank will be [1, 2, 0] because value ranked 3 is present at index 0. Thus, order[3] = 0 or order[rank] = index of rank.
+        # window_op_sorted is the operator vector sorted according to order i.e. highest Off_metrix to lowest
+        window_op_sorted = self._window_op[order]
+        rank = rank[order]
+        assert len(window_op_sorted) == len(rank)
+        return window_op_sorted, rank
+
     def append(self, op, values):
         # MUDITA: Loop for filling the window as improved offsping are generated
         # MANUEL: What is window? You sometimes index it like a list window[][] and other times like a matrix [, ]
@@ -264,39 +279,6 @@ class Unknown_AOS(object):
 ##################################################Other definitions######################################################################
 
 
-def count_op(n_ops, window, off_met):
-    '''Return sorted window, number of successful applications of operators and rank'''
-    assert len(window.shape) == 2
-    assert window.shape[0] > 0
-    assert window.shape[1] == 8
-    # Gives rank to window[:, off_met]: largest number will get smallest number rank.
-    # MANUEL: Why round(1), this may be problematic if metric values are very small
-    rank = np.full(len(window), len(window)+1) - rankdata(window[:, off_met].round(1), method = 'max')
-    # If rank is [3, 1, 2]; then order of rank will be [1, 2, 0] because value ranked 3 is present at index 0. Thus, order[3] = 0 or order[rank] = index of rank.
-    order = rank.argsort()
-    # window_op_sorted is the operator vector sorted according to order i.e. highest Off_metrix to lowest
-    ## MANUEL: Having to do this conversion suggests to me that the design of window is wrong.
-    window_op_sorted = window[order, 0].astype(int)
-    # # Gives rank to window[:, off_met]: largest number will get largest number rank.
-    # # MANUEL: Why round(1), this may be problematic if metric values are very small
-    # rank = rankdata(window.get_metric().round(1), method = 'min')
-    # order = rank.argsort()
-    # # order gives the index of rank in ascending order. Sort operators and rank in increasing rank.
-    # # window_op_sorted is the window sorted from lowest Off_met value to highest and only consists of operators (first column in window).
-    # # MANUEL: how this should handled -1?
-    # window_op_sorted = window.get_ops()[order]
-    rank = rank[order]
-    # MUDITA: What is the role of this?
-    rank = rank[window_op_sorted >= 0]
-    # MUDITA: This won't be needs becuase this is truncated window.
-    window_op_sorted = window_op_sorted[window_op_sorted >= 0]
-    # counts number of times an operator is present in the window
-    N = np.zeros(n_ops)
-    # the number of times each operator appears in the sliding window
-    op, count = np.unique(window_op_sorted, return_counts=True)
-    N[op] = count
-    # MANUEL: Does N need to be sorted?
-    return window_op_sorted, N, rank
 
 
 def transitive_matrix(p):
@@ -417,7 +399,7 @@ class RewardType(ABC):
     # FIXME: define this in the class as @property getter doctstring and get it from it
     args = [
         "max_gen",          int,   "Maximum number of previous generation",
-        "fix_appl",         int,   "Fix number of applications of an operator",
+        "fix_appl",         int,   "Count a fixed number of successful applications of an operator",
         "theta",            int,   "Defines search direction",
         "window_size",      int,   "Size of window",
         "decay",            float, "Decay value to emphasise the choice better operator",
@@ -612,30 +594,34 @@ class Compass_projection(RewardType):
         debug_print("\n {} : fix_appl = {}".format(type(self).__name__, self.fix_appl, self.theta))
     
     def calc_reward(self):
-        reward = np.zeros(self.n_ops)
         gen_window = self.gen_window
         # MANUEL: This should be an array alreadY?
         # MUDITA: No, in AOS_Update class, it is list because append works on list not array. So here I converted list to array.
         gen_window = np.array(gen_window)
         gen_window_len = len(gen_window)
+        reward = np.zeros(self.n_ops)
         # Projection on line B with thetha = pi/4
 #        B = [1, 1]
         for i in range(self.n_ops):
             b = []
-            count = 0
             for j in range(gen_window_len-1, 0, -1):
                 if np.any(gen_window[gen_window_len-1, :, 0] == i):
-                    count += 1
-                    b.append(gen_window[j, np.where((gen_window[j, :, 0] == i) & (gen_window[j, :, self.off_met] != np.nan)), self.off_met])
-                    if count == self.fix_appl:
+                    value = gen_window[j, np.where((gen_window[j, :, 0] == i) & (gen_window[j, :, self.off_met] != np.nan)), self.off_met]
+                    b.append(value)
+                    if len(b) == self.fix_appl:
                         break
-            if b != []:
-                # Diversity: np.std(np.hstack(b)) and Quality: np.average(np.hstack(b))
-                SD = np.std(np.hstack(b)); AVG = np.mean(np.hstack(b))
-                #reward[i] = (np.sqrt(np.std(np.hstack(b))**2 + np.average(np.hstack(b))**2)) * np.cosine(np.fabs(np.angle(SD + AVGj) - np.deg2rad(self.theta)))
-                # Where does this formula come from?
-                angle = np.mod(np.arctan(np.deg2rad(AVG/SD)))
-                reward[i] = (np.sqrt(SD**2 + AVG**2)) * np.cos(angle)#angle(np.array([SD, AVG]), self.theta)
+            b = np.array(b).ravel()
+            if len(b) > 0:
+                # Diversity
+                std = np.std(b)
+                # Quality 
+                avg = np.mean(b)
+                # abs(atan(Quality / Diversity) - theta)
+                angle = np.fabs(np.arctan(np.deg2rad(avg / std)) - self.theta)
+                # Euclidean distance of the vector 
+                reward[i] = (np.sqrt(std**2 + avg**2)) * np.cos(angle)
+                # Maturana & Sablon (2008) divide by T_it defined as mean execution time of operator i over its last t applications.
+                # We do not divide here.
         reward = reward - np.min(reward)
         return super().check_reward(reward)
 
@@ -647,13 +633,15 @@ Alvaro Fialho, Marc Schoenauer, and Mich`ele Sebag. “Toward comparison-based a
         super().__init__(n_ops, off_met, window_size = window_size, decay = decay)
         # MANUEL: This window is not the same object as the one in AOS!
         self.window = window
+        self.window_size = window_size
         #print("Window in AUC init ", self.window, type(self.window), np.shape(self.window))
         debug_print("\n {} : window_size = {}, decay = {}".format(type(self).__name__, self.window_size, self.decay))
     
     def calc_reward(self):
         reward = np.zeros(self.n_ops)
         #print("Window in AUC calc ", self.window, type(self.window), np.shape(self.window))
-        window_op_sorted, N, rank = super().count_op_in_window(super().truncate_window())
+        window = self.window.truncate(self.window_size)
+        window_op_sorted, rank = window.get_ops_sorted_and_rank()
         for op in range(self.n_ops):
             reward[op] = AUC(window_op_sorted, rank, op, self.window_size, self.decay)
             # print("Inside reward: ", reward)
@@ -666,26 +654,17 @@ Alvaro Fialho, Marc Schoenauer, and Mich`ele Sebag. “Toward comparison-based a
     def __init__(self, n_ops, off_met, window, window_size = 50, decay = 0.4):
         super().__init__(n_ops, off_met, window_size = window_size, decay = decay)
         self.window = window
+        self.window_size = window_size
         debug_print("\n {} : window_size = {}, decay = {}".format(type(self).__name__, self.window_size, self.decay))
     
     def calc_reward(self):
         reward = np.zeros(self.n_ops)
-        window_op_sorted, N, rank = super().count_op_in_window(super().truncate_window())
-        assert len(window_op_sorted) == len(rank)
-        # MANUEL: where does this formula come from?
-        # MUDITA: It is from Alvaro's thesis.
-        # MANUEL: Please double-check this code
-        # MUDITA: Its correct. Please check: https://tel.archives-ouvertes.fr/tel-00578431/document (pg. 79).
+        window = self.window.truncate(self.window_size)
+        window_op_sorted, rank = window.get_ops_sorted_and_rank()
+        # Fialho's thesis: https://tel.archives-ouvertes.fr/tel-00578431/document (pg. 79).
         value = (self.decay ** rank) * (self.window_size - rank)
-        # MUDITA: Not working as expected.
-        reward[window_op_sorted] += value
-        # for i in range(len(window_op_sorted)):
-        #     ## MANUEL: If window_op_sorted only contains values from 0 to n_ops, then this loop can be simply:
-        #     # reward[window_op_sorted] += value
-        #     ## Test it!
-        #     for j in range(self.n_ops):
-        #         if window_op_sorted[i] == j:
-        #             reward[j] += value[i]
+        for i in range(self.n_ops):
+            reward[i] = value[window_op_sorted == i].sum()
         if np.sum(reward) != 0:
             reward /= np.sum(reward)
         return super().check_reward(reward)
