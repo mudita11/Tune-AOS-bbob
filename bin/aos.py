@@ -78,7 +78,13 @@ import copy
 
 class OpWindow():
 
-    metrics = {"a": 0, "b": 1, "c": 2, "d": 3}
+    metrics = {"exp_offsp_fitness": 0, "exp_offsp_fitness": 1,
+               "parent_offsp_fitness_diff": 2,
+               "improv_over_pop": 3,
+               "improv_over_bsf": 4,
+               "improv_over_median": 5,
+               "relative_fitness_improv": 6
+    }
     
     def __init__(self, n_ops, metric, max_size = 50):
         self.max_size = max_size
@@ -87,7 +93,9 @@ class OpWindow():
         # Vector of operators
         self._window_op = np.full(max_size, -1)
         # Matrix of metrics
-        self._window_met = np.full((max_size, len(self.metrics)), np.nan)
+        # np.inf means not initialized
+        # np.nan means unsuccessful application
+        self._window_met = np.full((max_size, len(self.metrics)), np.inf)
 
     def truncate(self, size):
         where = self.where_truncate(size)
@@ -125,6 +133,34 @@ class OpWindow():
         return window_op_sorted, rank
 
     def append(self, op, values):
+        # Fill from the top
+        which = self._window_op == -1
+        if np.any(which):
+            last_empty = np.max(np.where(which))
+            self._window_op[last_empty] = op
+            self._window_met[last_empty, :] = values
+            return
+
+        # Find last element that matches op
+        which = self._window_op == op
+        if np.any(which):
+            last = np.max(np.where(which))
+        else:
+            # If the operator is not in the window, remove the worst if it is
+            # worse than the value we want to add.
+            which = np.argmin(self._window_met[:, 0])
+            if self._window_met[:, 0] >= values[0]:
+                return
+            last = np.max(np.where(which))
+
+        # Shift contents of window
+        self._window_op[1:(last+1)] = self._window_op[0:last]
+        self._window_met[1:(last+1), :] = self._window_met[0:last, :]
+        # Add it to the top
+        self._window_op[0] = op
+        self._window_met[0, :] = values
+        
+        
         # MUDITA: Loop for filling the window as improved offsping are generated
         # MANUEL: What is window? You sometimes index it like a list window[][] and other times like a matrix [, ]
         if np.any(self.window[:, 1] == np.inf):
@@ -151,7 +187,7 @@ class OpWindow():
             self._window_op[]
 
     def get_metric(self, metric = self.metric):
-        assert metric >= 0 && metric < len(self.metrics)
+        assert metric >= and metric < len(self.metrics)
         return(self._window_met[:, metric])
 
     def get_ops(self):
@@ -212,33 +248,39 @@ class Unknown_AOS(object):
         return output + irace_parameter(cls.arg_choice, str, range(1,8), help=cls.arg_choice_help)
 
 ##################################################Offspring Metric definitions##################################################################
-    def OM_Update(self):
+    def OM_Update(self, F, F1, F_bsf):
         """If offspring improves over parent, Offsping Metric (OM) stores (1)fitness of offspring (2)fitness improvemnt from parent to offsping (3)fitness improvemnt from best parent to offsping (4)fitness improvemnt from best so far to offsping (5)fitness improvemnt from median parent fitness to offsping (6)relative fitness improvemnt """
         third_dim = []
-        F_min = np.min(self.F)
-        F_median = np.median(self.F)
-        F_absdiff = np.fabs(self.F1 - self.F)
+        # F: fitness of parent population
+        # F1: fitness of children population
+        F_min = np.min(F)
+        F_median = np.median(F)
+        F_absdiff = np.fabs(F1 - F)
+        eps = np.finfo(np.float32).eps
+        
         for i in range(self.popsize):
 #            second_dim = np.full(7, -1.0)
             second_dim = np.full(8, np.nan)
             second_dim[0] = -1
-            if self.F1[i] <= self.F[i]:
-                second_dim[0] = self.opu[i]
-                second_dim[1] = -self.F1[i]
-                second_dim[2] = np.exp(-self.F1[i])
-                second_dim[3] = self.F[i] - self.F1[i]
-                if self.F1[i] <= F_min:
-                    second_dim[4] = F_min - self.F1[i]
-                
-                if self.F1[i] <= self.best_so_far:
-                    second_dim[5] = self.best_so_far - self.F1[i]
+            # if child is worse than parent
+            if F1[i] > F[i]:
+                third_dim.append(second_dim)
+                continue
             
-                if self.F1[i] <= F_median:
-                        second_dim[6] = F_median - self.F1[i]
+            second_dim[0] = self.opu[i]
+            second_dim[1] = -F1[i]
+            second_dim[2] = np.exp(-F1[i])
+            second_dim[3] = F_absdiff[i]
+            if F1[i] <= F_min:
+                second_dim[4] = F_min - F1[i]
+            if F1[i] <= best_so_far:
+                second_dim[5] = F_bsf - F1[i]
+            if F1[i] <= F_median:
+                second_dim[6] = F_median - F1[i]
                 
-                second_dim[7] = (self.best_so_far / (self.F1[i] + 0.001)) * F_absdiff[i]
+            second_dim[7] = (F_bsf / (F1[i] + eps)) * F_absdiff[i]
             
-                self.window.append(self.opu[i], second_dim)
+            self.window.append(self.opu[i], second_dim[1:])
 #                 # MUDITA: Loop for filling the window as improved offsping are generated
 #                 # MANUEL: What is window? You sometimes index it like a list window[][] and other times like a matrix [, ]
 #                 if np.any(self.window[:, 1] == np.inf):
@@ -258,7 +300,7 @@ class Unknown_AOS(object):
 #                             break
 # #                       elif nn==0 and self.window[nn][0] != self.opu[i]:
 #                             # MANUEL: What is window? You sometimes index it like a list window[][] and other times like a matrix [, ].
-# #                           if self.F1[i] < np.max(self.window[: ,1]):
+# #                           if F1[i] < np.max(self.window[: ,1]):
 # #                               self.window[np.argmax(self.window[:,1])] = second_dim
             third_dim.append(second_dim)
         
@@ -471,9 +513,6 @@ class RewardType(ABC):
         print("reward",reward)
         return reward
 
-    def count_op_in_window(self, window):
-        return count_op(self.n_ops, window, self.off_met) # print(window, window_op_sorted, N, rank)
-    
     def count_total_succ_unsucc(self, n_ops, gen_window, j, off_met):
         """ Counts the number of successful and unsuccessful applications for each operator in generation 'j'"""
         total_success = np.zeros(n_ops)
@@ -730,7 +769,7 @@ acc=ACTIVE%20SERVICE&key=BF07A2EE685417C5%2E26BE4091F5AC6C0A%
 class Immediate_Success(RewardType):
     """
  Mudita  Sharma,  Manuel  L ́opez-Ib ́a ̃nez,  and  Dimitar  Kazakov.  “Perfor-mance Assessment of Recursive Probability Matching for Adaptive Oper-ator Selection in Differential Evolution”. In:International Conference onParallel Problem Solving from Nature.http://eprints.whiterose.ac.uk/135483/1/paper_66_1_.pdf. Springer. 2018, pp. 321–333.
- """
+y """
     def __init__(self, n_ops, off_met, gen_window, popsize):
         super().__init__(n_ops, off_met)
         self.gen_window = gen_window

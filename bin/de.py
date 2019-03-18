@@ -97,7 +97,7 @@ def DE(fun, lbounds, ubounds, budget, instance, instance_best_value,
 #    RR = 7 # Range from 0-12; window: {3, 4, 8} and max_gen: {5, 6, 7, 9, 10, 11}.
 #    QQ = 4 # Range from 0-5
 #    SS = 0 # Range from 0-1
-    aos_method = aos.Unknown_AOS(chunk, F1, F, u, X, f_min, x_min, best_so_far, n_ops = n_operators, OM_choice = OM_choice, rew_choice = rew_choice, rew_args = rew_args, qual_choice = qual_choice, qual_args = qual_args, prob_choice = prob_choice, prob_args = prob_args, select_choice = select_choice)
+    aos_method = aos.Unknown_AOS(chunk, F1, u, X, f_min, x_min, best_so_far, n_ops = n_operators, OM_choice = OM_choice, rew_choice = rew_choice, rew_args = rew_args, qual_choice = qual_choice, qual_args = qual_args, prob_choice = prob_choice, prob_args = prob_args, select_choice = select_choice)
                                  #OO, RR, QQ, SS, adaptation_rate = alpha, phi = phi, max_gen = max_gen, scaling_factor = C, c1_quality6 = c1_quality6, c2_quality6 = c2_quality6, discount_rate = gamma, delta = delta, decay_reward3 = decay_reward3, decay_reward4 = decay_reward4,  int_a_reward5 = int_a_reward5, b_reward5 = b_reward5, e_reward5 = e_reward5, a_reward71 = a_reward71, c_reward9 = c_reward9, int_b_reward9 = int_b_reward9, int_a_reward9 = int_a_reward9, int_a_reward101 = int_a_reward101, b_reward101 = b_reward101,
                                  
 
@@ -129,29 +129,29 @@ def DE(fun, lbounds, ubounds, budget, instance, instance_best_value,
             aos_method.opu[i] = SI
             # No mutation strategy needs more than 5.
             r = select_samples(NP, i, 5)
-            best = np.argmin(aos_method.F)
+            best = np.argmin(F)
             crossovers = (np.random.rand(dim) < CR)
             crossovers[fill_points[i]] = True
             # trial = aos_method.X[i]
             bprime = mutate(aos_method.X, r, best, FF)
             aos_method.u[i][:] = np.where(crossovers, bprime, aos_method.X[i])
     
-        aos_method.F1 = [fun(np.array(x)) for x in aos_method.u]
+        F1 = [fun(np.array(x)) for x in aos_method.u]
         
-        aos_method.OM_Update()
+        aos_method.OM_Update(F)
         #output_file.write(str(aos_method.reward)+"\n")
         #output_file.write(str(aos_method.quality)+"\n")
         #output_file.write(str(aos_method.probability)+"\n")
         #fitness_swap = [a<p for a,p in zip(F1,F)]
         for i in range(NP):
-            if aos_method.F1[i] <= aos_method.F[i]:
-                aos_method.F[i] = aos_method.F1[i]
+            if F1[i] <= F[i]:
+                aos_method.F[i] = F1[i]
                 aos_method.X[i] = aos_method.u[i]
             
-        #aos_method.X[i] = np.where(aos_method.F1 < aos_method.F, self.u[i], aos_method.X[i])
-        index = np.argmin(aos_method.F)
-        if aos_method.f_min is None or aos_method.F[index] < aos_method.f_min:
-            aos_method.x_min, aos_method.f_min = aos_method.X[index], aos_method.F[index]
+        #aos_method.X[i] = np.where(F1 < aos_method.F, self.u[i], aos_method.X[i])
+        index = np.argmin(F)
+        if aos_method.f_min is None or F[index] < aos_method.f_min:
+            aos_method.x_min, aos_method.f_min = aos_method.X[index], F[index]
         aos_method.best_so_far1 = aos_method.f_min;
         if aos_method.best_so_far1 < aos_method.best_so_far:
             aos_method.best_so_far = aos_method.best_so_far1
