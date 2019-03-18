@@ -489,6 +489,18 @@ class RewardType(ABC):
     def calc_reward(self):
         pass
 
+def op_metric_for_fix_appl(gen_window, gen_window_len, op, fix_appl, off_met):
+    b = []
+    # Stop at fix_appl starting from the end of the window (latest fix_applications of operators)
+    for j in range(gen_window_len-1, 0, -1):
+        if np.any(gen_window[gen_window_len-1, :, 0] == i):
+            value = gen_window[j, np.where((gen_window[j, :, 0] == i) & (gen_window[j, :, self.off_met] != np.nan)), self.off_met]
+            b.append(value)
+            if len(b) == fix_appl:
+                break
+    b = np.array(b).ravel()
+    return(b)
+
 # MANUEL: These should have more descriptive names and a doctstring documenting
 # where they come from (references) and what they do.
 class Pareto_Dominance(RewardType):
@@ -545,7 +557,7 @@ Jorge Maturana, Fr ́ed ́eric Lardeux, and Frederic Saubion. “Autonomousopera
 
 class Pareto_Rank(RewardType):
     """
-Jorge Maturana, Fr ́ed ́eric Lardeux, and Frederic Saubion. “Autonomousoperator management for evolutionary algorithms”. In:Journal of Heuris-tics16.6 (2010).https://link.springer.com/content/pdf/10.1007/s10732-010-9125-3.pdf, pp. 881–909.
+Jorge Maturana, Fr ́ed ́eric Lardeux, and Frederic Saubion. “Autonomous operator management for evolutionary algorithms”. In:Journal of Heuris-tics16.6 (2010).https://link.springer.com/content/pdf/10.1007/s10732-010-9125-3.pdf, pp. 881–909.
 """
     def __init__(self, n_ops, off_met, gen_window, fix_appl = 20):
         super().__init__(n_ops, off_met, fix_appl = fix_appl)
@@ -558,10 +570,11 @@ Jorge Maturana, Fr ́ed ́eric Lardeux, and Frederic Saubion. “Autonomousopera
         q_op = np.zeros(self.n_ops)
         gen_window = self.gen_window
         gen_window = np.array(gen_window)
+        gen_window_len = len(gen_window)
         for i in range(self.n_ops):
             b = []
             count = 0
-            for j in range(len(gen_window)-1, 0, -1):
+            for j in range(gen_window_len - 1, 0, -1):
                 if np.any(gen_window[j, :, 0] == i):
                     count += 1
                     b.append(gen_window[j, np.where((gen_window[j, :, 0] == i) & (gen_window[j, :, self.off_met] != np.nan)), self.off_met])
@@ -603,14 +616,8 @@ class Compass_projection(RewardType):
         # Projection on line B with thetha = pi/4
 #        B = [1, 1]
         for i in range(self.n_ops):
-            b = []
-            for j in range(gen_window_len-1, 0, -1):
-                if np.any(gen_window[gen_window_len-1, :, 0] == i):
-                    value = gen_window[j, np.where((gen_window[j, :, 0] == i) & (gen_window[j, :, self.off_met] != np.nan)), self.off_met]
-                    b.append(value)
-                    if len(b) == self.fix_appl:
-                        break
-            b = np.array(b).ravel()
+            b = op_metric_for_fix_appl(gen_window, gen_window_len, op, fix_appl, off_met)
+            
             if len(b) > 0:
                 # Diversity
                 std = np.std(b)
