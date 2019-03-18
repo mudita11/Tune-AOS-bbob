@@ -458,7 +458,7 @@ class RewardType(ABC):
         self.n_ops = n_ops
         # Offspring metric in range [1,7] stored in gen_window.
         self.off_met = off_met
-        self.max_gen = max_gen
+        self.max_gen = int(max_gen)
         # MANUEL: So you have window_size here but no window?
         self.window_size = window_size
         self.fix_appl = fix_appl
@@ -743,7 +743,7 @@ acc=ACTIVE%20SERVICE&key=BF07A2EE685417C5%2E26BE4091F5AC6C0A%
         max_gen = self.max_gen
         if gen_window_len < max_gen:
             max_gen = gen_window_len
-        for j in range(gen_window_len-1, gen_window_len-max_gen-1, -1):
+        for j in range(gen_window_len - max_gen, gen_window_len):
             total_success, total_unsuccess = super().count_total_succ_unsucc(n_ops, gen_window, j, off_met)
             total = total_success + total_unsuccess
             # Avoid division by zero. If total == 0, then total_success is zero.
@@ -815,7 +815,7 @@ class Success_sum(RewardType):
 #                    appl += total_success + total_unsuccess
 #            if appl != 0:
 #                reward[i] = reward[i] / appl
-        for j in range(gen_window_len-1, gen_window_len-int(max_gen)-1, -1):
+        for j in range(gen_window_len - max_gen, gen_window_len):
             total_success, total_unsuccess = super().count_total_succ_unsucc(self.n_ops, gen_window, j, self.off_met)
             # Followinf operation changes total_appl from array to list
             total_appl = [sum(x) for x in zip(total_appl, [sum(x) for x in zip(total_success, total_unsuccess)])]
@@ -862,24 +862,24 @@ Christian Igel and Martin Kreutz. “Using fitness distributions to improvethe e
         debug_print("\n {} : max_gen = {}".format(type(self).__name__, self.max_gen))
     
     def calc_reward(self):
-        reward = np.zeros(self.n_ops)
         gen_window = self.gen_window
         gen_window = np.array(gen_window)
         gen_window_len = len(gen_window)
         max_gen = self.max_gen
         if gen_window_len < max_gen:
             max_gen = gen_window_len
-        for i in range(self.n_ops):
-            for j in range(gen_window_len-1, gen_window_len-max_gen-1, -1):
-                # PLease use count_total_succ_and_unsucc()
-                #total_success = 0; total_unsuccess = 0
-                total_success, total_unsuccess = super().count_total_succ_unsucc(self.n_ops, gen_window, j, self.off_met)
-                total = total_success + total_unsuccess
-                if np.any(gen_window[j,:,0] == i):
-#                    total_success, total_unsuccess = count_success(self.gen_window, i, j, self.off_met)
-                    total[total == 0] = 1
-#                    if total_success + total_unsuccess != 0:
-                    reward[i] += np.sum(gen_window[j, np.where(gen_window[j,:,0] == i) & np.where(gen_window[j, :, self.off_met] != np.nan) , self.off_met]) / total
+        reward = np.zeros(self.n_ops)
+        for j in range(gen_window_len - max_gen, gen_window_len):
+            # PLease use count_total_succ_and_unsucc()
+            #total_success = 0; total_unsuccess = 0
+            total_success, total_unsuccess = super().count_total_succ_unsucc(self.n_ops, gen_window, j, self.off_met)
+            napplications = total_success + total_unsuccess
+            napplications[napplications == 0] = 1
+            value = np.zeros(self.n_ops)
+            for i in range(self.n_ops):
+                value[i] = np.sum(gen_window[j, np.where((gen_window[j,:,0] == i) & np.logical_not(np.isnan(gen_window[j, :, self.off_met]))) , self.off_met])
+            reward += value
+            
         return super().check_reward(reward)
 
 class Best2gen(RewardType):
@@ -943,7 +943,7 @@ Alvaro Fialho, Marc Schoenauer, and Mich`ele Sebag. “Analysis of adaptiveopera
             max_gen = gen_window_len
         for i in range(self.n_ops):
             # list of best metric value produce by operator i at each generation.
-            for j in range(gen_window_len-1, gen_window_len-max_gen-1, -1):
+            for j in range(gen_window_len - max_gen, gen_window_len):
                 # MANUEL: Use count_total_succ_unsucc()
                 # MUDITA: We donot use this information (number of applications of an operator) here.
                 if np.any((gen_window[j,:,0] == i) & (gen_window[j, :, self.off_met] != np.nan)):
