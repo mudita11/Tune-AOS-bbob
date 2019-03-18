@@ -911,10 +911,10 @@ Giorgos Karafotias, Agoston Endre Eiben, and Mark Hoogendoorn. “Genericparamet
         best_t_1 = np.zeros(self.n_ops)
         for i in range(self.n_ops):
             # Calculating best in current generation
-            if np.any(!np.isnan(gen_window[gen_window_len-1, :, self.off_met])):
+            if np.any(np.logical_not(np.isnan(gen_window[gen_window_len-1, :, self.off_met]))):
                 best_t[i] = np.max(gen_window[gen_window_len-1, np.where((gen_window[gen_window_len-1, :, 0] == i) & (gen_window[gen_window_len-1, :, self.off_met] != np.nan)), self.off_met])
             # Calculating best in last generation
-            if gen_window_len >= 2 and np.any(!np.isnan(gen_window[gen_window_len-2, :, self.off_met])):
+            if gen_window_len >= 2 and np.any(np.logical_not(np.isnan(gen_window[gen_window_len-2, :, self.off_met]))):
                 best_t_1[i] = np.max(gen_window[gen_window_len-2, np.where((gen_window[gen_window_len-2, :, 0] == i) & (gen_window[gen_window_len-2, :, self.off_met] != np.nan)), self.off_met])
         best_t_1[best_t_1 == 0] = 1
         n_applications[n_applications == 0] = 1
