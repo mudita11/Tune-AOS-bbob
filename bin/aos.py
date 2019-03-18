@@ -184,31 +184,23 @@ class Unknown_AOS(object):
         self.X = X
         self.f_min = f_min
         self.x_min = x_min
-        self.best_so_far = best_so_far
         self.n_ops = n_ops
         
         # MANUEL: What is opu?
         # MUDITA: opu represents (op)erator that produced offspring (u).
         self.opu = np.full(self.popsize, 4)
-        self.old_opu = self.opu.copy()
         self.window = OpWindow(n_ops, max_size = 50, metric = OM_choice)
         
         # MANUEL: What are these?
         # MUDITA: gen_window stores the offspring metric data for each offspring when offspring is better than parent. It stores -1 otherwise for that offspring. Its a list. Its structre is as follows: [[[second_dim], [second_dim], [second_dim]], [[],[],[]], ...]. Second_dim has data for each offspring. Three second dim represents population size as 3, contained in third_dim. Third_dim represents a generation. Thus, this [[],[],[]] has data of all offsprings in a generation.
         self.gen_window = [] # print("Inside AOS", type(self.gen_window), self.gen_window)
         
-        self.reward = np.zeros(self.n_ops)
-        self.old_reward = self.reward.copy()
+        self.probability = np.full(n_ops, 1.0 / n_ops)
         rew_args["popsize"] = popsize
         self.reward_type = build_reward(rew_choice, n_ops, rew_args, self.gen_window, self.window, OM_choice)
-        
-        self.quality = np.full(n_ops, 1.0)
         self.quality_type = build_quality(qual_choice, n_ops, qual_args, self.window, OM_choice)
-
-        self.probability = np.full(n_ops, 1.0 / n_ops)
         self.probability_type = build_probability(prob_choice, n_ops, prob_args)
         self.selection_type = build_selection(select_choice, n_ops)
-    
 
     @classmethod
     def add_argument(cls, parser):
@@ -219,6 +211,9 @@ class Unknown_AOS(object):
     def irace_parameters(cls):
         output = "# " + cls.__name__ + "\n"
         return output + irace_parameter(cls.arg_choice, str, range(1,8), help=cls.arg_choice_help)
+
+    def select_operator(self):
+        return self.probability_type.perform_selection(self.probability)
 
 ##################################################Offspring Metric definitions##################################################################
     def OM_Update(self, F, F1, F_bsf):
@@ -260,18 +255,13 @@ class Unknown_AOS(object):
         
         self.gen_window.append(third_dim)
         #print("gen_window= ",type(self.gen_window), np.shape(self.gen_window), self.gen_window)
-        #print(self.old_reward, self.reward)
-        # MUDITA: Old_rewad and old_probability are communicating fine.
-        self.old_reward = self.reward.copy()
-        self.old_probability = self.probability.copy()
-        # MUDITA: self.reward, self.quality and self.probability are changing as they change in the calc_.. definition.
-        self.reward = self.reward_type.calc_reward()
-        self.quality = self.quality_type.calc_quality(self.old_reward, self.reward, self.old_probability) #print("call to probability")
-        self.probability = self.probability_type.calc_probability(self.quality)
-        self.old_opu = self.opu
+        reward = self.reward_type.calc_reward()
+        old_reward = self.reward_type.old_reward
+        old_prob = self.probability_type.old_probability
+        quality = self.quality_type.calc_quality(old_reward, reward, old_prob)
+        self.probability = self.probability_type.calc_probability(quality)
 
 ##################################################Other definitions######################################################################
-
 
 
 
@@ -443,7 +433,6 @@ class RewardType(ABC):
         # Offspring metric in range [1,7] stored in gen_window.
         self.off_met = off_met
         self.max_gen = int(max_gen)
-        # MANUEL: So you have window_size here but no window?
         self.window_size = window_size
         self.fix_appl = fix_appl
         self.decay = decay
@@ -460,9 +449,7 @@ class RewardType(ABC):
 
     def check_reward(self, reward):
         # Nothing to check
-        # MUDITA: Old_reward is working fine
         self.old_reward = reward
-        print("reward",reward)
         return reward
 
     def count_total_succ_unsucc(self, n_ops, gen_window, j, off_met):
