@@ -421,7 +421,7 @@ class RewardType(ABC):
         "theta",            int,   "Defines search direction",
         "window_size",      int,   "Size of window",
         "decay",            float, "Decay value to emphasise the choice better operator",
-        "succ_lin_quad",    int,   "Choice to success of operator as linear or quadratic",
+        "succ_lin_quad",    int,   "Operator success as linear or quadratic",
         "frac",             float, "Fraction of sum of successes of all operators",
         "noise",            float, "Small noise for randomness",
         "normal_factor",    int,   "Choice to normalise",
@@ -435,29 +435,29 @@ class RewardType(ABC):
                    "fix_appl": [50, 100, 150],
                    "theta": [36, 45, 54, 90],
                    "window_size": [20, 50],
-				   "decay": [0.0, 1.0],
-				   "succ_lin_quad" : [0, 1],
+		   "decay": [0.0, 1.0],
+		   "succ_lin_quad" : [1, 2],
                    "frac": [0.0, 1.0],
                    "noise": [0.0, 1.0],
                    "normal_factor": [0, 1],
-				   "scaling_constant": [0.0, 1.0],
-				   "alpha" : [0, 1],
+		   "scaling_constant": [0.0, 1.0],
+		   "alpha" : [0, 1],
                    "beta": [0, 1],
                    "intensity": [0.0, 1.0]}
     # TODO:
     args_conditions = {"max_gen": [5, 7, 9, 11],
-                   "fix_appl": [0, 1, 2],
-                   "theta": [2],
-                   "window_size": [3, 4, 8],
-				   "decay": [3, 4],
-				   "succ_lin_quad" : [5],
-                   "frac": [5],
-                   "noise": [5],
-                   "normal_factor": [8],
-				   "scaling_constant": [10],
-				   "alpha" : [10, 11],
-                   "beta": [10],
-                   "intensity": [11]}
+                       "fix_appl": [0, 1, 2],
+                       "theta": [2],
+                       "window_size": [3, 4, 8],
+		       "decay": [3, 4],
+		       "succ_lin_quad" : [5],
+                       "frac": [5],
+                       "noise": [5],
+                       "normal_factor": [8],
+		       "scaling_constant": [10],
+		       "alpha" : [10, 11],
+                       "beta": [10],
+                       "intensity": [11]}
     
     arg_choice = "rew_choice"
     arg_choice_help = "Reward method selected"
@@ -735,7 +735,6 @@ acc=ACTIVE%20SERVICE&key=BF07A2EE685417C5%2E26BE4091F5AC6C0A%
         debug_print("\n {} : max_gen = {}, succ_lin_quad = {}, frac = {}, noise = {}".format(type(self).__name__, self.max_gen, self.succ_lin_quad, self.frac, self.noise))
     
     def calc_reward(self):
-        reward = np.zeros(self.n_ops)
         gen_window = self.gen_window
         # MANUEL: Should be an array already?
         # MUDITA: No, in AOS_Update class, it is list because append works on list not array. So here I converted list to array.
@@ -744,22 +743,13 @@ acc=ACTIVE%20SERVICE&key=BF07A2EE685417C5%2E26BE4091F5AC6C0A%
         max_gen = self.max_gen
         if gen_window_len < max_gen:
             max_gen = gen_window_len
+        reward = np.zeros(self.n_ops)
         for j in range(gen_window_len - max_gen, gen_window_len):
             total_success, total_unsuccess = super().count_total_succ_unsucc(n_ops, gen_window, j, off_met)
-            total = total_success + total_unsuccess
+            napplications = total_success + total_unsuccess
             # Avoid division by zero. If total == 0, then total_success is zero.
-            total[total == 0] = 1
-            # MANUEL Where does this formula come from?
-            # MUDITA: Its part of proposed framework. Combination from 5 papers
-            reward += (total_success ** self.succ_lin_quad + self.frac * np.sum(total_success)) / total
-            # MANUEL: The loop below replaced by the line above
-            # MUDITA: This is part of the framework.
-            # for i in range(self.n_ops):
-            #     if total_success[i] + total_unsuccess[i] != 0:
-            #         reward[i] += (total_success[i]**self.succ_lin_quad + self.frac * np.sum(total_success)) / total[i]
-                # MANUEL: Summing zero is useless
-                # else:
-                #     reward[i] += 0
+            napplications[napplications == 0] = 1
+            reward += (total_success ** self.succ_lin_quad + self.frac * np.sum(total_success)) / napplications
         reward += self.noise
         return super().check_reward(reward)
 
@@ -777,10 +767,6 @@ class Immediate_Success(RewardType):
         gen_window = self.gen_window
         gen_window = np.array(gen_window)
         total_success, total_unsuccess = super().count_total_succ_unsucc(self.n_ops, gen_window, len(gen_window) - 1, self.off_met)
-        # for i in range(self.n_ops):
-        #     if np.any(self.gen_window[len(self.gen_window)-1, :, 0] == i):
-        #         total_success, total_unsuccess = count_success(self.gen_window, i, len(self.gen_window)-1, self.off_met); #print(total_unsuccess, total_success)
-        #         reward[i] = np.array(total_success) / self.popsize
         reward = total_success / self.popsize
         return super().check_reward(reward)
 
@@ -800,26 +786,11 @@ class Success_sum(RewardType):
         max_gen = self.max_gen
         if gen_window_len < max_gen:
             max_gen = gen_window_len
-        # MANUEL: Why is this looping first over n_ops, then over the window? It is so different from SuccessRate1????
-        # MUDITA: I have changed the order.
-        # MANUEL: Can this use count_total_succ_unsucc()?
-        # MUDITA: Yes, used!
-#        for i in range(self.n_ops):
-#            appl = 0
-#            for j in range(len(self.gen_window)-1, gen_window_len-self.max_gen-1, -1):
-#                total_success = 0; total_unsuccess = 0
-#                if np.any(self.gen_window[j, :, 0] == i):
-#                    total_success, total_unsuccess = count_success(popsize, self.gen_window, i, j, self.off_met)
-#                    reward[i] += np.sum(self.gen_window[j, np.where(self.gen_window[j, :, 0] == i) & np.where(self.gen_window[j, :, self.off_met] != -1), self.off_met])
-#                    appl += total_success + total_unsuccess
-#            if appl != 0:
-#                reward[i] = reward[i] / appl
         napplications = np.zeros(self.n_ops)
         reward = np.zeros(self.n_ops)
         for j in range(gen_window_len - max_gen, gen_window_len):
             total_success, total_unsuccess = super().count_total_succ_unsucc(self.n_ops, gen_window, j, self.off_met)
             napplications += total_success + total_unsuccess
-            #total_appl = [sum(x) for x in zip(total_appl, [sum(x) for x in zip(total_success, total_unsuccess)])]
             for i in range(self.n_ops):
                 reward[i] += np.sum(gen_window[j, np.where((gen_window[j, :, 0] == i) & (gen_window[j, :, self.off_met] != np.nan)), self.off_met])
         napplications[napplications == 0] = 1
