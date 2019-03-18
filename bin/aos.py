@@ -556,28 +556,32 @@ Jorge Maturana, Fr ́ed ́eric Lardeux, and Frederic Saubion. “Autonomous oper
         debug_print("\n {} : fix_appl = {}".format(type(self).__name__, self.fix_appl))
 
     def calc_reward(self):
-        reward = np.zeros(self.n_ops)
-        s_op = np.zeros(self.n_ops)
-        q_op = np.zeros(self.n_ops)
+        reward = np.full(self.n_ops)
+        std_op = np.full(self.n_ops, np.nan)
+        mean_op = np.full(self.n_ops, np.nan)
         gen_window = self.gen_window
         gen_window = np.array(gen_window)
         gen_window_len = len(gen_window)
         for i in range(self.n_ops):
             b = op_metric_for_fix_appl(gen_window, gen_window_len, op, fix_appl, off_met)
-            if b != []:
-                s_op[i] = np.std(np.hstack(b)); q_op[i] = np.average(np.hstack(b))
+            if len(b) > 0:
+                std_op[i] = np.std(b)
+                mean_op[i] = np.mean(b)
         for i in range(self.n_ops):
+            if np.isnan(std_op[i]):
+                continue
             for j in range(self.n_ops):
-                if i != j:
-                    #print(gen_window[len(gen_window)-1], i, j)
-                    if s_op[i] != [] and s_op[j] != []:
-                        #print("D, Q:  ",A1, A2, op_Diversity(gen_window, j, Off_met), op_Quality(gen_window, j, Off_met))
-                        if s_op[i] < s_op[j] and q_op[i] < q_op[j]:
-                            reward[i] += 1
+                if i == j or np.isnan(std_op[j]):
+                    continue
+                # We want to minimize the std but maximise the mean quality.
+                # Count if j dominates i.
+                if std_op[j] < std_op[i] and mean_op[j] > mean_op[i]:
+                    reward[i] += 1
         #print(reward)
+        reward = -reward
         if np.sum(reward) != 0:
             reward /= np.sum(reward)
-        return super().check_reward(-reward)
+        return super().check_reward(reward)
 
 
 class Compass_projection(RewardType):
