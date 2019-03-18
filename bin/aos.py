@@ -516,31 +516,30 @@ Jorge Maturana, Fr ́ed ́eric Lardeux, and Frederic Saubion. “Autonomousopera
     def calc_reward(self):
         # MANUEL: This function and the one for Pareto_Rank are almost identical! What's the difference?
         # MUDITA: Pareto dominance returns the number of operators dominated by an operator whereas Pareto rank gives the number of operators an operator is dominated by. Is there a library to calculate these values?
-        reward = np.zeros(self.n_ops)
-        s_op = np.zeros(self.n_ops)
-        q_op = np.zeros(self.n_ops)
+        reward = np.full(self.n_ops)
+        std_op = np.full(self.n_ops, np.nan)
+        mean_op = np.full(self.n_ops, np.nan)
         gen_window = self.gen_window
+        gen_window_len = len(gen_window)
         # MANUEL: Why does it need to be converted to an array here?
         # MUDITA: In AOS_Update class, it is list because append works on list not array. So here I converted list to array.
         gen_window = np.array(gen_window)
         #print(type(gen_window), np.shape(gen_window), gen_window)
         for i in range(self.n_ops):
             b = op_metric_for_fix_appl(gen_window, gen_window_len, op, fix_appl, off_met)
-            if b != []:
-                s_op[i] = np.std(np.hstack(b))
-                q_op[i] = np.mean(np.hstack(b))
-        #print("b", b)
-        #a.append(b)
-        #print("a", s_op, q_op)
+             if len(b) > 0:
+                std_op[i] = np.std(b)
+                mean_op[i] = np.mean(b)
         for i in range(self.n_ops):
+            if np.isnan(std_op[i]):
+                continue
             for j in range(self.n_ops):
-                if i != j:
-                    #print(gen_window[len(gen_window)-1], i, j)
-                    # MANUEL: This comparison is very strange! What are you trying to do?
-                    if s_op[i] != [] and s_op[j] != []:
-                        #print("D, Q:  ",A1, A2, op_Diversity(gen_window, j, Off_met), op_Quality(gen_window, j, Off_met))
-                        if s_op[i] > s_op[j] and q_op[i] > q_op[j]:
-                            reward[i] += 1
+                if i == j or np.isnan(std_op[j]):
+                    continue
+                # We want to minimize the std but maximise the mean quality.
+                # Count if j dominates i.
+                if std_op[i] < std_op[j] and mean_op[i] > mean_op[j]:
+                    reward[i] += 1
         if np.sum(reward) != 0:
             reward /= np.sum(reward)
         return super().check_reward(reward)
@@ -578,9 +577,9 @@ Jorge Maturana, Fr ́ed ́eric Lardeux, and Frederic Saubion. “Autonomous oper
                 if std_op[j] < std_op[i] and mean_op[j] > mean_op[i]:
                     reward[i] += 1
         #print(reward)
-        reward = -reward
         if np.sum(reward) != 0:
             reward /= np.sum(reward)
+        reward = 1. - reward
         return super().check_reward(reward)
 
 
