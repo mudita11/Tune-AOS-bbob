@@ -878,7 +878,7 @@ Christian Igel and Martin Kreutz. “Using fitness distributions to improvethe e
             value = np.zeros(self.n_ops)
             for i in range(self.n_ops):
                 value[i] = np.sum(gen_window[j, np.where((gen_window[j,:,0] == i) & np.logical_not(np.isnan(gen_window[j, :, self.off_met]))) , self.off_met])
-            reward += value
+            reward += value / napplications
             
         return super().check_reward(reward)
 
