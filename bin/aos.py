@@ -134,7 +134,7 @@ class OpWindow():
 
     def append(self, op, values):
         # Fill from the top
-        which = self._window_op == -1
+        which = (self._window_op == -1)
         if np.any(which):
             last_empty = np.max(np.where(which))
             self._window_op[last_empty] = op
@@ -142,16 +142,16 @@ class OpWindow():
             return
 
         # Find last element that matches op
-        which = self._window_op == op
+        which = (self._window_op == op)
         if np.any(which):
             last = np.max(np.where(which))
         else:
             # If the operator is not in the window, remove the worst if it is
             # worse than the value we want to add.
-            which = np.argmin(self._window_met[:, 0])
-            if self._window_met[:, 0] >= values[0]:
+            where = np.argmin(self._window_met[:, 0])
+            if self._window_met[where, 0] >= values[0]:
                 return
-            last = np.max(np.where(which))
+            last = np.max(where)
 
         # Shift contents of window
         self._window_op[1:(last+1)] = self._window_op[0:last]
