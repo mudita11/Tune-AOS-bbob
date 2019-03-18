@@ -123,7 +123,7 @@ def DE(fun, lbounds, ubounds, budget, instance, instance_best_value,
         fill_points = np.random.randint(dim, size = NP)
         
         for i in range(NP):
-            SI = aos_method.selection_type.perform_selection(aos_method.probability); #output_file.write(str(SI)+"\n")
+            SI = aos_method.select_operator() #output_file.write(str(SI)+"\n")
             # assert SI >= 0 and SI <= len(mutations)
             mutate = mutations[SI]
             aos_method.opu[i] = SI
