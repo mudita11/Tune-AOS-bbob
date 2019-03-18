@@ -88,8 +88,9 @@ class OpWindow():
         # Matrix of metrics
         self._window_met = np.full((max_size, len(metrics)), np.nan)
 
-    def count_ops(self):
-        op, count = np.unique(self._window_op, return_counts=True)
+    def count_ops(self, truncate_size = 0):
+        N = np.zeros(self.n_ops)
+        op, count = np.unique(self.get_ops(truncate_size), return_counts=True)
         N[op] = count
         return N
     
@@ -123,16 +124,17 @@ class OpWindow():
         assert metric >= 0 && metric < len(self.metrics)
         return(self._window_met[:, metric])
 
-    def get_ops(self):
+    def get_ops(self, truncate_size = 0):
+        if truncate > 0:
+            where = self.where_truncate(truncate_size)
+            return self._window_op[where]
         return(self._window_op)
 
-    def truncate_window(self):
-        """ Returns the truncated window after removing the offspring entry with unimproved off_met (-1) from window"""
-        trunc_window = self.window[(self.window[:, self.off_met] != -1) & (self.window[:, self.off_met] != np.inf)][:int(self.window_size)]
-        assert trunc_window.shape[0] > 0
-        assert trunc_window.shape[1] == 7
-        return trunc_window 
-
+    def where_truncate(self, size):
+        """Returns the indexes of a truncated window after removing the offspring entry with unimproved metric from window and truncating to size"""
+        assert size > 0
+        where = np.where(np.isfinite(self._window[:, self.metric]))
+        return where[:size]
         
 # MANUEL: What is the difference between AOS and unknown AOS?
 # MUDITA: I am referring to a combination of these components as Unknown AOS if that combination is not considered in literature.
@@ -481,12 +483,12 @@ class RewardType(ABC):
         print("reward",reward)
         return reward
 
-    def truncate_window(self):
-        """ Returns the truncated window after removing the offspring entry with unimproved off_met (nan) from window"""
-        trunc_window = self.window[(self.window[:, self.off_met] != np.nan) & (self.window[:, self.off_met] != np.inf)][:int(self.window_size)]
-        assert trunc_window.shape[0] > 0
-        assert trunc_window.shape[1] == 7
-        return trunc_window 
+    # def truncate_window(self):
+    #     """ Returns the truncated window after removing the offspring entry with unimproved off_met (nan) from window"""
+    #     trunc_window = self.window[(self.window[:, self.off_met] != np.nan) & (self.window[:, self.off_met] != np.inf)][:int(self.window_size)]
+    #     assert trunc_window.shape[0] > 0
+    #     assert trunc_window.shape[1] == 7
+    #     return trunc_window 
     
     def count_op_in_window(self, window):
         return count_op(self.n_ops, window, self.off_met) # print(window, window_op_sorted, N, rank)
@@ -835,6 +837,7 @@ Alvaro Fialho, Marc Schoenauer, and Mich`ele Sebag. “Analysis of adaptiveopera
     def __init__(self, n_ops, off_met, window, window_size = 50, normal_factor = 0.1):
         super().__init__(n_ops, off_met, window_size = window_size)
         self.window = window
+        self.window_size = window_size
         self.normal_factor = normal_factor
         debug_print("\n {} : window_size = {}, normal_factor = {}".format(type(self).__name__, self.window_size, self.normal_factor))
     
@@ -842,7 +845,8 @@ Alvaro Fialho, Marc Schoenauer, and Mich`ele Sebag. “Analysis of adaptiveopera
         reward = np.zeros(self.n_ops)
         # Create a local truncated window.
         # window = super().truncate_window()
-        window_op_sorted, N, rank = super().count_op_in_window(super().truncate_window())
+        # N = super().count_op_in_window(super().truncate_window())
+        N = self.window.count_ops(truncate_size = self.window_size)
         for i in range(self.n_ops):
             if np.any(window[:,0] == i):
                 reward[i] += np.sum(window[window[:, 0] == i][:, self.off_met]); # print(i, reward[i])
