@@ -436,8 +436,8 @@ if __name__ == '__main__':
             print(de.DE_irace_parameters())
             print(aos.Unknown_AOS.irace_parameters())
             print(aos.ProbabilityType.irace_parameters())
-            #print(aos.RewardType.irace_parameters())
-            #print(aos.QualityType.irace_parameters())
+            print(aos.RewardType.irace_parameters())
+            print(aos.QualityType.irace_parameters())
             print(aos.SelectionType.irace_parameters())
             parser.exit(1)
         
@@ -465,8 +465,6 @@ if __name__ == '__main__':
     current_batch = args.current_batch
     number_of_batches = args.number_of_batches
     
-    # MANUEL: How funevals and maxgen interact? which one has precedence?
-    # MUDITA: Doesnot understand your question.
     instance =  [args.instance]
     trace_filename = args.trace
     stats_filename = args.stats

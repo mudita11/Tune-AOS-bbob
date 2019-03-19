@@ -11,7 +11,6 @@ import random
 import math
 import csv
 from numpy.linalg import inv
-#import uuid
 
 import aos
 
@@ -32,7 +31,7 @@ def DE_irace_parameters():
 # F1 child fitness
 # X parent population
 # u offspring pop
-# index: best candidate in current pop
+# best: best candidate in current pop
 # f_min = fitness minimum
 # x_min = position minimum
     
@@ -66,7 +65,7 @@ def DE(fun, x0, lbounds, ubounds, budget, instance, instance_best_value,
         """
         idxs = list(range(popsize))
         idxs.remove(candidate)
-        return(np.random.choice(idxs, 5, replace = False))
+        return(np.random.choice(idxs, number_samples, replace = False))
 
     NP = int(NP)
     opu = np.full(NP, -1)
@@ -83,10 +82,10 @@ def DE(fun, x0, lbounds, ubounds, budget, instance, instance_best_value,
     budget -= NP
     
     generation = 0
-    index = np.argmin(F);
+    best = np.argmin(F);
     # MANUEL: f_min is None!
-    if f_min is None or F[index] < f_min:
-        x_min, f_min = X[index, :], F[index];
+    if f_min is None or F[best] < f_min:
+        x_min, f_min = X[best, :], F[best];
     best_so_far = f_min
     best_so_far1 = best_so_far
 
@@ -153,9 +152,9 @@ def DE(fun, x0, lbounds, ubounds, budget, instance, instance_best_value,
         F = np.where(F1 <= F, F1, F)
         X[F1 <= F, :] = u[F1 <= F, :]
         
-        index = np.argmin(F)
-        if f_min is None or F[index] < f_min:
-            x_min, f_min = X[index, :], F[index]
+        best = np.argmin(F)
+        if f_min is None or F[best] < f_min:
+            x_min, f_min = X[best, :], F[best]
             best_so_far1 = f_min;
         if best_so_far1 < best_so_far:
             best_so_far = best_so_far1
@@ -166,6 +165,9 @@ def DE(fun, x0, lbounds, ubounds, budget, instance, instance_best_value,
 
         generation += 1
         budget -= NP
+
+    aos_method.gen_window.write_to(sys.stderr)
+    
     #output_file.write("Last generation number"+str(generation)+".................................................................................\n")
     #output_file.close()
     #print("one configuartion tested on one instance")
