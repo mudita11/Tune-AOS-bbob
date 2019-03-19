@@ -4,6 +4,7 @@ from scipy.stats import rankdata
 import math
 from scipy.spatial import distance
 import sys
+import copy
 
 from abc import ABC,abstractmethod
 
@@ -74,29 +75,119 @@ def irace_condition(what, values):
         return what + " == " + str(values[0])
     return what + " %in% c(" + ", ".join([str(x) for x in values]) + ")"
 
-import copy
 
-class OpWindow():
+class GenWindow(object):
+    """gen_window stores the offspring metric data for each offspring when offspring is better than parent. It stores -1 otherwise for that offspring. Its a list. Its structre is as follows: [[[second_dim], [second_dim], [second_dim]], [[],[],[]], ...]. Second_dim has data for each offspring. Three second dim represents population size as 3, contained in third_dim. Third_dim represents a generation. Thus, this [[],[],[]] has data of all offsprings in a generation."""
+    def __init__(self, n_ops, metric, max_gen = None):
+        # Private
+        self.n_ops = n_ops
+        self.metric = metric
+        self.max_gen = max_gen
+        self._gen_window_op = None
+        self._gen_window_met = None
 
-    metrics = {"exp_offsp_fitness": 0, "exp_offsp_fitness": 1,
-               "parent_offsp_fitness_diff": 2,
-               "improv_over_pop": 3,
-               "improv_over_bsf": 4,
-               "improv_over_median": 5,
+    def max_gen(self):
+        return np.minimum(self.max_gen, len(self._gen_window))
+
+    def append(self, window_op, window_met):
+        if self._gen_window_op is None:
+            self._gen_window_op = np.array([window_op])
+            self._gen_window_met = np.array([window_met])
+        else:
+            self._gen_window_op = np.append(self._gen_window_op, [window_op], axis = 0)
+            self._gen_window_met = np.append(self._gen_window_met, [window_met], axis = 0)
+ 
+    def __len__(self):
+        return self._gen_window_op.shape[0]
+
+    def max_gen(self):
+        return np.minimum(self.max_gen, len(self))
+
+    def apply_at_generation(gen, function):
+        """Apply function to metric values at generation gen for all operators"""
+        window_met = self._gen_window_met[gen, :, self.metric]
+        window_op = self._gen_window_op[gen, :]
+        value = np.zeros(self.n_ops)
+        for op in range(self.n_ops):
+            # Assign 0.0 to any entry that is nan or belongs to a different op
+            window_met = np.where((window_op == op) & ~np.isnan(window_met), window_met, 0.0)
+            value[op] = function(window_met)
+        return value
+
+    def sum_at_generation(gen):
+        """Get best metric value for all operators at generation gen"""
+        return apply_at_generation(gen, np.sum)
+    
+    def max_at_generation(gen):
+        """Get best metric value for all operators at generation gen"""
+        return apply_at_generation(gen, np.max)
+        
+    def max_per_generation(op):
+        """Get best metric value for operator op for each of the last max_gen generations"""
+        gen_window_len = len(self)
+        max_gen = self.max_gen()
+        start = gen_window_len - max_gen
+        window_met = self._gen_window_met[start:, :, self.metric]
+        window_op = self._gen_window_op[start:, :]
+        # Assign 0.0 to any entry that is nan or belongs to a different op
+        window_met = np.where((window_op == op) & ~np.isnan(window_met), window_met, 0.0)
+        assert window_met.shape[0] == max_gen
+        # maximum per row, as many rows as max_gen
+        return np.max(window_met, axis = 1)
+
+    def count_total_succ_unsucc(self, gen):
+        """Counts the number of successful and unsuccessful applications for each operator in generation 'gen'"""
+        window_met = self._gen_window_met[gen, :, self.metric]
+        window_op = self._gen_window_op[gen, :]
+        total_success = np.zeros(self.n_ops)
+        total_unsuccess = np.zeros(self.n_ops)
+        for op in range(self.n_ops):
+            total_success[op] = np.sum((window_op == op) & np.isnan(window_met))
+            total_unsuccess[op] = np.sum((window_op == op) & ~np.isnan(window_met))
+        return total_success, total_unsuccess
+
+    def metric_for_fix_appl_of_op(self, op, fix_appl):
+        """Return a vector of metric values for last fix_appl applications of operator op"""
+        # Stop at fix_appl starting from the end of the window (latest fix_applications of operators)
+        gen_window_len = len(self)
+        window_met = self._gen_window_met[:, :, self.metric]
+        window_op = self._gen_window_op[:, :]
+        # Without np.where, it returns a 1D array
+        b = window_met[(window_op == op) & ~np.isnan(window_met)]
+        # Keep only the last fix_appl values
+        return b[-fix_appl:]
+        
+
+class OpWindow(object):
+
+    metrics = {"offsp_fitness": 0,
+               "exp_offsp_fitness": 1,
+               "improv_wrt_parent": 2,
+               "improv_wrt_pop": 3,
+               "improv_wrt_bsf": 4,
+               "improv_wrt_median": 5,
                "relative_fitness_improv": 6
     }
     
     def __init__(self, n_ops, metric, max_size = 50):
         self.max_size = max_size
         self.n_ops = n_ops
-        self.metric = self.metrics[metric]
+        # FIXME: Use strings instead of numbers:
+        # self.metric = self.metrics[metric]
+        self.metric = metric
         # Vector of operators
         self._window_op = np.full(max_size, -1)
         # Matrix of metrics
         # np.inf means not initialized
         # np.nan means unsuccessful application
         self._window_met = np.full((max_size, len(self.metrics)), np.inf)
-
+                
+    def count_ops(self):
+        N = np.zeros(self.n_ops)
+        op, count = np.unique(self._window_op, return_counts=True)
+        N[op] = count
+        return N
+    
     def truncate(self, size):
         where = self.where_truncate(size)
         truncated = copy.copy(self)
@@ -107,16 +198,19 @@ class OpWindow():
     def where_truncate(self, size):
         """Returns the indexes of a truncated window after removing the offspring entry with unimproved metric from window and truncating to size"""
         assert size > 0
-        where = np.where(np.isfinite(self._window_met[:, self.metric]))
+        # np.where returns a tuple, use np.flatnonzero to return a 1D array
+        where = np.flatnonzero(np.isfinite(self._window_met[:, self.metric]))
         return where[:size]
 
     def sum_per_op(self):
         # FIXME: there is probably a faster way to do this.
+        #met_values = self._window_met[:, self.metric]
+        #return np.bincount(self._window_op, weights = met_values, minlength = self.n_ops)
         value = np.zeros(self.n_ops)
         for i in range(self.n_ops):
             value[i] = np.sum(self._window_met[self._window_op == i, self.metric])
         return value
-
+    
     def get_ops_sorted_and_rank(self):
         '''Return sorted window, number of successful applications of operators and rank'''
         assert np.all(np.isfinite(self._window_met[:, self.metric]))
@@ -136,7 +230,7 @@ class OpWindow():
         # Fill from the top
         which = (self._window_op == -1)
         if np.any(which):
-            last_empty = np.max(np.where(which))
+            last_empty = np.max(np.flatnonzero(which))
             self._window_op[last_empty] = op
             self._window_met[last_empty, :] = values
             return
@@ -144,7 +238,7 @@ class OpWindow():
         # Find last element that matches op
         which = (self._window_op == op)
         if np.any(which):
-            last = np.max(np.where(which))
+            last = np.max(np.flatnonzero(which))
         else:
             # If the operator is not in the window, remove the worst if it is
             # worse than the value we want to add.
@@ -159,46 +253,22 @@ class OpWindow():
         self._window_op[0] = op
         self._window_met[0, :] = values
 
-    def get_metric(self, metric = self.metric):
-        assert metric >= and metric < len(self.metrics)
-        return(self._window_met[:, metric])
-
-    def get_ops(self):
-        return(self._window_op)
-
-# MANUEL: What is the difference between AOS and unknown AOS?
-# MUDITA: I am referring to a combination of these components as Unknown AOS if that combination is not considered in literature.
-# MANUEL: I don't understand. What do you use AOS for?
-# MUDITA: I think more appropriate name for AOS class is AOS_Update because this class is basically updating components of AOS. Its not an AOS method.
 
 class Unknown_AOS(object):
 
     arg_choice = "OM_choice"
     arg_choice_help = "Offspring metric selected"
 
-    def __init__(self, popsize, F1, F, u, X, f_min, x_min, best_so_far, n_ops, OM_choice, rew_choice, rew_args, qual_choice, qual_args, prob_choice, prob_args, select_choice):
-        self.popsize = int(popsize)
-        self.F1 = np.array(F1)
-        self.F = np.array(F)
-        self.u = u
-        self.X = X
-        self.f_min = f_min
-        self.x_min = x_min
-        self.n_ops = n_ops
+    def __init__(self, popsize, n_ops, OM_choice, rew_choice, rew_args,
+                 qual_choice, qual_args, prob_choice, prob_args, select_choice):
         
-        # MANUEL: What is opu?
-        # MUDITA: opu represents (op)erator that produced offspring (u).
-        self.opu = np.full(self.popsize, 4)
-        self.window = OpWindow(n_ops, max_size = 50, metric = OM_choice)
-        
-        # MANUEL: What are these?
-        # MUDITA: gen_window stores the offspring metric data for each offspring when offspring is better than parent. It stores -1 otherwise for that offspring. Its a list. Its structre is as follows: [[[second_dim], [second_dim], [second_dim]], [[],[],[]], ...]. Second_dim has data for each offspring. Three second dim represents population size as 3, contained in third_dim. Third_dim represents a generation. Thus, this [[],[],[]] has data of all offsprings in a generation.
-        self.gen_window = [] # print("Inside AOS", type(self.gen_window), self.gen_window)
+        self.window = OpWindow(n_ops, metric = OM_choice, max_size = 50)
+        self.gen_window = GenWindow(n_ops, metric = OM_choice)
         
         self.probability = np.full(n_ops, 1.0 / n_ops)
         rew_args["popsize"] = popsize
-        self.reward_type = build_reward(rew_choice, n_ops, rew_args, self.gen_window, self.window, OM_choice)
-        self.quality_type = build_quality(qual_choice, n_ops, qual_args, self.window, OM_choice)
+        self.reward_type = build_reward(rew_choice, n_ops, rew_args, self.gen_window, self.window)
+        self.quality_type = build_quality(qual_choice, n_ops, qual_args, self.window)
         self.probability_type = build_probability(prob_choice, n_ops, prob_args)
         self.selection_type = build_selection(select_choice, n_ops)
 
@@ -213,55 +283,74 @@ class Unknown_AOS(object):
         return output + irace_parameter(cls.arg_choice, str, range(1,8), help=cls.arg_choice_help)
 
     def select_operator(self):
-        return self.probability_type.perform_selection(self.probability)
+        return self.selection_type.perform_selection(self.probability)
 
-##################################################Offspring Metric definitions##################################################################
-    def OM_Update(self, F, F1, F_bsf):
-        """If offspring improves over parent, Offsping Metric (OM) stores (1)fitness of offspring (2)fitness improvemnt from parent to offsping (3)fitness improvemnt from best parent to offsping (4)fitness improvemnt from best so far to offsping (5)fitness improvemnt from median parent fitness to offsping (6)relative fitness improvemnt """
+############################Offspring Metric definitions#######################
+    def OM_Update(self, F, F1, F_bsf, opu):
+        """F: fitness of parent population
+        F1: fitness of children population
+        F_bsf : best so far fitness
+        opu: represents (op)erator that produced offspring (u).
+
+        If offspring improves over parent, Offsping Metric (OM) stores
+        (1)fitness of offspring (2)fitness improvemnt from parent to offsping
+        (3)fitness improvemnt from best parent to offsping (4)fitness
+        improvemnt from best so far to offsping (5)fitness improvemnt from
+        median parent fitness to offsping (6)relative fitness improvemnt
+        """
         third_dim = []
-        # F: fitness of parent population
-        # F1: fitness of children population
-        F_min = np.min(F)
+
+        # MANUEL: fitness is maximised?
+        F_best = np.min(F)
         F_median = np.median(F)
-        F_absdiff = np.fabs(F1 - F)
         eps = np.finfo(np.float32).eps
+        verylarge = 10e20
         
-        for i in range(self.popsize):
-#            second_dim = np.full(7, -1.0)
-            second_dim = np.full(8, np.nan)
-            second_dim[0] = -1
+        # See OpWindow metrics
+        # Fitness is minimised but metric is maximised
+        offsp_fitness = verylarge - F1
+        assert np.all(offsp_fitness >= 0)
+        exp_offsp_fitness = np.exp(-F1)
+        improv_wrt_parent = np.fabs(F - F1)
+        improv_wrt_pop = F_best - F1
+        improv_wrt_bsf = F_bsf - F1
+        improv_wrt_median = F_median - F1
+        relative_fitness_improv = (F_bsf / (F1 + eps)) * improv_wrt_parent
+        
+        popsize = len(F)
+
+        window_op = np.full(popsize, -1)
+        window_met = np.full((popsize, 7), np.nan)
+        
+        for i in range(popsize):
             # if child is worse than parent
             if F1[i] > F[i]:
-                third_dim.append(second_dim)
                 continue
             
-            second_dim[0] = self.opu[i]
-            second_dim[1] = -F1[i]
-            second_dim[2] = np.exp(-F1[i])
-            second_dim[3] = F_absdiff[i]
-            if F1[i] <= F_min:
-                second_dim[4] = F_min - F1[i]
-            if F1[i] <= best_so_far:
-                second_dim[5] = F_bsf - F1[i]
-            if F1[i] <= F_median:
-                second_dim[6] = F_median - F1[i]
+            window_op[i] = opu[i]
+            window_met[i, 0] = offsp_fitness[i]
+            window_met[i, 1] = exp_offsp_fitness[i]
+            window_met[i, 2] = improv_wrt_parent[i]
+            if improv_wrt_pop[i] >= 0:
+                window_met[i, 3] = improv_wrt_pop[i]
+            if improv_wrt_bsf[i] >= 0:
+                window_met[i, 4] = improv_wrt_bsf[i]
+            if improv_wrt_median[i] >= 0:
+                window_met[i, 5] = improv_wrt_median[i]
                 
-            second_dim[7] = (F_bsf / (F1[i] + eps)) * F_absdiff[i]
+            window_met[i, 6] = relative_fitness_improv[i]
             
-            self.window.append(self.opu[i], second_dim[1:])
-            third_dim.append(second_dim)
+            self.window.append(window_op[i], window_met[i, :])
         
-        #print("Window in AOS update ", self.window, type(self.window), np.shape(self.window))
-        
-        self.gen_window.append(third_dim)
-        #print("gen_window= ",type(self.gen_window), np.shape(self.gen_window), self.gen_window)
+        self.gen_window.append(window_op, window_met)
+
         reward = self.reward_type.calc_reward()
         old_reward = self.reward_type.old_reward
         old_prob = self.probability_type.old_probability
         quality = self.quality_type.calc_quality(old_reward, reward, old_prob)
         self.probability = self.probability_type.calc_probability(quality)
 
-##################################################Other definitions######################################################################
+###################Other definitions############################################
 
 
 
@@ -322,58 +411,35 @@ def UCB(N, C, reward):
     ucb[np.isinf(ucb) | np.isnan(ucb)] = 0
     return ucb
 
-#def count_success(gen_window, i, j, off_met):
-#    c_s = np.sum((gen_window[j, :, 0] == i) & (gen_window[j, :, off_met] != -1))
-#    c_us = np.sum((gen_window[j, :, 0] == i) & (gen_window[j, :, off_met] == -1))
-#    return c_s, c_us
-
-
-# def angle_between(p1, p2):
-#     # arctan2(y, x) computes the clockwise angle  (a value in radians between -pi and pi) between the origin and the point (x, y)
-#     ang1 = np.arctan2(*p1[::-1]); # print("ang1", np.rad2deg(ang1))
-#     ang2 = np.arctan2(*p2[::-1]); # print("ang2", np.rad2deg(ang2))
-#     # second angle is subtracted from the first to get signed clockwise angular difference, that will be between -2pi and 2pi. Thus to get positive angle between 0 and 2pi, take the modulo against 2pi. Finally radians can be optionally converted to degrees using np.rad2deg.
-#     #print("angle", np.rad2deg((ang1 - ang2) % (2 * np.pi)))
-#     if (ang1 - ang2) % (2 * np.pi) > np.pi:
-#         return 2 * np.pi - ((ang1 - ang2) % (2 * np.pi))
-#     else:
-#         return (ang1 - ang2) % (2 * np.pi)
-
-
-#   def angle(vec, theta):
-#       vec = vec * np.sign(vec[1])
-#       angle = np.arccos(1 - distance.cosine(vec, np.array([1, 0]))) # In radian
-#       return angle - np.deg2rad(theta)
-
 ##################################################Reward definitions######################################################################
     
 
 
-def build_reward(choice, n_ops, rew_args, gen_window, window, off_met):
+def build_reward(choice, n_ops, rew_args, gen_window, window):
     if choice == 0:
-        return Pareto_Dominance(n_ops, off_met, gen_window, rew_args["fix_appl"])
+        return Pareto_Dominance(n_ops, gen_window, rew_args["fix_appl"])
     elif choice == 1:
-        return Pareto_Rank(n_ops, off_met, gen_window, rew_args["fix_appl"])
+        return Pareto_Rank(n_ops, gen_window, rew_args["fix_appl"])
     elif choice == 2:
-        return Compass_projection(n_ops, off_met, gen_window, rew_args["fix_appl"], rew_args["theta"])
+        return Compass_projection(n_ops, gen_window, rew_args["fix_appl"], rew_args["theta"])
     elif choice == 3:
-        return Area_Under_The_Curve(n_ops, off_met, window, rew_args["window_size"], rew_args["decay"])
+        return Area_Under_The_Curve(n_ops, window, rew_args["window_size"], rew_args["decay"])
     elif choice == 4:
-        return Sum_of_Rank(n_ops, off_met, window, rew_args["window_size"], rew_args["decay"])
+        return Sum_of_Rank(n_ops, window, rew_args["window_size"], rew_args["decay"])
     elif choice == 5:
-        return Success_Rate(n_ops, off_met, gen_window, rew_args["max_gen"], rew_args["succ_lin_quad"], rew_args["frac"], rew_args["noise"])
+        return Success_Rate(n_ops, gen_window, rew_args["max_gen"], rew_args["succ_lin_quad"], rew_args["frac"], rew_args["noise"])
     elif choice == 6:
-        return Immediate_Success(n_ops, off_met, gen_window, rew_args["popsize"])
+        return Immediate_Success(n_ops, gen_window, rew_args["popsize"])
     elif choice == 7:
-        return Success_sum(n_ops, off_met, gen_window, rew_args["max_gen"])
+        return Success_sum(n_ops, gen_window, rew_args["max_gen"])
     elif choice == 8:
-        return Normalised_success_sum_window(n_ops, off_met, window, rew_args["window_size"], rew_args["normal_factor"])
+        return Normalised_success_sum_window(n_ops, window, rew_args["window_size"], rew_args["normal_factor"])
     elif choice == 9:
-        return Normalised_success_sum_gen(n_ops, off_met, gen_window, rew_args["max_gen"])
+        return Normalised_success_sum_gen(n_ops, gen_window, rew_args["max_gen"])
     elif choice == 10:
-        return Best2gen(n_ops, off_met, gen_window, rew_args["scaling_constant"], rew_args["alpha"], rew_args["alpha"])
+        return Best2gen(n_ops, gen_window, rew_args["scaling_constant"], rew_args["alpha"], rew_args["alpha"])
     elif choice == 11:
-        return Normalised_best_sum(n_ops, off_met, gen_window, rew_args["max_gen"], rew_args["intensity"], rew_args["alpha"])
+        return Normalised_best_sum(n_ops, gen_window, rew_args["max_gen"], rew_args["intensity"], rew_args["alpha"])
     else:
         raise ValueError("choice {} unknown".format(choice))
 
@@ -428,14 +494,14 @@ class RewardType(ABC):
     arg_choice = "rew_choice"
     arg_choice_help = "Reward method selected"
     
-    def __init__(self, n_ops, off_met, max_gen = None, window_size = None, decay = None, fix_appl = None):
+    def __init__(self, n_ops, gen_window = None, max_gen = None, window_size = None, decay = None, fix_appl = None):
         self.n_ops = n_ops
-        # Offspring metric in range [1,7] stored in gen_window.
-        self.off_met = off_met
-        self.max_gen = int(max_gen)
+        self.gen_window = gen_window
+        if max_gen:
+            self.gen_window.max_gen = max_gen
         self.window_size = window_size
-        self.fix_appl = fix_appl
         self.decay = decay
+        self.fix_appl = fix_appl
         self.old_reward = np.zeros(self.n_ops)
     
     @classmethod
@@ -449,65 +515,35 @@ class RewardType(ABC):
 
     def check_reward(self, reward):
         # Nothing to check
-        self.old_reward = reward
+        self.old_reward[:] = reward[:]
         return reward
-
-    def count_total_succ_unsucc(self, n_ops, gen_window, j, off_met):
-        """ Counts the number of successful and unsuccessful applications for each operator in generation 'j'"""
-        total_success = np.zeros(n_ops)
-        total_unsuccess = np.zeros(n_ops)
-        for i in range(n_ops):
-            if np.any(gen_window[j, :, 0] == i):
-                # total_success[i], total_unsuccess[i] = count_success(gen_window, i, j, off_met)
-                total_success[i] = np.sum((gen_window[j, :, 0] == i) & (gen_window[j, :, off_met] != np.nan))
-                total_unsuccess[i] = np.sum((gen_window[j, :, 0] == i) & (gen_window[j, :, off_met] == np.nan))
-        return total_success, total_unsuccess
 
     @abstractmethod
     def calc_reward(self):
         pass
 
-def op_metric_for_fix_appl(gen_window, gen_window_len, op, fix_appl, off_met):
-    b = []
-    # Stop at fix_appl starting from the end of the window (latest fix_applications of operators)
-    for j in range(gen_window_len-1, 0, -1):
-        if np.any(gen_window[gen_window_len-1, :, 0] == i):
-            value = gen_window[j, np.where((gen_window[j, :, 0] == i) & (gen_window[j, :, self.off_met] != np.nan)), self.off_met]
-            b.append(value)
-            if len(np.array(b).ravel()) == fix_appl:
-                break
-    b = np.array(b).ravel()
-    return(b)
-
-# MANUEL: These should have more descriptive names and a doctstring documenting
-# where they come from (references) and what they do.
 class Pareto_Dominance(RewardType):
     """
 Jorge Maturana, Fr ́ed ́eric Lardeux, and Frederic Saubion. “Autonomousoperator management for evolutionary algorithms”. In:Journal of Heuris-tics16.6 (2010).https://link.springer.com/content/pdf/10.1007/s10732-010-9125-3.pdf, pp. 881–909.
 """
 
-    def __init__(self, n_ops, off_met, gen_window, fix_appl = 20):
-        super().__init__(n_ops, off_met, fix_appl = fix_appl)
-        self.gen_window = gen_window
+    def __init__(self, n_ops, gen_window, fix_appl = 20):
+        super().__init__(n_ops, gen_window = gen_window, fix_appl = fix_appl)
         debug_print("\n {} : fix_appl = {}".format(type(self).__name__, self.fix_appl))
     
     def calc_reward(self):
-        # MANUEL: This function and the one for Pareto_Rank are almost identical! What's the difference?
-        # MUDITA: Pareto dominance returns the number of operators dominated by an operator whereas Pareto rank gives the number of operators an operator is dominated by. Is there a library to calculate these values?
+        # Pareto dominance returns the number of operators dominated by an
+        # operator whereas Pareto rank gives the number of operators an
+        # operator is dominated by.
         reward = np.full(self.n_ops)
         std_op = np.full(self.n_ops, np.nan)
         mean_op = np.full(self.n_ops, np.nan)
-        gen_window = self.gen_window
-        gen_window_len = len(gen_window)
-        # MANUEL: Why does it need to be converted to an array here?
-        # MUDITA: In AOS_Update class, it is list because append works on list not array. So here I converted list to array.
-        gen_window = np.array(gen_window)
-        #print(type(gen_window), np.shape(gen_window), gen_window)
         for i in range(self.n_ops):
-            b = op_metric_for_fix_appl(gen_window, gen_window_len, op, fix_appl, off_met)
-             if len(b) > 0:
+            b = self.gen_window.metric_for_fix_appl_of_op(op, fix_appl)
+            if len(b) > 0:
                 std_op[i] = np.std(b)
                 mean_op[i] = np.mean(b)
+
         for i in range(self.n_ops):
             if np.isnan(std_op[i]):
                 continue
@@ -527,23 +563,20 @@ class Pareto_Rank(RewardType):
     """
 Jorge Maturana, Fr ́ed ́eric Lardeux, and Frederic Saubion. “Autonomous operator management for evolutionary algorithms”. In:Journal of Heuris-tics16.6 (2010).https://link.springer.com/content/pdf/10.1007/s10732-010-9125-3.pdf, pp. 881–909.
 """
-    def __init__(self, n_ops, off_met, gen_window, fix_appl = 20):
-        super().__init__(n_ops, off_met, fix_appl = fix_appl)
-        self.gen_window = gen_window
+    def __init__(self, n_ops, gen_window, fix_appl = 20):
+        super().__init__(n_ops, gen_window = gen_window, fix_appl = fix_appl)
         debug_print("\n {} : fix_appl = {}".format(type(self).__name__, self.fix_appl))
 
     def calc_reward(self):
         reward = np.full(self.n_ops)
         std_op = np.full(self.n_ops, np.nan)
         mean_op = np.full(self.n_ops, np.nan)
-        gen_window = self.gen_window
-        gen_window = np.array(gen_window)
-        gen_window_len = len(gen_window)
         for i in range(self.n_ops):
-            b = op_metric_for_fix_appl(gen_window, gen_window_len, op, fix_appl, off_met)
+            b = self.gen_window.metric_for_fix_appl_of_op(op, fix_appl)
             if len(b) > 0:
                 std_op[i] = np.std(b)
                 mean_op[i] = np.mean(b)
+
         for i in range(self.n_ops):
             if np.isnan(std_op[i]):
                 continue
@@ -554,7 +587,7 @@ Jorge Maturana, Fr ́ed ́eric Lardeux, and Frederic Saubion. “Autonomous oper
                 # Count if j dominates i.
                 if std_op[j] < std_op[i] and mean_op[j] > mean_op[i]:
                     reward[i] += 1
-        #print(reward)
+        
         if np.sum(reward) != 0:
             reward /= np.sum(reward)
         reward = 1. - reward
@@ -565,24 +598,17 @@ class Compass_projection(RewardType):
     """
         Jorge Maturana and Fr ́ed ́eric Saubion. “A compass to guide genetic al-gorithms”. In:International Conference on Parallel Problem Solving fromNature.http://www.info.univ-angers.fr/pub/maturana/files/MaturanaSaubion-Compass-PPSNX.pdf. Springer. 2008, pp. 256–265.
         """
-    def __init__(self, n_ops, off_met, gen_window, fix_appl = 100, theta = 45):
-        super().__init__(n_ops, off_met, fix_appl = fix_appl)
-        self.gen_window = gen_window
+    def __init__(self, n_ops, gen_window, fix_appl = 100, theta = 45):
+        super().__init__(n_ops, gen_window = gen_window, fix_appl = fix_appl)
         self.theta = theta
         debug_print("\n {} : fix_appl = {}".format(type(self).__name__, self.fix_appl, self.theta))
     
     def calc_reward(self):
-        gen_window = self.gen_window
-        # MANUEL: This should be an array alreadY?
-        # MUDITA: No, in AOS_Update class, it is list because append works on list not array. So here I converted list to array.
-        gen_window = np.array(gen_window)
-        gen_window_len = len(gen_window)
         reward = np.zeros(self.n_ops)
         # Projection on line B with thetha = pi/4
-#        B = [1, 1]
+        #        B = [1, 1]
         for i in range(self.n_ops):
-            b = op_metric_for_fix_appl(gen_window, gen_window_len, op, fix_appl, off_met)
-            
+            b = self.gen_window.metric_for_fix_appl_of_op(op, fix_appl)
             if len(b) > 0:
                 # Diversity
                 std = np.std(b)
@@ -592,8 +618,9 @@ class Compass_projection(RewardType):
                 angle = np.fabs(np.arctan(np.deg2rad(avg / std)) - self.theta)
                 # Euclidean distance of the vector 
                 reward[i] = (np.sqrt(std**2 + avg**2)) * np.cos(angle)
-                # Maturana & Sablon (2008) divide by T_it defined as mean execution time of operator i over its last t applications.
-                # We do not divide here.
+                # Maturana & Sablon (2008) divide by T_it defined as mean
+                # execution time of operator i over its last t applications.
+                # We do not divide
         reward = reward - np.min(reward)
         return super().check_reward(reward)
 
@@ -601,8 +628,8 @@ class Area_Under_The_Curve(RewardType):
     """
 Alvaro Fialho, Marc Schoenauer, and Mich`ele Sebag. “Toward comparison-based adaptive operator selection”. In:Proceedings of the 12th annual con-ference on Genetic and evolutionary computation.https://hal.inria.fr/file/index/docid/471264/filename/banditGECCO10.pdf. ACM.2010, pp. 767–774
 """
-    def __init__(self, n_ops, off_met, window, window_size = 50, decay = 0.4):
-        super().__init__(n_ops, off_met, window_size = window_size, decay = decay)
+    def __init__(self, n_ops, window, window_size = 50, decay = 0.4):
+        super().__init__(n_ops, window_size = window_size, decay = decay)
         # MANUEL: This window is not the same object as the one in AOS!
         self.window = window
         self.window_size = window_size
@@ -623,8 +650,8 @@ class Sum_of_Rank(RewardType):
     """
 Alvaro Fialho, Marc Schoenauer, and Mich`ele Sebag. “Toward comparison-based adaptive operator selection”. In:Proceedings of the 12th annual con-ference on Genetic and evolutionary computation.https://hal.inria.fr/file/index/docid/471264/filename/banditGECCO10.pdf. ACM.2010, pp. 767–774
 """
-    def __init__(self, n_ops, off_met, window, window_size = 50, decay = 0.4):
-        super().__init__(n_ops, off_met, window_size = window_size, decay = decay)
+    def __init__(self, n_ops, window, window_size = 50, decay = 0.4):
+        super().__init__(n_ops, window_size = window_size, decay = decay)
         self.window = window
         self.window_size = window_size
         debug_print("\n {} : window_size = {}, decay = {}".format(type(self).__name__, self.window_size, self.decay))
@@ -641,17 +668,6 @@ Alvaro Fialho, Marc Schoenauer, and Mich`ele Sebag. “Toward comparison-based a
             reward /= np.sum(reward)
         return super().check_reward(reward)
 
-# MANUEL: Create a new class SuccessRateType. That should contain the gen_window and this common function:
-# MUDITA: I have added this function in abstract class RewardType.
-#def count_total_succ_unsucc(n_ops, gen_window, j, off_met):
-#    total_success = np.zeros(n_ops)
-#    total_unsuccess = np.zeros(n_ops)
-#    for i in range(n_ops):
-        # MANUEL: What is gen_window? Is it a matrix, a list, a cube?
-        # MUDITA: It is a 3-D list.
-#        if np.any(gen_window[j, :, 0] == i):
-#            total_success[i], total_unsuccess[i] = count_success(gen_window, i, j, off_met)
-#    return total_success, total_unsuccess
 
 
 class Success_Rate(RewardType):
@@ -677,26 +693,19 @@ acc=ACTIVE%20SERVICE&key=BF07A2EE685417C5%2E26BE4091F5AC6C0A%
 
 """
     
-    def __init__(self, n_ops, off_met, gen_window, max_gen = 10, succ_lin_quad = 1, frac = 0.01, noise = 0.0):
-        super().__init__(n_ops, off_met, max_gen = max_gen)
-        self.gen_window = gen_window
+    def __init__(self, n_ops, gen_window, max_gen = 10, succ_lin_quad = 1, frac = 0.01, noise = 0.0):
+        super().__init__(n_ops, gen_window = gen_window, max_gen = max_gen)
         self.succ_lin_quad = succ_lin_quad
         self.frac = frac
         self.noise = noise
-        debug_print("\n {} : max_gen = {}, succ_lin_quad = {}, frac = {}, noise = {}".format(type(self).__name__, self.max_gen, self.succ_lin_quad, self.frac, self.noise))
+        debug_print("\n {} : max_gen = {}, succ_lin_quad = {}, frac = {}, noise = {}".format(type(self).__name__, self.gen_window.max_gen, self.succ_lin_quad, self.frac, self.noise))
     
     def calc_reward(self):
-        gen_window = self.gen_window
-        # MANUEL: Should be an array already?
-        # MUDITA: No, in AOS_Update class, it is list because append works on list not array. So here I converted list to array.
-        gen_window = np.array(gen_window)
         gen_window_len = len(gen_window)
-        max_gen = self.max_gen
-        if gen_window_len < max_gen:
-            max_gen = gen_window_len
+        max_gen = self.gen_window.max_gen()
         reward = np.zeros(self.n_ops)
         for j in range(gen_window_len - max_gen, gen_window_len):
-            total_success, total_unsuccess = super().count_total_succ_unsucc(n_ops, gen_window, j, off_met)
+            total_success, total_unsuccess = self.gen_window.count_total_succ_unsucc(j)
             napplications = total_success + total_unsuccess
             # Avoid division by zero. If total == 0, then total_success is zero.
             napplications[napplications == 0] = 1
@@ -709,15 +718,13 @@ class Immediate_Success(RewardType):
     """
  Mudita  Sharma,  Manuel  L ́opez-Ib ́a ̃nez,  and  Dimitar  Kazakov.  “Perfor-mance Assessment of Recursive Probability Matching for Adaptive Oper-ator Selection in Differential Evolution”. In:International Conference onParallel Problem Solving from Nature.http://eprints.whiterose.ac.uk/135483/1/paper_66_1_.pdf. Springer. 2018, pp. 321–333.
 y """
-    def __init__(self, n_ops, off_met, gen_window, popsize):
-        super().__init__(n_ops, off_met)
-        self.gen_window = gen_window
+    def __init__(self, n_ops, gen_window, popsize):
+        super().__init__(n_ops, gen_window = gen_window)
         self.popsize = popsize
     
     def calc_reward(self):
-        gen_window = self.gen_window
-        gen_window = np.array(gen_window)
-        total_success, total_unsuccess = super().count_total_succ_unsucc(self.n_ops, gen_window, len(gen_window) - 1, self.off_met)
+        gen_window_len = len(self.gen_window)
+        total_success, total_unsuccess = self.gen_window.count_total_succ_unsucc(gen_window_len - 1)
         reward = total_success / self.popsize
         return super().check_reward(reward)
 
@@ -725,25 +732,20 @@ class Success_sum(RewardType):
     """
  Christian  Igel  and  Martin  Kreutz.  “Operator  adaptation  in  evolution-ary  computation  and  its  application  to  structure  optimization  of  neu-ral  networks”.  In:Neurocomputing55.1-2  (2003).https : / / ac . els -cdn.com/S0925231202006288/1-s2.0-S0925231202006288-main.pdf?_tid=c6274e78-02dc-4bf6-8d92-573ce0bed4c4&acdnat=1540907096_d0cc1e2b4ca56a49587b4d55e1008a84, pp. 347–361.
  """
-    def __init__(self, n_ops, off_met, gen_window, max_gen = 4):
-        super().__init__(n_ops, off_met, max_gen = max_gen)
-        self.gen_window = gen_window
-        debug_print("\n {} : max_gen = {}".format(type(self).__name__, self.max_gen))
+    def __init__(self, n_ops, gen_window, max_gen = 4):
+        super().__init__(n_ops, gen_window = gen_window, max_gen = max_gen)
+        debug_print("\n {} : max_gen = {}".format(type(self).__name__, self.gen_window.max_gen))
     
     def calc_reward(self):
-        gen_window = self.gen_window
-        gen_window = np.array(gen_window)
         gen_window_len = len(gen_window)
-        max_gen = self.max_gen
-        if gen_window_len < max_gen:
-            max_gen = gen_window_len
+        max_gen = self.gen_window.max_gen()
         napplications = np.zeros(self.n_ops)
         reward = np.zeros(self.n_ops)
         for j in range(gen_window_len - max_gen, gen_window_len):
-            total_success, total_unsuccess = super().count_total_succ_unsucc(self.n_ops, gen_window, j, self.off_met)
+            total_success, total_unsuccess = self.gen_window.count_total_succ_unsucc(j)
             napplications += total_success + total_unsuccess
-            for i in range(self.n_ops):
-                reward[i] += np.sum(gen_window[j, np.where((gen_window[j, :, 0] == i) & (gen_window[j, :, self.off_met] != np.nan)), self.off_met])
+            value = self.gen_window.sum_at_generation(j)
+            reward += value
         napplications[napplications == 0] = 1
         reward /= napplications
         return super().check_reward(reward)
@@ -752,8 +754,8 @@ class Normalised_success_sum_window(RewardType):
     """
 Alvaro Fialho, Marc Schoenauer, and Mich`ele Sebag. “Analysis of adaptiveoperator selection techniques on the royal road and long k-path problems”.In:Proceedings of the 11th Annual conference on Genetic and evolutionarycomputation.https://hal.archives-ouvertes.fr/docs/00/37/74/49/PDF/banditGECCO09.pdf. ACM. 2009, pp. 779–786.
 """
-    def __init__(self, n_ops, off_met, window, window_size = 50, normal_factor = 0.1):
-        super().__init__(n_ops, off_met, window_size = window_size)
+    def __init__(self, n_ops, window, window_size = 50, normal_factor = 0.1):
+        super().__init__(n_ops, window_size = window_size)
         self.window = window
         self.window_size = window_size
         self.normal_factor = normal_factor
@@ -774,28 +776,19 @@ class Normalised_success_sum_gen(RewardType):
     """
 Christian Igel and Martin Kreutz. “Using fitness distributions to improvethe evolution of learning structures”. In:Evolutionary Computation, 1999.CEC 99. Proceedings of the 1999 Congress on. Vol. 3.http://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.43.2107&rep=rep1&type=pdf. IEEE. 1999, pp. 1902–1909.
 """
-    def __init__(self, n_ops, off_met, gen_window, max_gen = 4):
-        super().__init__(n_ops, off_met, max_gen = max_gen)
-        self.gen_window = gen_window
-        debug_print("\n {} : max_gen = {}".format(type(self).__name__, self.max_gen))
+    def __init__(self, n_ops, gen_window, max_gen = 4):
+        super().__init__(n_ops, gen_window = gen_window, max_gen = max_gen)
+        debug_print("\n {} : max_gen = {}".format(type(self).__name__, self.gen_window.max_gen))
     
     def calc_reward(self):
-        gen_window = self.gen_window
-        gen_window = np.array(gen_window)
         gen_window_len = len(gen_window)
-        max_gen = self.max_gen
-        if gen_window_len < max_gen:
-            max_gen = gen_window_len
+        max_gen = self.gen_window.max_gen()
         reward = np.zeros(self.n_ops)
         for j in range(gen_window_len - max_gen, gen_window_len):
-            # PLease use count_total_succ_and_unsucc()
-            #total_success = 0; total_unsuccess = 0
-            total_success, total_unsuccess = super().count_total_succ_unsucc(self.n_ops, gen_window, j, self.off_met)
+            total_success, total_unsuccess = self.gen_window.count_total_succ_unsucc(j)
             napplications = total_success + total_unsuccess
             napplications[napplications == 0] = 1
-            value = np.zeros(self.n_ops)
-            for i in range(self.n_ops):
-                value[i] = np.sum(gen_window[j, np.where((gen_window[j,:,0] == i) & np.logical_not(np.isnan(gen_window[j, :, self.off_met]))) , self.off_met])
+            value = self.gen_window.sum_at_generation(j)
             reward += value / napplications
             
         return super().check_reward(reward)
@@ -804,9 +797,8 @@ class Best2gen(RewardType):
     """
 Giorgos Karafotias, Agoston Endre Eiben, and Mark Hoogendoorn. “Genericparameter  control  with  reinforcement  learning”.  In:Proceedings of the2014 Annual Conference on Genetic and Evolutionary Computation.http://www.few.vu.nl/~gks290/papers/GECCO2014-RLControl.pdf. ACM.2014, pp. 1319–1326.
  """
-    def __init__(self, n_ops, off_met, gen_window, scaling_constant = 1, alpha = 0, beta = 1):
-        super().__init__(n_ops, off_met)
-        self.gen_window = gen_window
+    def __init__(self, n_ops, gen_window, scaling_constant = 1, alpha = 0, beta = 1):
+        super().__init__(n_ops, gen_window)
         self.scaling_constant = scaling_constant
         self.alpha = alpha
         self.beta = beta
@@ -814,28 +806,25 @@ Giorgos Karafotias, Agoston Endre Eiben, and Mark Hoogendoorn. “Genericparamet
     
     def calc_reward(self):
         # Involves calculation of best in previous two generations.
-        gen_window = self.gen_window
-        gen_window = np.array(gen_window)
         gen_window_len = len(gen_window)
-        total_success_t, total_unsuccess_t = super().count_total_succ_unsucc(self.n_ops, gen_window, gen_window_len - 1, off_met)
+        total_success_t, total_unsuccess_t = self.gen_window.count_total_succ_unsucc(gen_window_len - 1)
         if gen_window_len >= 2:
-            total_success_t_1, total_unsuccess_t_1 = super().count_total_succ_unsucc(self.n_ops, gen_window, gen_window_len - 2, off_met)
+            total_success_t_1, total_unsuccess_t_1 = self.gen_window.count_total_succ_unsucc(gen_window_len - 2)
         else:
             total_success_t_1 = 0
             total_unsuccess_t_1 = 0
         n_applications = (total_success_t + total_unsuccess_t) - (total_success_t_1 + total_unsuccess_t_1)
-
-        best_t = np.zeros(self.n_ops)
-        best_t_1 = np.zeros(self.n_ops)
-        for i in range(self.n_ops):
-            # Calculating best in current generation
-            if np.any(np.logical_not(np.isnan(gen_window[gen_window_len-1, :, self.off_met]))):
-                best_t[i] = np.max(gen_window[gen_window_len-1, np.where((gen_window[gen_window_len-1, :, 0] == i) & (gen_window[gen_window_len-1, :, self.off_met] != np.nan)), self.off_met])
-            # Calculating best in last generation
-            if gen_window_len >= 2 and np.any(np.logical_not(np.isnan(gen_window[gen_window_len-2, :, self.off_met]))):
-                best_t_1[i] = np.max(gen_window[gen_window_len-2, np.where((gen_window[gen_window_len-2, :, 0] == i) & (gen_window[gen_window_len-2, :, self.off_met] != np.nan)), self.off_met])
-        best_t_1[best_t_1 == 0] = 1
         n_applications[n_applications == 0] = 1
+        
+        # Calculating best in current generation
+        best_t = self.gen_window.max_at_generation(gen_window_len - 1)
+        # Calculating best in last generation
+        if gen_window_len >= 2:
+            best_t_1 = self.gen_window.max_at_generation(gen_window_len - 2)
+            best_t_1[best_t_1 == 0] = 1
+        else:
+            best_t_1 = np.ones(self.n_ops)
+            
         reward = self.scaling_constant * np.fabs(best_t - best_t_1) / ((best_t_1**self.alpha) * (np.fabs(n_applications)**self.beta))
         return super().check_reward(reward)
 
@@ -843,42 +832,30 @@ class Normalised_best_sum(RewardType):
     """
 Alvaro Fialho, Marc Schoenauer, and Mich`ele Sebag. “Analysis of adaptiveoperator selection techniques on the royal road and long k-path problems”.In:Proceedings of the 11th Annual conference on Genetic and evolutionarycomputation.https://hal.archives-ouvertes.fr/docs/00/37/74/49/PDF/banditGECCO09.pdf. ACM. 2009, pp. 779–786.
 """
-    def __init__(self, n_ops, off_met, gen_window, max_gen = 10, intensity = 0, alpha = 1):
-        super().__init__(n_ops, off_met, max_gen = max_gen)
-        self.gen_window = gen_window
+    def __init__(self, n_ops, gen_window, max_gen = 10, intensity = 0, alpha = 1):
+        super().__init__(n_ops, gen_window = gen_window, max_gen = max_gen)
         self.intensity = intensity
         self.alpha = alpha
-        debug_print("\n {} : max_gen = {}, intensity = {}, alpha = {}".format(type(self).__name__, self.max_gen, self.intensity, self.alpha))
+        debug_print("\n {} : max_gen = {}, intensity = {}, alpha = {}".format(
+            type(self).__name__, self.gen_window.max_gen, self.intensity, self.alpha))
     
     def calc_reward(self):
         # Normalised best sum
         reward = np.zeros(self.n_ops)
-        gen_window = self.gen_window
-        gen_window = np.array(gen_window)
-        gen_window_len = len(gen_window)
-        max_gen = self.max_gen
-        if gen_window_len < max_gen:
-            max_gen = gen_window_len
+        max_gen = self.gen_window.max_gen()
         for i in range(self.n_ops):
-            # list of best metric value produce by operator i at each generation.
-            for j in range(gen_window_len - max_gen, gen_window_len):
-                # MANUEL: Use count_total_succ_unsucc()
-                # MUDITA: We donot use this information (number of applications of an operator) here.
-                if np.any((gen_window[j,:,0] == i) & (gen_window[j, :, self.off_met] != np.nan)):
-                    # -1 means unsuccess, it should np.nan
-#                    reward[i] += (np.max(np.hstack(gen_window[j, np.where((gen_window[j,:,0] == i) & (gen_window[j, :, self.off_met] != np.nan)), self.off_met])))
-                    reward[i] += np.max(gen_window[j, np.where((gen_window[j,:,0] == i) & (gen_window[j, :, self.off_met] != np.nan)), self.off_met])
+            reward[i] = np.sum(self.gen_window.max_per_generation(i))
         reward = (1.0 / max_gen) * (reward**self.intensity) / (np.max(reward)**self.alpha)
         return super().check_reward(reward)
 
 
 ##################################################Quality definitions######################################################################
 
-def build_quality(choice, n_ops, qual_args, window, off_met):
+def build_quality(choice, n_ops, qual_args, window):
     if choice == 0:
         return Weighted_sum(n_ops, qual_args["decay_rate"])
     elif choice == 1:
-        return Upper_confidence_bound(n_ops, off_met, window, qual_args["scaling_factor"])
+        return Upper_confidence_bound(n_ops, window, qual_args["scaling_factor"])
     elif choice == 2:
         return Identity(n_ops)
     elif choice == 3:
@@ -961,9 +938,8 @@ class Upper_confidence_bound(QualityType):
     """
 Alvaro Fialho et al. “Extreme value based adaptive operator selection”.In:International Conference on Parallel Problem Solving from Nature.https : / / hal . inria . fr / file / index / docid / 287355 / filename /rewardPPSN.pdf. Springer. 2008, pp. 175–184
 """
-    def __init__(self, n_ops, off_met, window, scaling_factor = 0.5):
+    def __init__(self, n_ops, window, scaling_factor = 0.5):
         super().__init__(n_ops)
-        self.off_met = off_met
         self.window = window
         self.scaling_factor = scaling_factor
         debug_print("\n {} : scaling_factor = {}".format(type(self).__name__, self.scaling_factor))
@@ -1060,7 +1036,7 @@ class ProbabilityType(ABC):
     def __init__(self, n_ops, p_min = None, learning_rate = None):
         # n_ops, p_min_prob and learning_rate used in more than one probability definition
         self.p_min = p_min
-        assert self.p_min != 1.0 / len(probability)
+        assert self.p_min != 1.0 / n_ops
         self.learning_rate = learning_rate
         self.old_probability = np.full(n_ops, 1.0 / n_ops)
         self.eps = np.finfo(self.old_probability.dtype).eps

@@ -225,7 +225,7 @@ def EA_AOS(fun, lbounds, ubounds, budget, instance):
     # MUDITA: There are five classes in bbob each consisting of functions with different properties. For instance a fun, f1, from first class is sphere function. Now there are 15 instances of each fun. Eg. for f1 translated or shifted versions are instances.
     # Problem is represented as (f_i, n, j, t): f_i is i-fun, n is dimension, j is instance number and t is target.
     cost = de.DE(fun, lbounds, ubounds, budget, instance, instance_best_value,
-                 trace_file,
+                 trace_filename, stats_filename,
                  # DE parameters
                  FF, CR, NP,# W, C, alpha, phi, maxgen, c1_quality6, c2_quality6, gamma, delta, decay_reward3, decay_reward4, int_a_reward5, b_reward5, e_reward5, a_reward71, c_reward9, int_b_reward9, int_a_reward9, int_a_reward101, b_reward101, instance_best_value,
                  # Offspring Metrics
@@ -427,7 +427,8 @@ if __name__ == '__main__':
     parser.add_argument('number_of_batches', type=int, default=1, help='number of batches')
     parser.add_argument('-i', '--instance', type=int, help='problem instance to train on')
     parser.add_argument('--seed', type=int, default=0, help='seed to initialise population')
-    parser.add_argument('--trace', help='current file to write data in')
+    parser.add_argument('--trace', help='file to store fevals fitness progress')
+    parser.add_argument('--stats', help='file to store statistics about the evolution')
 
 
     class dump_irace_parameters(_StoreTrueAction):
@@ -467,7 +468,8 @@ if __name__ == '__main__':
     # MANUEL: How funevals and maxgen interact? which one has precedence?
     # MUDITA: Doesnot understand your question.
     instance =  [args.instance]
-    trace_file = args.trace
+    trace_filename = args.trace
+    stats_filename = args.stats
 
     ## FIXME: At some moment we could replace explicit parsing by implicit DE(**de_args)
     # de_args = dict.fromkeys(de_args, None)
