@@ -86,7 +86,8 @@ if not os.path.isfile(out_file):
 
 # FIXME: We cannot normalize per dataset, we need to include an upper bound of
 # fevals and fitness.
-points = np.loadtxt(trace_file, comments = "%", usecols = (0,1))
+# ndmin = 2, so that we get a matrix even if there is one line.
+points = np.loadtxt(trace_file, comments = "%", usecols = (0,1), ndmin = 2)
 points[:, 0] = points[:, 0] / fevals
 if (np.max(points[:,1]) - np.min(points[:,1])) != 0:
     points[:,1] = (points[:,1] - np.min(points[:,1])) / (np.max(points[:,1]) - np.min(points[:,1]))
