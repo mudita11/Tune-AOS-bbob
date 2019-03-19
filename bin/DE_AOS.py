@@ -220,11 +220,11 @@ class ShortInfo(object):
         h, m, s = l[3].split(':')
         return d + ' ' + h + 'h' + m + ':' + s
 
-def EA_AOS(fun, lbounds, ubounds, budget, instance):
+def EA_AOS(fun, x0, lbounds, ubounds, budget, instance):
     # MANUEL: What is the difference between fun and instance?
     # MUDITA: There are five classes in bbob each consisting of functions with different properties. For instance a fun, f1, from first class is sphere function. Now there are 15 instances of each fun. Eg. for f1 translated or shifted versions are instances.
     # Problem is represented as (f_i, n, j, t): f_i is i-fun, n is dimension, j is instance number and t is target.
-    cost = de.DE(fun, lbounds, ubounds, budget, instance, instance_best_value,
+    cost = de.DE(fun, x0, lbounds, ubounds, budget, instance, instance_best_value,
                  trace_filename, stats_filename,
                  # DE parameters
                  FF, CR, NP,# W, C, alpha, phi, maxgen, c1_quality6, c2_quality6, gamma, delta, decay_reward3, decay_reward4, int_a_reward5, b_reward5, e_reward5, a_reward71, c_reward9, int_b_reward9, int_a_reward9, int_a_reward101, b_reward101, instance_best_value,
@@ -310,7 +310,7 @@ def coco_optimize(solver, fun, max_evals, problem_index, instance, max_runs=1):
         remaining_evals = max_evals - fun.evaluations
         x0 = center + (restarts > 0) * 0.8 * range_ * (
                 np.random.rand(fun.dimension) - 0.5)
-        fun(x0)  # can be incommented, if this is done by the solver
+        #fun(x0)  # can be incommented, if this is done by the solver
 
         if solver.__name__ in ("random_search", ):
             solver(fun, fun.lower_bounds, fun.upper_bounds,
@@ -338,7 +338,7 @@ def coco_optimize(solver, fun, max_evals, problem_index, instance, max_runs=1):
         #     CALL MY SOLVER, interfaces vary
 ##############################################################################
         elif True:
-            solver(fun, fun.lower_bounds, fun.upper_bounds, remaining_evals, instance)
+            solver(fun, x0, fun.lower_bounds, fun.upper_bounds, remaining_evals, instance)
         else:
             raise ValueError("no entry for solver %s" % str(solver.__name__))
         shutil.rmtree(os.getcwd() + "/exdata", ignore_errors = True)

@@ -24,8 +24,10 @@ import subprocess
 import sys
 import numpy as np
 
+# FIXME: This should be given by COCO. How does COCO know when to record data?
 max_obj = 8.977281728e+01
 # fevals * dimension f-evaluations
+# FIXME: Is this the same value used by COCO?
 fevals = 1000
 # Options are: suite_name fevals batch total_batches
 exe = "python3 ../bin/DE_AOS.py bbob {} 1 1".format(fevals)
@@ -84,11 +86,11 @@ if not os.path.isfile(out_file):
     print(str(now) + " error: output file "+ out_file  +" not found.")
     sys.exit(1)
 
-# FIXME: We cannot normalize per dataset, we need to include an upper bound of
-# fevals and fitness.
 # ndmin = 2, so that we get a matrix even if there is one line.
 points = np.loadtxt(trace_file, comments = "%", usecols = (0,1), ndmin = 2)
 points[:, 0] = points[:, 0] / fevals
+# FIXME: We cannot normalize per dataset, we need to include an upper bound of
+# fevals and fitness.
 if (np.max(points[:,1]) - np.min(points[:,1])) != 0:
     points[:,1] = (points[:,1] - np.min(points[:,1])) / (np.max(points[:,1]) - np.min(points[:,1]))
 else:
@@ -101,14 +103,6 @@ ref_point = [1.1, 1.1]
 hv = hypervolume(points)
 cost = hv.compute(ref_point)
 #cost=[line.rstrip('\n') for line in open(out_file)][-8]
-
-# This is an example of reading a number from the output.
-# It assumes that the objective value is the first number in
-# the first column of the last line of the output.
-# from http://stackoverflow.com/questions/4703390
-
-# print("Cost:= ",cost)
 print(-cost)
 
 sys.exit(0)
-#print("End of target-runner")
