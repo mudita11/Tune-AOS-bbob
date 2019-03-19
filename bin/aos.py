@@ -18,9 +18,7 @@ def debug_print(*args, **kwargs):
 
 def softmax(x):
     """TODO"""
-    x = x - np.max(quality)
-    x = np.exp(x)
-    return(x)
+    return np.exp(x - np.max(x))
 
 def get_choices(cls):
     """Get all possible choices of a component of AOS framework"""
@@ -81,13 +79,16 @@ class GenWindow(object):
     def __init__(self, n_ops, metric, max_gen = None):
         # Private
         self.n_ops = n_ops
-        self.metric = metric
+        self.metric = metric - 1
         self.max_gen = max_gen
         self._gen_window_op = None
         self._gen_window_met = None
 
-    def max_gen(self):
-        return np.minimum(self.max_gen, len(self._gen_window))
+    def __len__(self):
+        return self._gen_window_op.shape[0]
+
+    def get_max_gen(self):
+        return np.minimum(self.max_gen, len(self))
 
     def append(self, window_op, window_met):
         if self._gen_window_op is None:
@@ -97,13 +98,7 @@ class GenWindow(object):
             self._gen_window_op = np.append(self._gen_window_op, [window_op], axis = 0)
             self._gen_window_met = np.append(self._gen_window_met, [window_met], axis = 0)
  
-    def __len__(self):
-        return self._gen_window_op.shape[0]
-
-    def max_gen(self):
-        return np.minimum(self.max_gen, len(self))
-
-    def apply_at_generation(gen, function):
+    def apply_at_generation(self, gen, function):
         """Apply function to metric values at generation gen for all operators"""
         window_met = self._gen_window_met[gen, :, self.metric]
         window_op = self._gen_window_op[gen, :]
@@ -114,18 +109,18 @@ class GenWindow(object):
             value[op] = function(window_met)
         return value
 
-    def sum_at_generation(gen):
+    def sum_at_generation(self,gen):
         """Get best metric value for all operators at generation gen"""
-        return apply_at_generation(gen, np.sum)
+        return self.apply_at_generation(gen, np.sum)
     
-    def max_at_generation(gen):
+    def max_at_generation(self, gen):
         """Get best metric value for all operators at generation gen"""
-        return apply_at_generation(gen, np.max)
+        return self.apply_at_generation(gen, np.max)
         
-    def max_per_generation(op):
+    def max_per_generation(self, op):
         """Get best metric value for operator op for each of the last max_gen generations"""
         gen_window_len = len(self)
-        max_gen = self.max_gen()
+        max_gen = self.get_max_gen()
         start = gen_window_len - max_gen
         window_met = self._gen_window_met[start:, :, self.metric]
         window_op = self._gen_window_op[start:, :]
@@ -174,7 +169,7 @@ class OpWindow(object):
         self.n_ops = n_ops
         # FIXME: Use strings instead of numbers:
         # self.metric = self.metrics[metric]
-        self.metric = metric
+        self.metric = metric - 1
         # Vector of operators
         self._window_op = np.full(max_size, -1)
         # Matrix of metrics
@@ -535,15 +530,15 @@ Jorge Maturana, Fr ́ed ́eric Lardeux, and Frederic Saubion. “Autonomousopera
         # Pareto dominance returns the number of operators dominated by an
         # operator whereas Pareto rank gives the number of operators an
         # operator is dominated by.
-        reward = np.full(self.n_ops)
         std_op = np.full(self.n_ops, np.nan)
         mean_op = np.full(self.n_ops, np.nan)
         for i in range(self.n_ops):
-            b = self.gen_window.metric_for_fix_appl_of_op(op, fix_appl)
+            b = self.gen_window.metric_for_fix_appl_of_op(i, self.fix_appl)
             if len(b) > 0:
                 std_op[i] = np.std(b)
                 mean_op[i] = np.mean(b)
 
+        reward = np.zeros(self.n_ops)
         for i in range(self.n_ops):
             if np.isnan(std_op[i]):
                 continue
@@ -568,15 +563,15 @@ Jorge Maturana, Fr ́ed ́eric Lardeux, and Frederic Saubion. “Autonomous oper
         debug_print("\n {} : fix_appl = {}".format(type(self).__name__, self.fix_appl))
 
     def calc_reward(self):
-        reward = np.full(self.n_ops)
         std_op = np.full(self.n_ops, np.nan)
         mean_op = np.full(self.n_ops, np.nan)
         for i in range(self.n_ops):
-            b = self.gen_window.metric_for_fix_appl_of_op(op, fix_appl)
+            b = self.gen_window.metric_for_fix_appl_of_op(i, self.fix_appl)
             if len(b) > 0:
                 std_op[i] = np.std(b)
                 mean_op[i] = np.mean(b)
 
+        reward = np.zeros(self.n_ops)
         for i in range(self.n_ops):
             if np.isnan(std_op[i]):
                 continue
@@ -608,7 +603,7 @@ class Compass_projection(RewardType):
         # Projection on line B with thetha = pi/4
         #        B = [1, 1]
         for i in range(self.n_ops):
-            b = self.gen_window.metric_for_fix_appl_of_op(op, fix_appl)
+            b = self.gen_window.metric_for_fix_appl_of_op(i, self.fix_appl)
             if len(b) > 0:
                 # Diversity
                 std = np.std(b)
@@ -701,8 +696,8 @@ acc=ACTIVE%20SERVICE&key=BF07A2EE685417C5%2E26BE4091F5AC6C0A%
         debug_print("\n {} : max_gen = {}, succ_lin_quad = {}, frac = {}, noise = {}".format(type(self).__name__, self.gen_window.max_gen, self.succ_lin_quad, self.frac, self.noise))
     
     def calc_reward(self):
-        gen_window_len = len(gen_window)
-        max_gen = self.gen_window.max_gen()
+        gen_window_len = len(self.gen_window)
+        max_gen = self.gen_window.get_max_gen()
         reward = np.zeros(self.n_ops)
         for j in range(gen_window_len - max_gen, gen_window_len):
             total_success, total_unsuccess = self.gen_window.count_total_succ_unsucc(j)
@@ -737,8 +732,8 @@ class Success_sum(RewardType):
         debug_print("\n {} : max_gen = {}".format(type(self).__name__, self.gen_window.max_gen))
     
     def calc_reward(self):
-        gen_window_len = len(gen_window)
-        max_gen = self.gen_window.max_gen()
+        gen_window_len = len(self.gen_window)
+        max_gen = self.gen_window.get_max_gen()
         napplications = np.zeros(self.n_ops)
         reward = np.zeros(self.n_ops)
         for j in range(gen_window_len - max_gen, gen_window_len):
@@ -781,8 +776,8 @@ Christian Igel and Martin Kreutz. “Using fitness distributions to improvethe e
         debug_print("\n {} : max_gen = {}".format(type(self).__name__, self.gen_window.max_gen))
     
     def calc_reward(self):
-        gen_window_len = len(gen_window)
-        max_gen = self.gen_window.max_gen()
+        gen_window_len = len(self.gen_window)
+        max_gen = self.gen_window.get_max_gen()
         reward = np.zeros(self.n_ops)
         for j in range(gen_window_len - max_gen, gen_window_len):
             total_success, total_unsuccess = self.gen_window.count_total_succ_unsucc(j)
@@ -806,7 +801,7 @@ Giorgos Karafotias, Agoston Endre Eiben, and Mark Hoogendoorn. “Genericparamet
     
     def calc_reward(self):
         # Involves calculation of best in previous two generations.
-        gen_window_len = len(gen_window)
+        gen_window_len = len(self.gen_window)
         total_success_t, total_unsuccess_t = self.gen_window.count_total_succ_unsucc(gen_window_len - 1)
         if gen_window_len >= 2:
             total_success_t_1, total_unsuccess_t_1 = self.gen_window.count_total_succ_unsucc(gen_window_len - 2)
@@ -842,7 +837,7 @@ Alvaro Fialho, Marc Schoenauer, and Mich`ele Sebag. “Analysis of adaptiveopera
     def calc_reward(self):
         # Normalised best sum
         reward = np.zeros(self.n_ops)
-        max_gen = self.gen_window.max_gen()
+        max_gen = self.gen_window.get_max_gen()
         for i in range(self.n_ops):
             reward[i] = np.sum(self.gen_window.max_per_generation(i))
         reward = (1.0 / max_gen) * (reward**self.intensity) / (np.max(reward)**self.alpha)
@@ -955,8 +950,7 @@ class Identity(QualityType):
         super().__init__(n_ops)
     
     def calc_quality(self, old_reward, reward, old_probability):
-        quality[:] = reward[:]
-        #print("In definition",quality)
+        quality = reward
         return super().check_quality(quality)
 
 class Weighted_normalised_sum(QualityType):
