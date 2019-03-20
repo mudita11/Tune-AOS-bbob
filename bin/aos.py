@@ -325,6 +325,7 @@ class Unknown_AOS(object):
         
         # See OpWindow metrics
         # Fitness is minimised but metric is maximised
+        ## MANUEL: we need to think if this is the best solution to convert to maximization
         offsp_fitness = verylarge - F1
         assert np.all(offsp_fitness >= 0)
         exp_offsp_fitness = np.exp(-F1)

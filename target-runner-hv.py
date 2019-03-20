@@ -22,11 +22,8 @@ import subprocess
 import sys
 import numpy as np
 
-# FIXME: This should be given by COCO. How does COCO know when to record data?
-max_obj = 8.977281728e+01
 # fevals * dimension f-evaluations
-# FIXME: Is this the same value used by COCO?
-fevals = 1000
+fevals = 10000 # This the value used by coco for the plots
 # Options are: suite_name fevals batch total_batches
 exe = "python3 ../bin/DE_AOS.py bbob {} 1 1".format(fevals)
 
@@ -81,13 +78,15 @@ if not os.path.isfile(out_file):
 
 # ndmin = 2, so that we get a matrix even if there is one line.
 points = np.loadtxt(trace_file, comments = "%", usecols = (0,1), ndmin = 2)
-points[:, 0] = points[:, 0] / fevals
-# FIXME: We cannot normalize per dataset, we need to include an upper bound of
-# fevals and fitness.
-if (np.max(points[:,1]) - np.min(points[:,1])) != 0:
-    points[:,1] = (points[:,1] - np.min(points[:,1])) / (np.max(points[:,1]) - np.min(points[:,1]))
-else:
-    points[:,1] = 1
+points[:, 0] = np.log10(points[:, 0])
+# This check is for log10(fevals/dim)
+max_0 = np.log10(fevals)
+assert np.min(points[:,0]) > 0.0 and np.max(points[:,0]) <= max_0
+points[:, 0] /= max_0 # Normalize
+# This check is for frac
+assert np.min(points[:,1]) >= 0.0 and np.max(points[:,1]) <= 1.0
+# We want to maximize frac
+points[:,1] = 1.0 - points[:,1]
 
 # See README.txt to install this
 from pygmo import hypervolume
