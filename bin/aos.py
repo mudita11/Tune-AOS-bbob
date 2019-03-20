@@ -471,6 +471,7 @@ class RewardType(ABC):
         "succ_lin_quad",    int,   "Operator success as linear or quadratic",
         "frac",             float, "Fraction of sum of successes of all operators",
         "noise",            float, "Small noise for randomness",
+        # MANUEL: You say that it is int but you initialise it with 0.1
         "normal_factor",    int,   "Choice to normalise",
         "scaling_constant", float, "Scaling constant",
         "alpha",            int,   "Choice to normalise by best produced by any operator",
@@ -528,7 +529,8 @@ class RewardType(ABC):
         return aos_irace_parameters(cls)
 
     def check_reward(self, reward):
-        # Nothing to check
+        # MANUEL: Can reward be negative?
+        assert np.all(np.isfinite(reward))
         self.old_reward[:] = reward[:]
         debug_print("{:>30}:      reward={}".format(type(self).__name__, reward))
         return reward
@@ -630,6 +632,8 @@ class Compass_projection(RewardType):
                 # Quality 
                 avg = np.mean(b)
                 # abs(atan(Quality / Diversity) - theta)
+                # MANUEL: What should happen if both are zero?
+                assert avg != 0.0 and std != 0.0
                 angle = np.fabs(np.arctan(np.deg2rad(avg / std)) - self.theta)
                 # Euclidean distance of the vector 
                 reward[i] = (np.sqrt(std**2 + avg**2)) * np.cos(angle)
@@ -765,7 +769,7 @@ class Success_sum(RewardType):
 
 class Normalised_success_sum_window(RewardType):
     """
-Alvaro Fialho, Marc Schoenauer, and Mich`ele Sebag. “Analysis of adaptiveoperator selection techniques on the royal road and long k-path problems”.In:Proceedings of the 11th Annual conference on Genetic and evolutionarycomputation.https://hal.archives-ouvertes.fr/docs/00/37/74/49/PDF/banditGECCO09.pdf. ACM. 2009, pp. 779–786.
+Alvaro Fialho, Marc Schoenauer, and Mich`ele Sebag. “Analysis of adaptive operator selection techniques on the royal road and long k-path problems”.In:Proceedings of the 11th Annual conference on Genetic and evolutionarycomputation.https://hal.archives-ouvertes.fr/docs/00/37/74/49/PDF/banditGECCO09.pdf. ACM. 2009, pp. 779–786.
 """
     def __init__(self, n_ops, window, window_size = 50, normal_factor = 0.1):
         super().__init__(n_ops, window_size = window_size)
@@ -933,8 +937,6 @@ class QualityType(ABC):
     def calc_quality(self, old_reward, reward):
         pass
 
-# MANUEL: These should have more descriptive names and a doctstring documenting
-# where they come from (references) and what they do.
 class Weighted_sum(QualityType):
     """
  Dirk Thierens. “An adaptive pursuit strategy for allocating operator prob-abilities”.  In:Proceedings of the 7th annual conference on Genetic andevolutionary computation.http://www.cs.bham.ac.uk/~wbl/biblio/gecco2005/docs/p1539.pdf. ACM. 2005, pp. 1539–1546.
