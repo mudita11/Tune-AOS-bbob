@@ -14,17 +14,28 @@ from numpy.linalg import inv
 
 import aos
 
+DE_params = {
+        'FF': [float, 0.5, [0.1, 2.0],'Scaling factor'],
+        'CR': [float, 1.0, [0.1, 1.0],'Crossover rate'],
+        'NP': [int,   200, [50, 400], 'Population size'],
+        'mutation': [object, "aos",
+                     ["DE/rand/1","DE/rand/2","DE/rand/1","DE/rand-to-best/2", "random", "aos"],
+                     "Mutation strategy"]
+        }
+
+
 def DE_add_arguments(parser):
     group = parser.add_argument_group(title="DE parameters")
-    group.add_argument('--FF', type=float, default=0.5, help='Scaling factor (DE parameter)')
-    group.add_argument('--CR', type=float, default=1.0, help='Crossover rate (DE parameter)')
-    group.add_argument('--NP', type=int, default=200, help='Population size (DE parameter)')
-
+    for key, value in DE_params.items():
+        if value[0] is object:
+            group.add_argument('--' + key, default=value[1], choices=value[2], help=value[3])
+        else:
+            group.add_argument('--' + key, type=value[0], default=value[1], help=value[3])
+            
 def DE_irace_parameters():
     output = "\n# DE parameters\n"
-    output += aos.irace_parameter("FF", float, [0.1, 2.0], help = 'Scaling factor (DE parameter)')
-    output += aos.irace_parameter("CR", float, [0.1, 1.0], help = 'Crossover rate (DE parameter)')
-    output += aos.irace_parameter("NP", int,   [50, 400],  help='Population size (DE parameter)')
+    for key, value in DE_params.items():
+        output += aos.irace_parameter(key, value[0], value[2], help=value[3])
     return output
     
 # NP: popsize
@@ -37,24 +48,26 @@ def DE_irace_parameters():
     
 def DE(fun, x0, lbounds, ubounds, budget, instance, instance_best_value,
        trace_filename, stats_filename,
-       FF, CR, NP,
+       FF, CR, NP, mutation,
        OM_choice, rew_choice, rew_args, qual_choice, qual_args, prob_choice, prob_args, select_choice):
 
-        
     def rand1(population, samples, best, scale):
         """DE/rand/1"""
         r0, r1, r2 = samples[:3]
         return (population[r0] + scale * (population[r1] - population[r2]))
 
-    def rand2(population, samples, best, scale): # DE/rand/2
+    def rand2(population, samples, best, scale):
+        '''DE/rand/2'''
         r0, r1, r2, r3, r4 = samples[:5]
         return (population[r0] + scale * (population[r1] - population[r2] + population[r3] - population[r4]))
 
-    def rand_to_best2(population, samples, best, scale): # DE/rand-to-best/2
+    def rand_to_best2(population, samples, best, scale):
+        '''DE/rand-to-best/2'''
         r0, r1, r2, r3, r4 = samples[:5]
         return (population[r0] + scale * (population[best] - population[r0] + population[r1] - population[r2] + population[r3] - population[r4]))
 
-    def current_to_rand1(population, samples, best, scale): # DE/current-to-rand/1
+    def current_to_rand1(population, samples, best, scale):
+        '''DE/current-to-rand/1'''
         r0, r1, r2 = samples[:3]
         return (population[i] + scale * (population[r0] - population[i] + population[r1] - population[r2]))
 
@@ -67,6 +80,10 @@ def DE(fun, x0, lbounds, ubounds, budget, instance, instance_best_value,
         idxs.remove(candidate)
         return(np.random.choice(idxs, number_samples, replace = False))
 
+    mutations = [rand1, rand2, rand_to_best2, current_to_rand1]
+    mutations_names = [ x.__doc__ for x in mutations]
+    n_operators = len(mutations)
+    
     NP = int(NP)
     opu = np.full(NP, -1)
     
@@ -89,16 +106,23 @@ def DE(fun, x0, lbounds, ubounds, budget, instance, instance_best_value,
     best_so_far = f_min
     best_so_far1 = best_so_far
 
-    mutations = [rand1, rand2, rand_to_best2, current_to_rand1]
-    n_operators = len(mutations)
-    
-    # Test different combinations
-    aos_method = aos.Unknown_AOS(NP, n_ops = n_operators, OM_choice = OM_choice,
-                                 rew_choice = rew_choice, rew_args = rew_args,
-                                 qual_choice = qual_choice, qual_args = qual_args,
-                                 prob_choice = prob_choice, prob_args = prob_args,
-                                 select_choice = select_choice)
 
+    if mutation == "aos":
+        aos_method = aos.Unknown_AOS(NP, n_ops = n_operators, OM_choice = OM_choice,
+                                     rew_choice = rew_choice, rew_args = rew_args,
+                                     qual_choice = qual_choice, qual_args = qual_args,
+                                     prob_choice = prob_choice, prob_args = prob_args,
+                                     select_choice = select_choice)
+        select_mutation = aos_method.select_operator
+    elif mutation == "random":
+        select_mutation = lambda : np.random.randint(n_operators) 
+    elif mutation in mutations_names:
+        mutation = mutations_names.index(mutation)
+        select_mutation = lambda : mutation
+    else:
+        raise ValueError("unknown mutation " + mutation)
+    
+    
     stats_file = None
     if stats_filename:
         stats_file = open(stats_filename, 'w+')
@@ -126,12 +150,6 @@ def DE(fun, x0, lbounds, ubounds, budget, instance, instance_best_value,
         fill_points = np.random.randint(dim, size = NP)
         
         for i in range(NP):
-            SI = aos_method.select_operator()
-            if stats_file:
-                stats_file.write("{} {}\n".format(generation, SI))
-            assert SI >= 0 and SI <= len(mutations)
-            mutate = mutations[SI]
-            opu[i] = SI
             # No mutation strategy needs more than 5.
             r = select_samples(NP, i, 5)
             best = np.argmin(F)
@@ -139,11 +157,19 @@ def DE(fun, x0, lbounds, ubounds, budget, instance, instance_best_value,
             crossovers[fill_points[i]] = True
             # MANUEL: What is this trial?
             # trial = aos_method.X[i]
+            SI = select_mutation()
+            # if stats_file:
+            #     stats_file.write("{} {}\n".format(generation, SI))
+            assert SI >= 0 and SI <= len(mutations)
+            opu[i] = SI
+            mutate = mutations[SI]
             bprime = mutate(X, r, best, FF)
             u[i,:] = np.where(crossovers, bprime, X[i, :])
     
         F1 = np.apply_along_axis(fun, 1, u)
-        aos_method.OM_Update(F, F1, F_bsf = best_so_far, opu = opu)
+
+        if mutation == "aos":
+            aos_method.OM_Update(F, F1, F_bsf = best_so_far, opu = opu)
                 
         #output_file.write(str(aos_method.reward)+"\n")
         #output_file.write(str(aos_method.quality)+"\n")
@@ -166,7 +192,8 @@ def DE(fun, x0, lbounds, ubounds, budget, instance, instance_best_value,
         generation += 1
         budget -= NP
 
-    aos_method.gen_window.write_to(sys.stderr)
+    if mutation == "aos":
+        aos_method.gen_window.write_to(sys.stderr)
     
     #output_file.write("Last generation number"+str(generation)+".................................................................................\n")
     #output_file.close()

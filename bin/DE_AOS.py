@@ -227,7 +227,7 @@ def EA_AOS(fun, x0, lbounds, ubounds, budget, instance):
     cost = de.DE(fun, x0, lbounds, ubounds, budget, instance, instance_best_value,
                  trace_filename, stats_filename,
                  # DE parameters
-                 FF, CR, NP,# W, C, alpha, phi, maxgen, c1_quality6, c2_quality6, gamma, delta, decay_reward3, decay_reward4, int_a_reward5, b_reward5, e_reward5, a_reward71, c_reward9, int_b_reward9, int_a_reward9, int_a_reward101, b_reward101, instance_best_value,
+                 FF, CR, NP, mutation = mutation,
                  # Offspring Metrics
                  OM_choice = OM_choice,
                  # Rewards
@@ -476,6 +476,7 @@ if __name__ == '__main__':
     FF = args.FF
     CR = args.CR
     NP = args.NP
+    mutation = args.mutation
     
     seed = args.seed
     # If no seed is given, we generate one.

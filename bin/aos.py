@@ -43,7 +43,7 @@ def aos_irace_parameters(cls):
     """All AOS components may call this function"""
     choices, choices_help = get_choices(cls)
     output = "# {}\n".format(cls.__name__)
-    output += irace_parameter(name=cls.arg_choice, type=str, domain=choices, help=choices_help)
+    output += irace_parameter(name=cls.arg_choice, type=object, domain=choices, help=choices_help)
     for i in range(0, len(cls.args), 3):
         arg, type, help = cls.args[i:i+3]
         condition = irace_condition(cls.arg_choice, cls.args_conditions[arg])
@@ -54,7 +54,7 @@ def aos_irace_parameters(cls):
 
 def irace_parameter(name, type, domain, condition="", help=""):
     """Return a string representation of an irace parameter"""
-    irace_types = {int:"i", float:"r", str: "c"}
+    irace_types = {int:"i", float:"r", object: "c"}
     arg = '"--{} "'.format(name)
     domain = "(" + ", ".join([str(x) for x in domain]) + ")"
     if condition != "":
@@ -298,7 +298,7 @@ class Unknown_AOS(object):
     @classmethod
     def irace_parameters(cls):
         output = "# " + cls.__name__ + "\n"
-        return output + irace_parameter(cls.arg_choice, str, range(1,8), help=cls.arg_choice_help)
+        return output + irace_parameter(cls.arg_choice, object, range(1,8), help=cls.arg_choice_help)
 
     def select_operator(self):
         return self.selection_type.perform_selection(self.probability)
