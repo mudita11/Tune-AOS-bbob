@@ -8,14 +8,10 @@ import copy
 
 from abc import ABC,abstractmethod
 
-# MANUEL: where is Rec_PM and the other AOS methods you implemented for the PPSN paper?
-# MUDITA: Rec-PM and other are particular combination of these compenents with their default settings. They have independent folders each for an AOS (total 8 AOS).
-# MANUEL: All methods should be here. If they are build with a particular combination, then create a class that instantiates that particular combination.
-
 def debug_print(*args, **kwargs):
     print(*args, file=sys.stderr, **kwargs)
 
-
+    
 def softmax(x):
     """TODO"""
     return np.exp(x - np.max(x))
@@ -30,24 +26,24 @@ def get_choices(cls):
 def parser_add_arguments(cls, parser):
     "Helper function to add arguments of a class to an ArgumentParser"
     choices, choices_help = get_choices(cls)
-    parser.add_argument("--"  + cls.arg_choice, type=int, choices=choices,
-                        help=cls.arg_choice_help + " (" + choices_help + ")")
+    parser.add_argument("--"  + cls.param_choice, type=int, choices=choices,
+                        help=cls.param_choice_help + " (" + choices_help + ")")
     group = parser.add_argument_group(title=cls.__name__)
-    for i in range(0, len(cls.args), 3):
-        arg, type, help = cls.args[i:i+3]
+    for i in range(0, len(cls.params), 4):
+        arg, type, domain, help = cls.params[i:i+4]
         group.add_argument('--' + arg, type=type, default=0, help=help)
     # Return the names
-    return cls.args[0::3]
+    return cls.params[0::4]
 
 def aos_irace_parameters(cls):
     """All AOS components may call this function"""
     choices, choices_help = get_choices(cls)
-    output = "# {}\n".format(cls.__name__)
-    output += irace_parameter(name=cls.arg_choice, type=object, domain=choices, help=choices_help)
-    for i in range(0, len(cls.args), 3):
-        arg, type, help = cls.args[i:i+3]
-        condition = irace_condition(cls.arg_choice, cls.args_conditions[arg])
-        output += irace_parameter(name=arg, type=type, domain=cls.args_ranges[arg],
+    output = "# " + cls.__name__ + "\n"
+    output += irace_parameter(name=cls.param_choice, type=object, domain=choices, help=choices_help)
+    for i in range(0, len(cls.params), 4):
+        arg, type, domain, help = cls.params[i:i+4]
+        condition = irace_condition(cls.param_choice, cls.params_conditions[arg])
+        output += irace_parameter(name=arg, type=type, domain=domain,
                                   condition=condition, help=help)
     return output
 
@@ -80,7 +76,7 @@ class GenWindow(object):
     def __init__(self, n_ops, metric, max_gen = None):
         # Private
         self.n_ops = n_ops
-        self.metric = metric - 1
+        self.metric = metric
         self.max_gen = max_gen
         self._gen_window_op = None
         self._gen_window_met = None
@@ -184,15 +180,14 @@ class OpWindow(object):
                "improv_wrt_pop": 3,
                "improv_wrt_bsf": 4,
                "improv_wrt_median": 5,
-               "relative_fitness_improv": 6
-    }
+               "relative_fitness_improv": 6}
     
     def __init__(self, n_ops, metric, max_size = 50):
         self.max_size = max_size
         self.n_ops = n_ops
         # FIXME: Use strings instead of numbers:
         # self.metric = self.metrics[metric]
-        self.metric = metric - 1
+        self.metric = metric
         # Vector of operators
         self._window_op = np.full(max_size, -1)
         # Matrix of metrics
@@ -274,14 +269,14 @@ class OpWindow(object):
 
 class Unknown_AOS(object):
 
-    arg_choice = "OM_choice"
-    arg_choice_help = "Offspring metric selected"
-
+    param_choice = "OM_choice"
+    param_choice_help = "Offspring metric selected"
+    
     def __init__(self, popsize, n_ops, OM_choice, rew_choice, rew_args,
                  qual_choice, qual_args, prob_choice, prob_args, select_choice):
         
-        self.window = OpWindow(n_ops, metric = OM_choice, max_size = 50)
-        self.gen_window = GenWindow(n_ops, metric = OM_choice)
+        self.window = OpWindow(n_ops, metric = OM_choice - 1, max_size = 50)
+        self.gen_window = GenWindow(n_ops, metric = OM_choice - 1)
         
         self.probability = np.full(n_ops, 1.0 / n_ops)
         rew_args["popsize"] = popsize
@@ -292,13 +287,20 @@ class Unknown_AOS(object):
 
     @classmethod
     def add_argument(cls, parser):
-        # FIXME: Document what 1...7 means
-        parser.add_argument("--" + cls.arg_choice, type=int, choices=range(1,8), help=cls.arg_choice_help)
+        metrics_names = OpWindow.metrics.keys()
+        choices = range(1, 1 + len(metrics_names))
+        choices_help = ', '.join("{0}:{1}".format(i,j) for i,j in zip(choices, metrics_names))
+        parser.add_argument("--" + cls.param_choice, type=int, choices=choices,
+                            help=cls.param_choice_help + " (" + choices_help + ")")
 
     @classmethod
     def irace_parameters(cls):
+        metrics_names = OpWindow.metrics.keys()
+        choices = range(1, 1 + len(metrics_names))
+        choices_help = ', '.join("{0}:{1}".format(i,j) for i,j in zip(choices, metrics_names))
         output = "# " + cls.__name__ + "\n"
-        return output + irace_parameter(cls.arg_choice, object, range(1,8), help=cls.arg_choice_help)
+        return output + irace_parameter(cls.param_choice, object, choices,
+                                        help=cls.param_choice_help + " (" + choices_help + ")")
 
     def select_operator(self):
         return self.selection_type.perform_selection(self.probability)
@@ -462,37 +464,22 @@ class RewardType(ABC):
     # Static variables
     # FIXME: Use __slots__ to find which parameters need to be defined.
     # FIXME: define this in the class as @property getter doctstring and get it from it
-    args = [
-        "max_gen",          int,   "Maximum number of previous generation",
-        "fix_appl",         int,   "Count a fixed number of successful applications of an operator",
-        "theta",            int,   "Defines search direction",
-        "window_size",      int,   "Size of window",
-        "decay",            float, "Decay value to emphasise the choice better operator",
-        "succ_lin_quad",    int,   "Operator success as linear or quadratic",
-        "frac",             float, "Fraction of sum of successes of all operators",
-        "noise",            float, "Small noise for randomness",
-        # MANUEL: You say that it is int but you initialise it with 0.1
-        "normal_factor",    int,   "Choice to normalise",
-        "scaling_constant", float, "Scaling constant",
-        "alpha",            int,   "Choice to normalise by best produced by any operator",
-        "beta",             int,   "Choice to include the difference between budget used by an operator in previous two generations",
-        "intensity",        float, "Intensify the changes of best fitness value"
+    params = [
+        "max_gen",          int,   [1, 15, 30, 50], "Maximum number of generations for generational window",
+        "fix_appl",         int,   [50, 100, 150],  "Maximum number of successful operator applications for generational window",
+        "theta",            int,   [36, 45, 54, 90],"Search direction",
+        "window_size",      int,   [20, 50],        "Size of window",
+        "decay",            float, [0.0, 1.0],      "Decay value to emphasise the choice of better operator",
+        "succ_lin_quad",    int,   [1, 2],          "Operator success as linear or quadratic",
+        "frac",             float, [0.0, 1.0],      "Fraction of sum of successes of all operators",
+        "noise",            float, [0.0, 1.0],      "Small noise for randomness",
+        "normal_factor",    int,   [0, 1],          "Choice to normalise",# MANUEL: You say that it is int but you initialise it with 0.1
+        "scaling_constant", float, [0.0, 1.0],      "Scaling constant",
+        "alpha",            int,   [0, 1],          "Choice to normalise by best produced by any operator",
+        "beta",             int,   [0, 1],          "Choice to include the difference between budget used by an operator in previous two generations",
+        "intensity",        float, [0.0, 1.0],      "Intensify the changes of best fitness value"
     ]
-    args_ranges = {"max_gen": [1, 15, 30, 50],
-                   "fix_appl": [50, 100, 150],
-                   "theta": [36, 45, 54, 90],
-                   "window_size": [20, 50],
-		   "decay": [0.0, 1.0],
-		   "succ_lin_quad" : [1, 2],
-                   "frac": [0.0, 1.0],
-                   "noise": [0.0, 1.0],
-                   "normal_factor": [0, 1],
-		   "scaling_constant": [0.0, 1.0],
-		   "alpha" : [0, 1],
-                   "beta": [0, 1],
-                   "intensity": [0.0, 1.0]}
-
-    args_conditions = {"max_gen": [5, 7, 9, 11],
+    params_conditions = {"max_gen": [5, 7, 9, 11],
                        "fix_appl": [0, 1, 2],
                        "theta": [2],
                        "window_size": [3, 4, 8],
@@ -506,8 +493,8 @@ class RewardType(ABC):
                        "beta": [10],
                        "intensity": [11]}
     
-    arg_choice = "rew_choice"
-    arg_choice_help = "Reward method selected"
+    param_choice = "rew_choice"
+    param_choice_help = "Reward method selected"
     
     def __init__(self, n_ops, gen_window = None, max_gen = None, window_size = None, decay = None, fix_appl = None):
         self.n_ops = n_ops
@@ -888,28 +875,21 @@ class QualityType(ABC):
     # Static variables
     # FIXME: Use __slots__ to find which parameters need to be defined.
     # FIXME: define this in the class as @property getter doctstring and get it from it
-    args = [
-        "scaling_factor",    float,"Scaling Factor",            
-        "decay_rate",        float,"Decay rate",                
-        "weight_reward",     float,"Memory for current reward", 
-        "weight_old_reward", float,"Memory for previous reward", 
-        "discount_rate",     float,"Discount rate"
+    params = [
+        "scaling_factor",    float,[0.0, 1.0],"Scaling Factor",            
+        "decay_rate",        float,[0.0, 1.0],"Decay rate",                
+        "weight_reward",     float,[0.0, 1.0],"Memory for current reward", 
+        "weight_old_reward", float,[0.0, 1.0],"Memory for previous reward", 
+        "discount_rate",     float,[0.0, 1.0],"Discount rate"
     ]
-    # TODO:
-    args_ranges = {"scaling_factor" : [0.0, 1.0],
-                   "decay_rate": [0.0, 1.0],
-                   "weight_reward": [0.0, 1.0],
-                   "weight_old_reward": [0.0, 1.0],
-		   "discount_rate": [0.0, 1.0]}
-    # TODO:
-    args_conditions = {"scaling_factor" : [1],
+    params_conditions = {"scaling_factor" : [1],
                        "decay_rate": [0, 3],
                        "weight_reward": [4],
                        "weight_old_reward": [4],
 		       "discount_rate": [4]}
 
-    arg_choice = "qual_choice"
-    arg_choice_help = "Quality method selected"
+    param_choice = "qual_choice"
+    param_choice_help = "Quality method selected"
     
     def __init__(self, n_ops):
         self.n_ops = n_ops
@@ -1029,24 +1009,20 @@ class ProbabilityType(ABC):
     # Static variables
     # FIXME: Use __slots__ to find which parameters need to be defined.
     # FIXME: define this in the class as @property getter doctstring and get it from it
-    args = [
-        "p_min",         float,"Minimum probability of selection of an operator",
-        "learning_rate", float,"Learning Rate",                                 
-        "error_prob",    float,"Probability noise",                             
-        "p_max",         float,"Maximum probability of selection of an operator"
+    params = [
+        "p_min",         float, [0.0, 0.25],"Minimum probability of selection of an operator",
+        "learning_rate", float, [0.0, 1.0], "Learning Rate",                                 
+        "error_prob",    float, [0.0, 1.0], "Probability noise",                             
+        "p_max",         float, [0.0, 1.0], "Maximum probability of selection of an operator"
     ]
-    args_ranges = {"p_min" : [0.0, 0.25],
-                   "learning_rate": [0.0, 1.0],
-                   "error_prob": [0.0, 1.0],
-                   "p_max": [0.0, 1.0]}
     # FIXME: We should use explicit class names or a function that converts from names to numbers
-    args_conditions = {"p_min": [],
+    params_conditions = {"p_min": [],
                        "learning_rate": [1,2],
                        "error_prob": [0],
                        "p_max": [1]}
         
-    arg_choice = "prob_choice"
-    arg_choice_help = "Probability method selected"
+    param_choice = "prob_choice"
+    param_choice_help = "Probability method selected"
 
     def __init__(self, n_ops, p_min = None, learning_rate = None):
         # n_ops, p_min_prob and learning_rate used in more than one probability definition
@@ -1147,9 +1123,9 @@ def build_selection(choice, n_ops):
 
 class SelectionType(ABC):
 
-    args = []
-    arg_choice = "select_choice"
-    arg_choice_help = "Selection method"
+    params = []
+    param_choice = "select_choice"
+    param_choice_help = "Selection method"
 
     def __init__(self, n_ops):
         # The initial list of operators (randomly permuted)
