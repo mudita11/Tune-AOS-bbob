@@ -16,13 +16,18 @@ def softmax(x):
     """TODO"""
     return np.exp(x - np.max(x))
 
-def get_choices(cls):
+def get_choices(cls, override = []):
     """Get all possible choices of a component of AOS framework"""
     subclasses = [x.__name__ for x in cls.__subclasses__()]
     choices = range(0, len(subclasses))
+    if len(override):
+        choices = override
+        subclasses = [subclasses[i] for i in override]
+
     choices_help = ', '.join("{0}:{1}".format(i,j) for i,j in zip(choices, subclasses))
     return choices, choices_help
-  
+    
+    
 def parser_add_arguments(cls, parser):
     "Helper function to add arguments of a class to an ArgumentParser"
     choices, choices_help = get_choices(cls)
@@ -36,23 +41,34 @@ def parser_add_arguments(cls, parser):
     # Return the names
     return cls.params[0::4]
 
-def aos_irace_parameters(cls):
-    """All AOS components may call this function"""
-    choices, choices_help = get_choices(cls)
+def aos_irace_parameters(cls, override = {}):
+    """All AOS components may call this function.
+    override is an optional dictionary that allows to override some parameter values"""
     output = "# " + cls.__name__ + "\n"
+    if cls.param_choice in override:
+        choices, choices_help = get_choices(cls, override = override[cls.param_choice])
+    else:
+        choices, choices_help = get_choices(cls)
+
     output += irace_parameter(name=cls.param_choice, type=object, domain=choices, help=choices_help)
     for i in range(0, len(cls.params), 4):
         arg, type, domain, help = cls.params[i:i+4]
-        condition = irace_condition(cls.param_choice, cls.params_conditions[arg])
+
+        condition = irace_condition(cls.param_choice, cls.params_conditions[arg], override)
         output += irace_parameter(name=arg, type=type, domain=domain,
-                                  condition=condition, help=help)
+                                  condition=condition, help=help, override=override)
     return output
 
 
-def irace_parameter(name, type, domain, condition="", help=""):
+def irace_parameter(name, type, domain, condition="", help="", override = {}):
     """Return a string representation of an irace parameter"""
     irace_types = {int:"i", float:"r", object: "c"}
+    if name in override:
+        domain = override[name]
+
     arg = '"--{} "'.format(name)
+    if len(domain) == 1:
+        type = object
     domain = "(" + ", ".join([str(x) for x in domain]) + ")"
     if condition != "":
         condition = "| " + condition
@@ -62,8 +78,11 @@ def irace_parameter(name, type, domain, condition="", help=""):
         format(name=name, arg=arg, type=irace_types[type], domain=domain,
                condition=condition, help=help)
 
-def irace_condition(what, values):
+def irace_condition(what, values, override = {}):
     """Return a string representation of the condition of an irace parameter"""
+    if what in override:
+        values = [value for value in override[what] if value in values]
+    
     if not values:
         return ""
     if len(values) == 1:
@@ -273,6 +292,22 @@ class Unknown_AOS(object):
 
     param_choice = "OM_choice"
     param_choice_help = "Offspring metric selected"
+
+    known_AOS = {
+        "AP" : {
+            "OM_choice" : [6],
+            "rew_choice" : [8],
+            "qual_choice": [0],
+            "prob_choice": [0],
+            "select_choice":[1],
+            "window_size":[20, 50, 100],
+            "normal_factor":[0.0, 1.0],
+            "adaptation_rate":[0.0, 1.0],
+            "scaling_factor":[0.0, 1.0],
+            "p_min":	[0.0, 0.25],
+            "error_prob":	[0.0, 1.0],
+        }
+    }
     
     def __init__(self, popsize, n_ops, OM_choice, rew_choice, rew_args,
                  qual_choice, qual_args, prob_choice, prob_args, select_choice):
@@ -287,6 +322,7 @@ class Unknown_AOS(object):
         self.probability_type = build_probability(prob_choice, n_ops, prob_args)
         self.selection_type = build_selection(select_choice, n_ops)
 
+    
     @classmethod
     def add_argument(cls, parser):
         metrics_names = OpWindow.metrics.keys()
@@ -296,13 +332,31 @@ class Unknown_AOS(object):
                             help=cls.param_choice_help + " (" + choices_help + ")")
 
     @classmethod
-    def irace_parameters(cls):
+    def irace_parameters(cls, override = {}):
         metrics_names = OpWindow.metrics.keys()
         choices = range(1, 1 + len(metrics_names))
+        if cls.param_choice in override:
+            choices = override[cls.param_choice]
+            metrics_names = list(metrics_names)
+            metrics_names = [metrics_names[i] for i in override[cls.param_choice]]
+            
         choices_help = ', '.join("{0}:{1}".format(i,j) for i,j in zip(choices, metrics_names))
         output = "# " + cls.__name__ + "\n"
         return output + irace_parameter(cls.param_choice, object, choices,
                                         help=cls.param_choice_help + " (" + choices_help + ")")
+
+    @classmethod
+    def irace_dump_knownAOS(cls, name):
+        value = cls.known_AOS[name]
+        key = name
+        output = "##### AOS:  " + key + ".txt\n"
+        output += cls.irace_parameters(override = value)
+        output += ProbabilityType.irace_parameters(override = value)
+        output += RewardType.irace_parameters(override = value)
+        output += QualityType.irace_parameters(override = value)
+        output += SelectionType.irace_parameters(override = value)
+        return(output)
+        
 
     def select_operator(self):
         return self.selection_type.perform_selection(self.probability)
@@ -516,8 +570,8 @@ class RewardType(ABC):
         return parser_add_arguments(cls, parser)
 
     @classmethod
-    def irace_parameters(cls):
-        return aos_irace_parameters(cls)
+    def irace_parameters(cls, override = {}):
+        return aos_irace_parameters(cls, override = override)
 
     def check_reward(self, reward):
         # MANUEL: Can reward be negative?
@@ -906,8 +960,8 @@ class QualityType(ABC):
         return parser_add_arguments(cls, parser)
 
     @classmethod
-    def irace_parameters(cls):
-        return aos_irace_parameters(cls)
+    def irace_parameters(cls, override = {}):
+        return aos_irace_parameters(cls, override = override)
 
     def check_quality(self, quality):
         assert np.sum(quality) >= 0
@@ -1043,8 +1097,8 @@ class ProbabilityType(ABC):
         return parser_add_arguments(cls, parser)
 
     @classmethod
-    def irace_parameters(cls):
-        return aos_irace_parameters(cls)
+    def irace_parameters(cls, override = {}):
+        return aos_irace_parameters(cls, override = override)
 
     def check_probability(self, probability):
         probability += self.eps
@@ -1143,8 +1197,8 @@ class SelectionType(ABC):
         return parser_add_arguments(cls, parser)
 
     @classmethod
-    def irace_parameters(cls):
-        return aos_irace_parameters(cls)
+    def irace_parameters(cls, override = {}):
+        return aos_irace_parameters(cls, override = override)
 
     def check_selection(self, selected):
         assert selected >= 0 and selected <= self.n_ops

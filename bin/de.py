@@ -54,10 +54,10 @@ def DE_add_arguments(parser):
         else:
             group.add_argument('--' + key, type=value[0], default=value[1], help=value[3])
             
-def DE_irace_parameters():
+def DE_irace_parameters(override = {}):
     output = "\n# DE parameters\n"
     for key, value in DE_params.items():
-        output += aos.irace_parameter(key, value[0], value[2], help=value[3])
+        output += aos.irace_parameter(key, value[0], value[2], help=value[3], override = override)
     return output
     
 # NP: popsize
