@@ -443,14 +443,14 @@ if __name__ == '__main__':
             print(aos.RewardType.irace_parameters())
             print(aos.QualityType.irace_parameters())
             print(aos.SelectionType.irace_parameters())
-            print("Dumping irace parameter file of known AOS:")
+            debug_print("Dumping irace parameter file of known AOS:")
             for key in aos.Unknown_AOS.known_AOS.keys():
                 filename = key + ".txt"
                 if os.path.isfile(filename):
                     print("error: File " + filename + " already exists!")
                     parser.exit(1)
                 with open(filename, "w") as f:
-                    print("Creating", filename)
+                    debug_print("Creating", filename)
                     output = "##### AOS:  " + key + ".txt\n"
                     f.write(de.DE_irace_parameters(override = dict(mutation=["aos"])))
                     f.write(aos.Unknown_AOS.irace_dump_knownAOS(key))
