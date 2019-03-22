@@ -411,16 +411,20 @@ def main(instance, budget=budget,
             (time.asctime(), ascetime(time.clock() - t0)))
 
 # ===============================================
-from argparse import ArgumentParser,RawDescriptionHelpFormatter,_StoreTrueAction
+from argparse import ArgumentParser,RawDescriptionHelpFormatter,_StoreTrueAction,ArgumentDefaultsHelpFormatter
 
 if __name__ == '__main__':
     """read input parameters and call `main()`"""
 
     description = __doc__ + "\n" + "Recognized suite names: " + str(known_suite_names)
+
     
+    class RawDesArgDefaultsHelpFormatter(ArgumentDefaultsHelpFormatter,
+                                               RawDescriptionHelpFormatter):
+        pass
+
     parser = ArgumentParser(description = description,
-                            formatter_class=RawDescriptionHelpFormatter)
-    # MANUEL: Please add help text for each option.
+                            formatter_class=RawDesArgDefaultsHelpFormatter)
     parser.add_argument('suite_name', help='suite name, e.g., bbob', choices = known_suite_names)
     parser.add_argument('budget', metavar='budget', type=int, help='function evaluations = BUDGET * dimension')
     parser.add_argument('current_batch', type=int, default=1, help='batch to run')

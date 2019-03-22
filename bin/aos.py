@@ -26,9 +26,10 @@ def get_choices(cls):
 def parser_add_arguments(cls, parser):
     "Helper function to add arguments of a class to an ArgumentParser"
     choices, choices_help = get_choices(cls)
-    parser.add_argument("--"  + cls.param_choice, type=int, choices=choices,
-                        help=cls.param_choice_help + " (" + choices_help + ")")
     group = parser.add_argument_group(title=cls.__name__)
+    group.add_argument("--"  + cls.param_choice, type=int, choices=choices,
+                       help=cls.param_choice_help + " (" + choices_help + ")")
+
     for i in range(0, len(cls.params), 4):
         arg, type, domain, help = cls.params[i:i+4]
         group.add_argument('--' + arg, type=type, default=0, help=help)
@@ -465,6 +466,7 @@ class RewardType(ABC):
     # Static variables
     # FIXME: Use __slots__ to find which parameters need to be defined.
     # FIXME: define this in the class as @property getter doctstring and get it from it
+    # MANUEL: We should add the default values here as well.
     params = [
         "max_gen",          int,   [1, 15, 30, 50], "Maximum number of generations for generational window",
         "fix_appl",         int,   [50, 100, 150],  "Maximum number of successful operator applications for generational window",
@@ -876,6 +878,7 @@ class QualityType(ABC):
     # Static variables
     # FIXME: Use __slots__ to find which parameters need to be defined.
     # FIXME: define this in the class as @property getter doctstring and get it from it
+    # MANUEL: We should add the default values here as well.
     params = [
         "scaling_factor",    float,[0.0, 1.0],"Scaling Factor",            
         "decay_rate",        float,[0.0, 1.0],"Decay rate",                
