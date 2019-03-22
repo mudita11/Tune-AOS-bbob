@@ -72,7 +72,7 @@ def irace_condition(what, values):
 
 
 class GenWindow(object):
-    """FIXME (needs updating): gen_window stores the offspring metric data for each offspring when offspring is better than parent. It stores -1 otherwise for that offspring. Its a list. Its structre is as follows: [[[second_dim], [second_dim], [second_dim]], [[],[],[]], ...]. Second_dim has data for each offspring. Three second dim represents population size as 3, contained in third_dim. Third_dim represents a generation. Thus, this [[],[],[]] has data of all offsprings in a generation."""
+    """FIXME (needs updating): gen_window stores the offspring metric data for each offspring when offspring is better than parent. Otherwise it stores np.nan for that offspring. Its a list. Its structre is as follows: [[[second_dim], [second_dim], [second_dim]], [[],[],[]], ...]. Second_dim represnts Offspring metric data for an offspring. The number of second dims will be equal to the population size, contained in third_dim. Third_dim represents a generation. Thus, [[],[],[]] has data of all offsprings in a generation."""
     
     def __init__(self, n_ops, metric, max_gen = None):
         # Private
@@ -241,6 +241,7 @@ class OpWindow(object):
         return window_op_sorted, rank
 
     def append(self, op, values):
+        '''Push data of improved offspring in the window. It follows First In First Out Rule.'''
         # Fill from the top
         which = (self._window_op == -1)
         if np.any(which):
@@ -291,7 +292,7 @@ class Unknown_AOS(object):
         metrics_names = OpWindow.metrics.keys()
         choices = range(1, 1 + len(metrics_names))
         choices_help = ', '.join("{0}:{1}".format(i,j) for i,j in zip(choices, metrics_names))
-        parser.add_argument("--" + cls.param_choice, type=int, choices=choices,
+        parser.add_argument("--" + cls.param_choice, type=int, choices=choices, default = 0,
                             help=cls.param_choice_help + " (" + choices_help + ")")
 
     @classmethod
@@ -476,7 +477,7 @@ class RewardType(ABC):
         "succ_lin_quad",    int,   [1, 2],          "Operator success as linear or quadratic",
         "frac",             float, [0.0, 1.0],      "Fraction of sum of successes of all operators",
         "noise",            float, [0.0, 1.0],      "Small noise for randomness",
-        "normal_factor",    int,   [0, 1],          "Choice to normalise",# MANUEL: You say that it is int but you initialise it with 0.1
+        "normal_factor",    int,   [0, 1],          "Choice to normalise",# MANUEL: You say that it is int but you initialise it with 0.1 # MUDITA: Its interger. Fixed.
         "scaling_constant", float, [0.0, 1.0],      "Scaling constant",
         "alpha",            int,   [0, 1],          "Choice to normalise by best produced by any operator",
         "beta",             int,   [0, 1],          "Choice to include the difference between budget used by an operator in previous two generations",
@@ -761,7 +762,7 @@ class Normalised_success_sum_window(RewardType):
     """
 Alvaro Fialho, Marc Schoenauer, and Mich`ele Sebag. “Analysis of adaptive operator selection techniques on the royal road and long k-path problems”.In:Proceedings of the 11th Annual conference on Genetic and evolutionarycomputation.https://hal.archives-ouvertes.fr/docs/00/37/74/49/PDF/banditGECCO09.pdf. ACM. 2009, pp. 779–786.
 """
-    def __init__(self, n_ops, window, window_size = 50, normal_factor = 0.1):
+    def __init__(self, n_ops, window, window_size = 50, normal_factor = 1):
         super().__init__(n_ops, window_size = window_size)
         self.window = window
         self.window_size = window_size

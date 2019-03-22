@@ -7,15 +7,15 @@ NP			"--NP "              	c	        (50, 400)
 # MANUEL: what is maxgen?
 # MUDITA: Last maximum number of generations to extract data for an operator
 
-# Bryant A Julstrom. “Adaptive operator probabilities
-in a genetic algorithm that applies three operators”.
-In: Proceedings of the 1997 ACM symposium on Applied
-computing. https : / / dl . acm . org / citation . cfm ? id =
-331746. ACM. 1997, pp. 233–238.
+# Jorge Maturana, Fred´ eric Lardeux, and Fr ´ ed´ eric ´
+Saubion. “Autonomous operator management for
+evolutionary algorithms”. In: Journal of Heuristics 16.6
+(2010). https://link.springer.com/content/pdf/10.
+1007/s10732-010-9125-3.pdf, pp. 881–909.
 
-OM_choice		"--OM_choice "		c		(5)
-rew_choice		"--rew_choice "		c		(5)
-qual_choice		"--qual_choice "	c		(3)
+OM_choice		"--OM_choice "		c		(2)
+rew_choice		"--rew_choice "		c		(2)
+qual_choice		"--qual_choice "	c		(0)
 prob_choice		"--prob_choice "	c		(0)
 select_choice		"--select_choice "	c		(0)
 fix_appl		"--fix_appl "		c		(50, 100, 150)					| rew_choice %in% c(0, 1, 2)
@@ -42,3 +42,4 @@ p_min			"--p_min "		r		(0.0, 0.25)					| prob_choice %in% c(0, 1, 2)
 learning_rate		"--learning_rate "	r		(0.0, 1.0)					| prob_choice %in% c(1, 2)
 error_prob		"--error_prob "		r		(0.0, 1.0)					| prob_choice == 0
 p_max			"--p_max "		r		(0.0, 1.0)					| prob_choice == 1
+
