@@ -1,45 +1,40 @@
 
-#name			switch		     type		values						[conditions (using R syntax)]
-FF			"--FF "			r		(0.1, 2.0)
-CR             		"--CR "         	r  		(0.1, 1.0)
-NP			"--NP "              	c	        (50, 400)
-
-# MANUEL: what is maxgen?
-# MUDITA: Last maximum number of generations to extract data for an operator
-
-# Jorge Maturana, Fred´ eric Lardeux, and Fr ´ ed´ eric ´
-Saubion. “Autonomous operator management for
-evolutionary algorithms”. In: Journal of Heuristics 16.6
-(2010). https://link.springer.com/content/pdf/10.
-1007/s10732-010-9125-3.pdf, pp. 881–909.
-
-OM_choice		"--OM_choice "		c		(2)
-rew_choice		"--rew_choice "		c		(2)
-qual_choice		"--qual_choice "	c		(0)
-prob_choice		"--prob_choice "	c		(0)
-select_choice		"--select_choice "	c		(0)
-fix_appl		"--fix_appl "		c		(50, 100, 150)					| rew_choice %in% c(0, 1, 2)
-max_gen			"--max_gen "		c		(1, 15, 30, 50)					| rew_choice %in% c(5, 7, 9, 11)
-theta			"--theta "		c		(36, 45, 54, 90)				| rew_choice == 2
-window_size		"--window_size "	c		(20, 50)					| rew_choice %in% c(3, 4, 8)
-decay			"--decay "		r		(0.0, 1.0)					| rew_choice %in% c(3, 4)
-succ_lin_quad		"--succ_lin_quad "	c		(0, 1)						| rew_choice == 5
-frac			"--frac "		r		(0.0, 1.0)					| rew_choice == 5
-noise			"--noise "		r		(0.0, 1.0)					| rew_choice == 5
-normal_factor		"--normal_factor "	c		(0, 1)						| rew_choice == 8
-scaling_constant	"--scaling_constant "	r		(0.0, 1.0)					| rew_choice == 10
-alpha			"--alpha "		c		(0, 1)						| rew_choice %in% c(10, 11)
-beta			"--beta "		c		(0, 1)						| rew_choice == 10
-# choice4			"--choice4 "		c		(0, 1)						| rew_choice == 11
-intensity		"--intensity "		r		(0.0, 1.0)					| rew_choice == 11
-# adaptation_rate		"--adaptation_rate "	r		(0.0, 1.0)					| qual_choice == 0
-scaling_factor		"--scaling_factor "	r		(0.0, 1.0)					| qual_choice == 1
-decay_rate		"--decay_rate "		r		(0.0, 1.0)					| qual_choice %in% c(0, 3)
-weight_reward		"--weight_reward "	r		(0.0, 1.0)					| qual_choice == 4
-weight_old_reward	"--weight_old_reward "	r		(0.0, 1.0)					| qual_choice == 4
-discount_rate		"--discount_rate "	r		(0.0, 1.0)					| qual_choice == 4
-p_min			"--p_min "		r		(0.0, 0.25)					| prob_choice %in% c(0, 1, 2)
-learning_rate		"--learning_rate "	r		(0.0, 1.0)					| prob_choice %in% c(1, 2)
-error_prob		"--error_prob "		r		(0.0, 1.0)					| prob_choice == 0
-p_max			"--p_max "		r		(0.0, 1.0)					| prob_choice == 1
-
+# DE parameters
+FF                   "--FF "                   r (0.1, 2.0)                                          # Scaling factor
+CR                   "--CR "                   r (0.1, 1.0)                                          # Crossover rate
+NP                   "--NP "                   i (50, 400)                                           # Population size
+mutation             "--mutation "             c (aos)                                               # Mutation strategy
+##### AOS: Projection-PM.txt
+# Unknown_AOS
+OM_choice            "--OM_choice "            c (2)                                                 # Offspring metric selected (2:fitness_improv_wrt_parent)
+# RewardType
+rew_choice           "--rew_choice "           c (2)                                                 # 2:Compass_Projection
+max_gen              "--max_gen "              i (1, 15, 30, 50)                                     # Maximum number of generations for generational window
+fix_appl             "--fix_appl "             i (50, 100, 150)       | rew_choice == 2              # Maximum number of successful operator applications for generational window
+theta                "--theta "                i (36, 45, 54, 90)     | rew_choice == 2              # Search direction
+window_size          "--window_size "          i (20, 50, 100)                                       # Size of window
+decay                "--decay "                r (0.0, 1.0)                                          # Decay value to emphasise the choice of better operator
+succ_lin_quad        "--succ_lin_quad "        i (1, 2)                                              # Operator success as linear or quadratic
+frac                 "--frac "                 r (0.0, 1.0)                                          # Fraction of sum of successes of all operators
+noise                "--noise "                r (0.0, 1.0)                                          # Small noise for randomness
+normal_factor        "--normal_factor "        i (0.0, 1.0)                                          # Choice to normalise
+scaling_constant     "--scaling_constant "     r (0.0, 1.0)                                          # Scaling constant
+alpha                "--alpha "                i (0, 1)                                              # Choice to normalise by best produced by any operator
+beta                 "--beta "                 i (0, 1)                                              # Choice to include the difference between budget used by an operator in previous two generations
+intensity            "--intensity "            r (0.0, 1.0)                                          # Intensify the changes of best fitness value
+# QualityType
+qual_choice          "--qual_choice "          c (0)                                                 # 0:Weighted_sum
+scaling_factor       "--scaling_factor "       r (0.0, 1.0)                                          # Scaling Factor
+decay_rate           "--decay_rate "           r (0.0, 1.0)           | qual_choice == 0             # Decay rate
+weight_reward        "--weight_reward "        r (0.0, 1.0)                                          # Memory for current reward
+weight_old_reward    "--weight_old_reward "    r (0.0, 1.0)                                          # Memory for previous reward
+discount_rate        "--discount_rate "        r (0.0, 1.0)                                          # Discount rate
+# ProbabilityType
+prob_choice          "--prob_choice "          c (0)                                                 # 0:Probability_Matching
+p_min                "--p_min "                r (0.0, 0.25)                                         # Minimum probability of selection of an operator
+learning_rate        "--learning_rate "        r (0.0, 1.0)                                          # Learning Rate
+error_prob           "--error_prob "           r (0.0, 1.0)           | prob_choice == 0             # Probability noise
+p_max                "--p_max "                r (0.0, 1.0)                                          # Maximum probability of selection of an operator
+# SelectionType
+select_choice        "--select_choice "        c (0)                                                 # 0:Roulette_Wheel_Selection
+ 

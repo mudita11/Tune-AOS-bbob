@@ -4,9 +4,9 @@ FF                   "--FF "                   r (0.1, 2.0)                     
 CR                   "--CR "                   r (0.1, 1.0)                                          # Crossover rate
 NP                   "--NP "                   i (50, 400)                                           # Population size
 mutation             "--mutation "             c (aos)                                               # Mutation strategy
-##### AOS:  ADOPP.txt
+##### AOS: ADOPP.txt
 # Unknown_AOS
-OM_choice            "--OM_choice "            c (5)                                                 # Offspring metric selected (5:fitness_improvement_w.r.t._median_fitness)
+OM_choice            "--OM_choice "            c (5)                                                 # Offspring metric selected (5:fitness_improvement_wrt_median_fitness)
 # RewardType
 rew_choice           "--rew_choice "           c (5)                                                 # 5:Success_rate
 max_gen              "--max_gen "              i (1, 15, 30, 50)	| rew_choice == 5            # Maximum number of generations for generational window

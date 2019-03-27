@@ -6,7 +6,7 @@ NP                   "--NP "                   i (50, 400)                      
 mutation             "--mutation "             c (aos)                                               # Mutation strategy
 ##### AOS: AUC-AP.txt
 # Unknown_AOS
-OM_choice            "--OM_choice "            c (2)                                                 # Offspring metric selected (2:Fitness_improvement w.r.t parent)
+OM_choice            "--OM_choice "            c (2)                                                 # Offspring metric selected (2:Fitness_improv_wrt_parent)
 # RewardType
 rew_choice           "--rew_choice "           c (3)                                                 # 3:Area_Under_the_Curve
 max_gen              "--max_gen "              i (1, 15, 30, 50)                                     # Maximum number of generations for generational window
@@ -36,6 +36,6 @@ learning_rate        "--learning_rate "        r (0.0, 1.0)           | rew_choi
 error_prob           "--error_prob "           r (0.0, 1.0)                  			     # Probability noise
 p_max                "--p_max "                r (0.0, 1.0)           | rew_choice == 1              # Maximum probability of selection of an operator
 # SelectionType
-select_choice        "--select_choice "        c (0)                                                 # 1:Roulette_Wheel_Selection
+select_choice        "--select_choice "        c (0)                                                 # 0:Roulette_Wheel_Selection
 
 

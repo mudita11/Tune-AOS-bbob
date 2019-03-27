@@ -4,9 +4,9 @@ FF                   "--FF "                   r (0.1, 2.0)                     
 CR                   "--CR "                   r (0.1, 1.0)                                          # Crossover rate
 NP                   "--NP "                   i (50, 400)                                           # Population size
 mutation             "--mutation "             c (aos)                                               # Mutation strategy
-##### AOS:  AP.txt
+##### AOS: Operator_Adaptation.txt
 # Unknown_AOS
-OM_choice            "--OM_choice "            c (3)                                                 # Offspring metric selected (6:Fitness improvement w.r.t current best parent)
+OM_choice            "--OM_choice "            c (3)                                                 # Offspring metric selected (3:Fitness_improv_wrt_best_parent)
 # RewardType
 rew_choice           "--rew_choice "           c (9)                                                 # 9:Normalised_success_sum_generation
 max_gen              "--max_gen "              i (1, 15, 30, 50) 	| rew_choice == 9            # Maximum number of generations for generational window
@@ -17,7 +17,7 @@ decay                "--decay "                r (0.0, 1.0)                     
 succ_lin_quad        "--succ_lin_quad "        i (1, 2)                                              # Operator success as linear or quadratic
 frac                 "--frac "                 r (0.0, 1.0)                                          # Fraction of sum of successes of all operators
 noise                "--noise "                r (0.0, 1.0)                                          # Small noise for randomness
-normal_factor        "--normal_factor "        i (0.0, 1.0)           | rew_choice == 8              # Choice to normalise
+normal_factor        "--normal_factor "        i (0.0, 1.0)                                          # Choice to normalise
 scaling_constant     "--scaling_constant "     r (0.0, 1.0)                                          # Scaling constant
 alpha                "--alpha "                i (0, 1)                                              # Choice to normalise by best produced by any operator
 beta                 "--beta "                 i (0, 1)                                              # Choice to include the difference between budget used by an operator in previous two generations
@@ -36,4 +36,4 @@ learning_rate        "--learning_rate "        r (0.0, 1.0)           | prob_cho
 error_prob           "--error_prob "           r (0.0, 1.0)           			             # Probability noise
 p_max                "--p_max "                r (0.0, 1.0)                                          # Maximum probability of selection of an operator
 # SelectionType
-select_choice        "--select_choice "        c (0)                                                 # 1:Greedy_Selection
+select_choice        "--select_choice "        c (0)                                                 # 0:Roulette_Wheel_Selection
