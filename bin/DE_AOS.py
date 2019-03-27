@@ -58,7 +58,10 @@ try: from scipy.optimize import fmin_slsqp  # "pip install scipy" installs scipy
 except: pass
 try: range = xrange  # let range always be an iterator
 except NameError: pass
-    
+
+#def debug_print(*args, **kwargs):
+    #print(*args, file=sys.stderr, **kwargs)
+
 def default_observers(update={}):
     """return a map from suite names to default observer names"""
     # this is a function only to make the doc available and
@@ -415,7 +418,7 @@ from argparse import ArgumentParser,RawDescriptionHelpFormatter,_StoreTrueAction
 
 if __name__ == '__main__':
     """read input parameters and call `main()`"""
-
+    
     description = __doc__ + "\n" + "Recognized suite names: " + str(known_suite_names)
 
     
@@ -452,7 +455,7 @@ if __name__ == '__main__':
                 with open(filename, "w") as f:
                     debug_print("Creating", filename)
                     output = "##### AOS:  " + key + ".txt\n"
-                    f.write(de.DE_irace_parameters(override = dict(mutation=["aos"])))
+                    f.write(de.DE_irace_parameters(override = dict(mutation=["DE/rand/1"])))
                     f.write(aos.Unknown_AOS.irace_dump_knownAOS(key))
 
             parser.exit(0)
@@ -566,6 +569,6 @@ if __name__ == '__main__':
            349: -1.335900000000e+02}
     
     instance_best_value = opt[args.instance]
-
+    
     main(instance, budget, max_runs, current_batch, number_of_batches)
 

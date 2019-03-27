@@ -1,0 +1,1 @@
+After python3 ../bin/DE_AOS.py bbob 10000 1 1 -i 1 --seed 1 --trace cbbob-1000-1_trace.txt --mutation DE/rand/1

@@ -76,16 +76,19 @@ if not os.path.isfile(out_file):
     
 
 # ndmin = 2, so that we get a matrix even if there is one line.
-points = np.loadtxt(trace_file, comments = "%", usecols = (0,1), ndmin = 2)
+points = np.loadtxt(trace_file, comments = "%", usecols = (0,3), ndmin = 2)
 points[:, 0] = np.log10(points[:, 0])
 # This check is for log10(fevals/dim)
 max_0 = np.log10(fevals)
 assert np.min(points[:,0]) > 0.0 and np.max(points[:,0]) <= max_0
 points[:, 0] /= max_0 # Normalize
+# We want to minimise function values
+if (np.max(points[:,1]) - np.min(points[:,1])) != 0:
+    points[:,1] = (points[:,1] - np.min(points[:,1])) / (np.max(points[:,1]) - np.min(points[:,1]))
+else:
+    points[:,1] = 1
 # This check is for frac
 assert np.min(points[:,1]) >= 0.0 and np.max(points[:,1]) <= 1.0
-# We want to maximize frac
-points[:,1] = 1.0 - points[:,1]
 
 # See README.txt to install this
 from pygmo import hypervolume

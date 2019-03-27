@@ -40,8 +40,8 @@ DE_params = {
         'FF': [float, 0.5, [0.1, 2.0],'Scaling factor'],
         'CR': [float, 1.0, [0.1, 1.0],'Crossover rate'],
         'NP': [int,   200, [50, 400], 'Population size'],
-        'mutation': [object, "aos",
-                     ["DE/rand/1","DE/rand/2","DE/rand/1","DE/rand-to-best/2", "random", "aos"],
+        'mutation': [object, "DE/rand/1",
+                     ["DE/rand/1","DE/rand/2","DE/rand-to-best/2","DE/current-to-rand/1" "random", "aos"],
                      "Mutation strategy"]
         }
 
@@ -101,7 +101,6 @@ def DE(fun, x0, lbounds, ubounds, budget, instance, instance_best_value,
         idxs = list(range(popsize))
         idxs.remove(candidate)
         return(np.random.choice(idxs, number_samples, replace = False))
-
 
     mutations = [rand1, rand2, rand_to_best2, current_to_rand1]
     mutations_names = [ x.__doc__ for x in mutations]
