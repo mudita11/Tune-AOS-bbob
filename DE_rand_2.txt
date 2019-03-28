@@ -1,0 +1,6 @@
+
+# DE parameters
+FF                   "--FF "                   r (0.1, 2.0)                                          # Scaling factor
+CR                   "--CR "                   r (0.1, 1.0)                                          # Crossover rate
+NP                   "--NP "                   i (50, 400)                                           # Population size
+mutation             "--mutation "             c (DE/rand/2)                                # Mutation strategy
