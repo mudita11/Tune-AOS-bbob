@@ -75,24 +75,7 @@ if not os.path.isfile(out_file):
     target_runner_error("output file "+ out_file  +" not found!")
     
 
-# ndmin = 2, so that we get a matrix even if there is one line.
-points = np.loadtxt(trace_file, comments = "%", usecols = (0,1), ndmin = 2)
-points[:, 0] = np.log10(points[:, 0])
-# This check is for log10(fevals/dim)
-max_0 = np.log10(fevals)
-assert np.min(points[:,0]) > 0.0 and np.max(points[:,0]) <= max_0
-points[:, 0] /= max_0 # Normalize
-# This check is for frac
-assert np.min(points[:,1]) >= 0.0 and np.max(points[:,1]) <= 1.0
-# We want to maximize frac
-points[:,1] = 1.0 - points[:,1]
+cost=[line.rstrip('\n') for line in open(out_file)][-8]
 
-# See README.txt to install this
-from pygmo import hypervolume
-
-ref_point = [1.1, 1.1]
-hv = hypervolume(points)
-cost = hv.compute(ref_point)
-# hypervolume is maximised but irace minimises
-print(-cost)
+print(cost)
 sys.exit(0)

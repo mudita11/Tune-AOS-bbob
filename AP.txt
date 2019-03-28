@@ -7,12 +7,6 @@ mutation             "--mutation "             c (aos)                          
 ##### AOS:  AP.txt
 # Unknown_AOS
 OM_choice            "--OM_choice "            c (6)                                                 # Offspring metric selected (6:relative_fitness_improv)
-# ProbabilityType
-prob_choice          "--prob_choice "          c (0)                                                 # 0:Probability_Matching
-p_min                "--p_min "                r (0.0, 0.25)                                         # Minimum probability of selection of an operator
-learning_rate        "--learning_rate "        r (0.0, 1.0)                                          # Learning Rate
-error_prob           "--error_prob "           r (0.0, 1.0)           | prob_choice == 0             # Probability noise
-p_max                "--p_max "                r (0.0, 1.0)                                          # Maximum probability of selection of an operator
 # RewardType
 rew_choice           "--rew_choice "           c (8)                                                 # 8:Normalised_success_sum_window
 max_gen              "--max_gen "              i (1, 15, 30, 50)                                     # Maximum number of generations for generational window
@@ -35,5 +29,11 @@ decay_rate           "--decay_rate "           r (0.0, 1.0)           | qual_cho
 weight_reward        "--weight_reward "        r (0.0, 1.0)                                          # Memory for current reward
 weight_old_reward    "--weight_old_reward "    r (0.0, 1.0)                                          # Memory for previous reward
 discount_rate        "--discount_rate "        r (0.0, 1.0)                                          # Discount rate
+# ProbabilityType
+prob_choice          "--prob_choice "          c (0)                                                 # 0:Probability_Matching
+p_min                "--p_min "                r (0.0, 0.25)                                         # Minimum probability of selection of an operator
+learning_rate        "--learning_rate "        r (0.0, 1.0)                                          # Learning Rate
+error_prob           "--error_prob "           r (0.0, 1.0)           | prob_choice == 0             # Probability noise
+p_max                "--p_max "                r (0.0, 1.0)                                          # Maximum probability of selection of an operator
 # SelectionType
 select_choice        "--select_choice "        c (1)                                                 # 1:Greedy_Selection

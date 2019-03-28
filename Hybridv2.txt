@@ -4,11 +4,11 @@ FF                   "--FF "                   r (0.1, 2.0)                     
 CR                   "--CR "                   r (0.1, 1.0)                                          # Crossover rate
 NP                   "--NP "                   i (50, 400)                                           # Population size
 mutation             "--mutation "             c (aos)                                               # Mutation strategy
-##### AOS: Rec-PM.txt
+##### AOS: Hybridv2.txt
 # Unknown_AOS
 OM_choice            "--OM_choice "            c (2)                                                 # Offspring metric selected (2:fitness_improv_wrt_parent)
 # RewardType
-rew_choice           "--rew_choice "           c (6)                                                 # 6:Immediate_success
+rew_choice           "--rew_choice "           c (10)                                                # 10:Best2Gen
 max_gen              "--max_gen "              i (1, 15, 30, 50)                                     # Maximum number of generations for generational window
 fix_appl             "--fix_appl "             i (50, 100, 150)                                      # Maximum number of successful operator applications for generational window
 theta                "--theta "                i (36, 45, 54, 90)                                    # Search direction
@@ -18,9 +18,9 @@ succ_lin_quad        "--succ_lin_quad "        i (1, 2)                         
 frac                 "--frac "                 r (0.0, 1.0)                                          # Fraction of sum of successes of all operators
 noise                "--noise "                r (0.0, 1.0)                                          # Small noise for randomness
 normal_factor        "--normal_factor "        i (0.0, 1.0)                                          # Choice to normalise
-scaling_constant     "--scaling_constant "     r (0.0, 1.0)                                          # Scaling constant
-alpha                "--alpha "                i (0, 1)                                              # Choice to normalise by best produced by any operator
-beta                 "--beta "                 i (0, 1)                                              # Choice to include the difference between budget used by an operator in previous two generations
+scaling_constant     "--scaling_constant "     r (0.0, 1.0)           | rew_choice == 10             # Scaling constant
+alpha                "--alpha "                i (0, 1)               | rew_choice == 10             # Choice to normalise by best produced by any operator
+beta                 "--beta "                 i (0, 1)               | rew_choice == 10             # Choice to include the difference between budget used by an operator in previous two generations
 intensity            "--intensity "            r (0.0, 1.0)                                          # Intensify the changes of best fitness value
 # QualityType
 qual_choice          "--qual_choice "          c (4)                                                 # 4:Markov_Reward_Process
@@ -37,3 +37,4 @@ error_prob           "--error_prob "           r (0.0, 1.0)           | prob_cho
 p_max                "--p_max "                r (0.0, 1.0)                                          # Maximum probability of selection of an operator
 # SelectionType
 select_choice        "--select_choice "        c (0)                                                 # 0:Roulette_Wheel_Selection
+
