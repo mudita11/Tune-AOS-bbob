@@ -15,7 +15,7 @@ class TraceFile():
     _file = None
 
     def __init__(self, filename, dim, optimum):
-        if filename != "":
+        if filename and filename != "":
             self._file = open(filename, "w")
         self._dim = dim
         self._optimum = optimum

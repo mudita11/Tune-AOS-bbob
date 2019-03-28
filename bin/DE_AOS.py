@@ -96,6 +96,7 @@ def default_observer_options(budget_=None, suite_name_=None):
         opts.update({'algorithm_name': SOLVER.__name__ + solver_module})
     except: pass
     return opts
+
 class ObserverOptions(dict):
     """a `dict` with observer options which can be passed to
     the (C-based) `Observer` via the `as_string` property.
@@ -288,6 +289,9 @@ def batch_loop(solver, suite, observer, budget,
                if number_of_batches > 1 else "")), end="")
     if number_of_batches > 1:
         print("\n    MAKE SURE TO RUN ALL BATCHES", end="")
+    print("\nDeleting folder: ", observer.result_folder)
+    shutil.rmtree(os.path.abspath(observer.result_folder), ignore_errors = True)
+    
     return addressed_problems
 
 #===============================================
@@ -344,8 +348,6 @@ def coco_optimize(solver, fun, max_evals, problem_index, instance, max_runs=1):
             solver(fun, x0, fun.lower_bounds, fun.upper_bounds, remaining_evals, instance)
         else:
             raise ValueError("no entry for solver %s" % str(solver.__name__))
-        shutil.rmtree(os.getcwd() + "/exdata", ignore_errors = True)
-        #shutil.rmtree("/shared/storage/cs/staffstore/ms1938/DQN/generic/replicated_AOS/Done/17/tune_rec_PM_training_set/arena/exdata",ignore_errors=True)
         if fun.evaluations >= max_evals or fun.final_target_hit:
             break
         # quit if fun.evaluations did not increase
