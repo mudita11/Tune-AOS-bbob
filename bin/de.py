@@ -23,13 +23,15 @@ class TraceFile():
     def print(self, fevals, bsf, header = False):
         if not self._file:
             return
-
+        fevalsdim = float(fevals) / self._dim; print(fevalsdim)
+        if fevalsdim <= 1.0:
+            return
         if header:
             self._file.write("% fevals/dim | frac | F - F_opt ({}) | best fitness | fevals\n".format(self._optimum))
         error = bsf - self._optimum
         frac = np.sum(error <= self._targets) / float(len(self._targets))
         self._file.write("{0} {1} {2} {3} {4}\n".format(
-            float(fevals) / self._dim, frac, error, bsf, fevals))
+            fevalsdim, frac, error, bsf, fevals))
 
     def close(self, ):
         if self._file:
@@ -141,6 +143,7 @@ def DE(fun, x0, lbounds, ubounds, budget, instance, instance_best_value,
     u = np.full((NP,dim), 0)
     generation = 0
     trace = TraceFile(trace_filename, dim = dim, optimum = instance_best_value)
+    trace.print(1, F[0], header = True)
     # We did NP fevals, remove them, then add as many as the number
     # needed to reach the best one (+1 because best is 0-based).
     trace.print(fun.evaluations - NP + best + 1, f_min, header = True)

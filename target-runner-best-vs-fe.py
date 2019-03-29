@@ -85,7 +85,7 @@ assert np.min(points[:,0]) > 0.0 and np.max(points[:,0]) <= max_0
 points[:, 0] /= max_0 # Normalize
 # We want to minimise the error values
 min_error = 10**-8
-max_error = 10**5
+max_error = 10**10
 points[:,1] = (points[:,1] - min_error) / (max_error - min_error)
 # This check is for error
 assert np.min(points[:,1]) >= 0.0 and np.max(points[:,1]) <= 1.0
