@@ -116,8 +116,6 @@ def DE(fun, x0, lbounds, ubounds, budget, instance, instance_best_value,
     u = np.full((NP,dim), 0)
 
     F = np.apply_along_axis(fun, 1, X)
-
-    generation = 0
     best = np.argmin(F);
     x_min, f_min = X[best, :], F[best]
 
@@ -141,8 +139,11 @@ def DE(fun, x0, lbounds, ubounds, budget, instance, instance_best_value,
     if stats_filename:
         stats_file = open(stats_filename, 'w+')
 
+    generation = 0
     trace = TraceFile(trace_filename, dim = dim, optimum = instance_best_value)
-    trace.print(fun.evaluations, f_min, header = True)
+    # We did NP fevals, remove them, then add as many as the number
+    # needed to reach the best one (+1 because best is 0-based).
+    trace.print(fun.evaluations - NP + best + 1, f_min, header = True)
     
     while fun.evaluations + NP <= budget:
         
@@ -177,7 +178,9 @@ def DE(fun, x0, lbounds, ubounds, budget, instance, instance_best_value,
         best = np.argmin(F)
         if F[best] < f_min:
             x_min, f_min = X[best, :], F[best]
-            trace.print(fun.evaluations, f_min)
+            # We did NP fevals, remove them, then add as many as the number
+            # needed to reach the best one (+1 because best is 0-based).
+            trace.print(fun.evaluations - NP + best + 1, f_min)
 
         generation += 1
 
