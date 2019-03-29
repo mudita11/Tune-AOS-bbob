@@ -109,16 +109,6 @@ def DE(fun, x0, lbounds, ubounds, budget, instance, instance_best_value,
     NP = int(NP)
     opu = np.full(NP, -1)
     
-    lbounds, ubounds = np.array(lbounds), np.array(ubounds)
-    dim = len(lbounds)
-    X = lbounds + (ubounds - lbounds) * np.random.rand(NP, dim)
-    X[0, :] = x0
-    u = np.full((NP,dim), 0)
-
-    F = np.apply_along_axis(fun, 1, X)
-    best = np.argmin(F);
-    x_min, f_min = X[best, :], F[best]
-
     if mutation == "aos":
         aos_method = aos.Unknown_AOS(NP, n_ops = n_operators, OM_choice = OM_choice,
                                      rew_choice = rew_choice, rew_args = rew_args,
@@ -133,18 +123,28 @@ def DE(fun, x0, lbounds, ubounds, budget, instance, instance_best_value,
         select_mutation = lambda : mutation
     else:
         raise ValueError("unknown mutation " + mutation)
-    
+
+    lbounds, ubounds = np.array(lbounds), np.array(ubounds)
+    dim = len(lbounds)
+    # Initial population
+    X = lbounds + (ubounds - lbounds) * np.random.rand(NP, dim)
+    X[0, :] = x0
+    # Evaluate it
+    F = np.apply_along_axis(fun, 1, X)
+    best = np.argmin(F)
+    x_min, f_min = X[best, :], F[best]
     
     stats_file = None
     if stats_filename:
         stats_file = open(stats_filename, 'w+')
 
+    u = np.full((NP,dim), 0)
     generation = 0
     trace = TraceFile(trace_filename, dim = dim, optimum = instance_best_value)
     # We did NP fevals, remove them, then add as many as the number
     # needed to reach the best one (+1 because best is 0-based).
     trace.print(fun.evaluations - NP + best + 1, f_min, header = True)
-    
+
     while fun.evaluations + NP <= budget:
         
         fill_points = np.random.randint(dim, size = NP)
@@ -162,8 +162,17 @@ def DE(fun, x0, lbounds, ubounds, budget, instance, instance_best_value,
             mutate = mutations[SI]
             bprime = mutate(X, r, best, FF)
             u[i,:] = np.where(crossovers, bprime, X[i, :])
-    
+
+        # Evaluate the child population
         F1 = np.apply_along_axis(fun, 1, u)
+
+        # Find the best child.
+        best = np.argmin(F1)
+        if F1[best] < f_min:
+            x_min, f_min = u[best, :], F1[best]
+            # We did NP fevals, remove them, then add as many as the number
+            # needed to reach the best one (+1 because best is 0-based).
+            trace.print(fun.evaluations - NP + best + 1, f_min)
 
         if mutation == "aos":
             aos_method.OM_Update(F, F1, F_bsf = f_min, opu = opu)
@@ -172,15 +181,10 @@ def DE(fun, x0, lbounds, ubounds, budget, instance, instance_best_value,
         #output_file.write(str(aos_method.quality)+"\n")
         #output_file.write(str(aos_method.probability)+"\n")
         #fitness_swap = [a<p for a,p in zip(F1,F)]
+
+        # Replace parent if their child improves them.
         F = np.where(F1 <= F, F1, F)
         X[F1 <= F, :] = u[F1 <= F, :]
-        
-        best = np.argmin(F)
-        if F[best] < f_min:
-            x_min, f_min = X[best, :], F[best]
-            # We did NP fevals, remove them, then add as many as the number
-            # needed to reach the best one (+1 because best is 0-based).
-            trace.print(fun.evaluations - NP + best + 1, f_min)
 
         generation += 1
 
