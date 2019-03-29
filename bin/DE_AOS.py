@@ -372,7 +372,6 @@ def coco_optimize(solver, fun, max_evals, problem_index, instance, max_runs=1):
 # CAVEAT: this might be modified from input args
 suite_name = "bbob"  # always overwritten when called from system shell
                      # see available choices via cocoex.known_suite_names
-#budget = 5e2  # maxfevals = budget x dimension ### INCREASE budget WHEN THE DATA CHAIN IS STABLE ###
 max_runs = 1  # number of (almost) independent trials per problem instance
 number_of_batches = 1  # allows to run everything in several batches
 current_batch = 1      # 1..number_of_batches
@@ -394,7 +393,7 @@ observer_options = ObserverOptions({  # is (inherited from) a dictionary
 # ===============================================
 # run (main)
 # ===============================================
-def main(instance, #budget=budget,
+def main(instance, budget,
          max_runs=max_runs,
          current_batch=current_batch,
          number_of_batches=number_of_batches):

@@ -110,24 +110,16 @@ def DE(fun, x0, lbounds, ubounds, budget, instance, instance_best_value,
     opu = np.full(NP, -1)
     
     lbounds, ubounds = np.array(lbounds), np.array(ubounds)
-    dim, x_min, f_min = len(lbounds), (lbounds + ubounds) / 2, None
+    dim = len(lbounds)
     X = lbounds + (ubounds - lbounds) * np.random.rand(NP, dim)
     X[0, :] = x0
     u = np.full((NP,dim), 0)
 
     F = np.apply_along_axis(fun, 1, X)
-    #F = [fun(x) for x in X]
-    max_budget = budget
-    budget -= NP
-    
+
     generation = 0
     best = np.argmin(F);
-    # MANUEL: f_min is None!
-    if f_min is None or F[best] < f_min:
-        x_min, f_min = X[best, :], F[best];
-    best_so_far = f_min
-    best_so_far1 = best_so_far
-
+    x_min, f_min = X[best, :], F[best]
 
     if mutation == "aos":
         aos_method = aos.Unknown_AOS(NP, n_ops = n_operators, OM_choice = OM_choice,
@@ -148,23 +140,19 @@ def DE(fun, x0, lbounds, ubounds, budget, instance, instance_best_value,
     stats_file = None
     if stats_filename:
         stats_file = open(stats_filename, 'w+')
-    #problem_data = "i" + "-" + str(uuid.uuid4()) + "-" + str(instance) + ".txt"
 
     trace = TraceFile(trace_filename, dim = dim, optimum = instance_best_value)
-    trace.print(fun.evaluations, best_so_far, header = True)
+    trace.print(fun.evaluations, f_min, header = True)
     
-    while budget > 0:
-        print(budget, fun.evaluations)
+    while fun.evaluations + NP <= budget:
+        
         fill_points = np.random.randint(dim, size = NP)
         
         for i in range(NP):
             # No mutation strategy needs more than 5.
             r = select_samples(NP, i, 5)
-            best = np.argmin(F)
             crossovers = (np.random.rand(dim) < CR)
             crossovers[fill_points[i]] = True
-            # MANUEL: What is this trial?
-            # trial = aos_method.X[i]
             SI = select_mutation()
             # if stats_file:
             #     stats_file.write("{} {}\n".format(generation, SI))
@@ -177,7 +165,7 @@ def DE(fun, x0, lbounds, ubounds, budget, instance, instance_best_value,
         F1 = np.apply_along_axis(fun, 1, u)
 
         if mutation == "aos":
-            aos_method.OM_Update(F, F1, F_bsf = best_so_far, opu = opu)
+            aos_method.OM_Update(F, F1, F_bsf = f_min, opu = opu)
                 
         #output_file.write(str(aos_method.reward)+"\n")
         #output_file.write(str(aos_method.quality)+"\n")
@@ -187,15 +175,11 @@ def DE(fun, x0, lbounds, ubounds, budget, instance, instance_best_value,
         X[F1 <= F, :] = u[F1 <= F, :]
         
         best = np.argmin(F)
-        if f_min is None or F[best] < f_min:
+        if F[best] < f_min:
             x_min, f_min = X[best, :], F[best]
-            best_so_far1 = f_min;
-        if best_so_far1 < best_so_far:
-            best_so_far = best_so_far1
-            trace.print(fun.evaluations, best_so_far)
+            trace.print(fun.evaluations, f_min)
 
         generation += 1
-        budget -= NP
 
     if mutation == "aos":
         aos_method.gen_window.write_to(sys.stderr)
@@ -204,5 +188,5 @@ def DE(fun, x0, lbounds, ubounds, budget, instance, instance_best_value,
     #output_file.close()
     #print("one configuartion tested on one instance")
     #file.close()
-    return best_so_far
+    return f_min
 
