@@ -22,8 +22,9 @@ import subprocess
 import sys
 import numpy as np
 
+dim = 20
 # fevals * dimension f-evaluations
-fevals = 10000 # This the value used by coco for the plots
+fevals = 500 * dim # This the value used by coco for the plots
 # Options are: suite_name fevals batch total_batches
 exe = "python3 ../bin/DE_AOS.py bbob {} 1 1".format(fevals)
 
@@ -75,7 +76,7 @@ if not os.path.isfile(out_file):
     target_runner_error("output file "+ out_file  +" not found!")
     
 
-cost=[line.rstrip('\n') for line in open(out_file)][-8]
+cost=[line.rstrip('\n') for line in open(out_file)][3]
 
 print(cost)
 sys.exit(0)

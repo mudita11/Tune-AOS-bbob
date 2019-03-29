@@ -59,8 +59,8 @@ except: pass
 try: range = xrange  # let range always be an iterator
 except NameError: pass
 
-#def debug_print(*args, **kwargs):
-    #print(*args, file=sys.stderr, **kwargs)
+def debug_print(*args, **kwargs):
+    print(*args, file=sys.stderr, **kwargs)
 
 def default_observers(update={}):
     """return a map from suite names to default observer names"""
@@ -228,6 +228,7 @@ def EA_AOS(fun, x0, lbounds, ubounds, budget, instance):
     # MANUEL: What is the difference between fun and instance?
     # MUDITA: There are five classes in bbob each consisting of functions with different properties. For instance a fun, f1, from first class is sphere function. Now there are 15 instances of each fun. Eg. for f1 translated or shifted versions are instances.
     # Problem is represented as (f_i, n, j, t): f_i is i-fun, n is dimension, j is instance number and t is target.
+    print("ea-aos",budget)
     cost = de.DE(fun, x0, lbounds, ubounds, budget, instance, instance_best_value,
                  trace_filename, stats_filename,
                  # DE parameters
@@ -261,6 +262,7 @@ def batch_loop(solver, suite, observer, budget,
     This distribution into batches is likely to lead to similar
     runtimes for the batches, which is usually desirable.
     """
+    print("batch_loop", budget)
     addressed_problems = []
     short_info = ShortInfo()
     #sample_ids = list(range(360))
@@ -307,6 +309,8 @@ def coco_optimize(solver, fun, max_evals, problem_index, instance, max_runs=1):
 
     Return number of (almost) independent runs.
     """
+    # Receives max_evaulations as budget * dim
+    print("coco_optimiser", max_evals)
     range_ = fun.upper_bounds - fun.lower_bounds
     center = fun.lower_bounds + range_ / 2
     if fun.evaluations:
@@ -314,7 +318,7 @@ def coco_optimize(solver, fun, max_evals, problem_index, instance, max_runs=1):
               fun.evaluations)
 
     for restarts in range(int(max_runs)):
-        remaining_evals = max_evals - fun.evaluations
+        remaining_evals = max_evals - fun.evaluations; print("inside coco", remaining_evals)
         x0 = center + (restarts > 0) * 0.8 * range_ * (
                 np.random.rand(fun.dimension) - 0.5)
         #fun(x0)  # can be incommented, if this is done by the solver
@@ -368,7 +372,7 @@ def coco_optimize(solver, fun, max_evals, problem_index, instance, max_runs=1):
 # CAVEAT: this might be modified from input args
 suite_name = "bbob"  # always overwritten when called from system shell
                      # see available choices via cocoex.known_suite_names
-budget = 1e4  # maxfevals = budget x dimension ### INCREASE budget WHEN THE DATA CHAIN IS STABLE ###
+#budget = 5e2  # maxfevals = budget x dimension ### INCREASE budget WHEN THE DATA CHAIN IS STABLE ###
 max_runs = 1  # number of (almost) independent trials per problem instance
 number_of_batches = 1  # allows to run everything in several batches
 current_batch = 1      # 1..number_of_batches
@@ -390,13 +394,14 @@ observer_options = ObserverOptions({  # is (inherited from) a dictionary
 # ===============================================
 # run (main)
 # ===============================================
-def main(instance, budget=budget,
+def main(instance, #budget=budget,
          max_runs=max_runs,
          current_batch=current_batch,
          number_of_batches=number_of_batches):
     """Initialize suite and observer, then benchmark solver by calling
     ``batch_loop(SOLVER, suite, observer, budget,...``
     """
+    print("def main", budget)
     observer_name = default_observers()[suite_name]
     observer_options.update_gracefully(default_observer_options())
 
@@ -420,7 +425,7 @@ from argparse import ArgumentParser,RawDescriptionHelpFormatter,_StoreTrueAction
 
 if __name__ == '__main__':
     """read input parameters and call `main()`"""
-    
+    print("after __main__")
     description = __doc__ + "\n" + "Recognized suite names: " + str(known_suite_names)
 
     
@@ -438,7 +443,6 @@ if __name__ == '__main__':
     parser.add_argument('--seed', type=int, default=0, help='seed to initialise population')
     parser.add_argument('--trace', help='file to store fevals fitness progress')
     parser.add_argument('--stats', help='file to store statistics about the evolution')
-
 
     class dump_irace_parameters(_StoreTrueAction):
         def __call__(self, parser, namespace, values, option_string=None):
@@ -477,7 +481,6 @@ if __name__ == '__main__':
     prob_args_names = aos.ProbabilityType.add_argument(parser)
     # Handle Selection
     aos.SelectionType.add_argument(parser)
-
     
     args = parser.parse_args()
 
@@ -498,6 +501,8 @@ if __name__ == '__main__':
     CR = args.CR
     NP = args.NP
     mutation = args.mutation
+    budget = args.budget
+    print("budget",FF, CR, NP, mutation, budget)
     
     seed = args.seed
     # If no seed is given, we generate one.
@@ -571,6 +576,7 @@ if __name__ == '__main__':
            349: -1.335900000000e+02}
     
     instance_best_value = opt[args.instance]
-    
-    main(instance, budget, max_runs, current_batch, number_of_batches)
+    print("above main", budget)
+    #main(instance, budget, max_runs, current_batch, number_of_batches)
+    main(instance, max_runs, current_batch, number_of_batches)
 

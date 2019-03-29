@@ -22,8 +22,9 @@ import subprocess
 import sys
 import numpy as np
 
+dim = 20
 # fevals * dimension f-evaluations
-fevals = 10000 # This the value used by coco for the plots
+fevals = 500 # This the value used by coco for the plots
 # Options are: suite_name fevals batch total_batches
 exe = "python3 ../bin/DE_AOS.py bbob {} 1 1".format(fevals)
 
@@ -73,13 +74,14 @@ if return_code != 0:
 if not os.path.isfile(out_file):
     print(command)
     target_runner_error("output file "+ out_file  +" not found!")
-    
 
 # ndmin = 2, so that we get a matrix even if there is one line.
 points = np.loadtxt(trace_file, comments = "%", usecols = (0,1), ndmin = 2)
 points[:, 0] = np.log10(points[:, 0])
 # This check is for log10(fevals/dim)
 max_0 = np.log10(fevals)
+if np.max(points[:,0]) > max_0 or np.min(points[:,0]) <= 0:
+    print(fevals, np.log10(fevals), np.max(points[:,0]), np.min(points[:,0]))
 assert np.min(points[:,0]) > 0.0 and np.max(points[:,0]) <= max_0
 points[:, 0] /= max_0 # Normalize
 # This check is for frac
