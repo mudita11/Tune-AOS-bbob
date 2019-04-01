@@ -1,0 +1,57 @@
+COCO INFO: Results will be output to folder exdata/EA_AOS_on_bbob_budget0500xD-017
+after __main__
+budget 0.83 0.29 65 DE/current-to-rand/1 500
+above main 500
+def main 500
+Benchmarking solver '<function EA_AOS' with budget=500*dimension on b'bbob' suite, Sat Mar 30 09:52:06 2019
+batch_loop 500
+Mar30 09h52:06, d=20, running: f003coco_optimiser 10000
+inside coco 10000
+ea-aos 10000
+0.05
+2.8
+6.05
+15.5
+21.05
+24.1
+29.8
+35.3
+50.55
+75.75
+90.65
+102.7
+112.4
+114.55
+137.3
+143.8
+161.15
+164.4
+167.65
+187.15
+191.4
+207.65
+213.15
+216.4
+233.55
+238.2
+245.85
+291.7
+315.95
+318.55
+321.8
+342.15
+347.8
+381.15
+426.75
+452.75
+
+ -302.9093806230142
+.(1)  
+    done in 3.4e-04 seconds/evaluation
+  dimension seconds/evaluations
+  -----------------------------
+     20      3.4e-04 
+  -----------------------------
+  bbob done (1 of 360 problems benchmarked)
+Deleting folder:  exdata/EA_AOS_on_bbob_budget0500xD-017
+, Sat Mar 30 09:52:09 2019 (0h00:03 total elapsed time).

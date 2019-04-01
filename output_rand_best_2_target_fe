@@ -1,0 +1,325 @@
+*******************************************************************************
+* irace: An implementation in R of Iterated Race
+* Version: 2.4.1844
+* Copyright (C) 2010-2017
+* Manuel Lopez-Ibanez     <manuel.lopez-ibanez@manchester.ac.uk>
+* Jeremie Dubois-Lacoste  
+* Leslie Perez Caceres    <leslie.perez.caceres@ulb.ac.be>
+*
+* This is free software, and you are welcome to redistribute it under certain
+* conditions.  See the GNU General Public License for details. There is NO
+* WARRANTY; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+*
+* irace builds upon previous code from the race package:
+*
+* race: Racing methods for the selection of the best
+* Copyright (C) 2003 Mauro Birattari
+*******************************************************************************
+# installed at: /home/userfs/m/ms1938/R/x86_64-pc-linux-gnu-library/3.2/irace
+# called with: --parameter-file DE_rand_to_best_2.txt --exec-dir arena_rand_best_2_target_fe.txt/ --target-runner target-runner-target-vs-fe.py --parallel 30
+Warning: A default scenario file './scenario.txt' has been found and will be read
+# 2019-03-30 08:26:28 GMT: Initialization
+# Elitist race
+# Elitist new instances: 1
+# Elitist limit: 2
+# nbIterations: 3
+# minNbSurvival: 3
+# nbParameters: 3
+# seed: 426955536
+# confidence level: 0.95
+# budget: 5000
+# mu: 5
+# deterministic: FALSE
+
+# 2019-03-30 08:26:28 GMT: Iteration 1 of 3
+# experimentsUsedSoFar: 0
+# remainingBudget: 5000
+# currentBudget: 1666
+# nbConfigurations: 277
+  Markers:
+     x No test is performed.
+     - The test is performed and some configurations are discarded.
+     = The test is performed but no configuration is discarded.
+     ! The test is performed and configurations could be discarded but elite configurations are preserved.
+                                                                   
++-+-----------+-----------+-----------+---------------+-----------+--------+-----+----+------+
+| |   Instance|      Alive|       Best|      Mean best| Exp so far|  W time|  rho|KenW|  Qvar|
++-+-----------+-----------+-----------+---------------+-----------+--------+-----+----+------+
+|x|          1|        277|          1|  -0.1057782653|        277|00:01:48|   NA|  NA|    NA|
+|x|          2|        277|         12|  -0.2109158247|        554|00:01:44|+0.45|0.72|0.3888|
+|x|          3|        277|         63|  -0.1987300161|        831|00:01:45|+0.20|0.47|0.9890|
+|x|          4|        277|         61|  -0.2035299729|       1108|00:01:44|+0.30|0.48|0.9210|
+|-|          5|         63|         83|  -0.2179684976|       1385|00:01:43|+0.32|0.46|0.7585|
+|-|          6|         20|         83|  -0.2200773508|       1448|00:00:26|+0.05|0.20|0.7668|
+|-|          7|         10|         83|  -0.2153793293|       1468|00:00:09|-0.04|0.11|0.7915|
+|=|          8|         10|         83|  -0.2268878046|       1478|00:00:06|+0.03|0.15|0.7760|
+|=|          9|         10|         83|  -0.2286593125|       1488|00:00:06|+0.05|0.16|0.7847|
++-+-----------+-----------+-----------+---------------+-----------+--------+-----+----+------+
+Best configuration:          83    mean value:   -0.2286593125
+Description of the best configuration:
+   .ID.   FF   CR NP          mutation .PARENT.
+83   83 0.36 0.63 70 DE/rand-to-best/2       NA
+
+# 2019-03-30 08:36:03 GMT: Elite configurations (first number is the configuration ID; listed from best to worst according to the sum of ranks):
+     FF   CR NP          mutation
+83 0.36 0.63 70 DE/rand-to-best/2
+77 0.35 0.68 75 DE/rand-to-best/2
+63 0.59 0.83 65 DE/rand-to-best/2
+# 2019-03-30 08:36:03 GMT: Iteration 2 of 3
+# experimentsUsedSoFar: 1488
+# remainingBudget: 3512
+# currentBudget: 1756
+# nbConfigurations: 178
+  Markers:
+     x No test is performed.
+     - The test is performed and some configurations are discarded.
+     = The test is performed but no configuration is discarded.
+     ! The test is performed and configurations could be discarded but elite configurations are preserved.
+                                                                   
++-+-----------+-----------+-----------+---------------+-----------+--------+-----+----+------+
+| |   Instance|      Alive|       Best|      Mean best| Exp so far|  W time|  rho|KenW|  Qvar|
++-+-----------+-----------+-----------+---------------+-----------+--------+-----+----+------+
+|x|         10|        178|         83|    14.00000000|        178|00:01:05|   NA|  NA|    NA|
+|x|          3|        178|        430|    6.894747307|        353|00:01:08|+0.00|0.50|0.4972|
+|x|          9|        178|        292|    4.411274254|        528|00:01:06|-0.15|0.23|0.7559|
+|x|          7|        178|        286|    3.330654377|        703|00:01:07|-0.09|0.18|0.7359|
+|=|          1|        178|        286|    2.643367849|        878|00:01:08|-0.07|0.15|0.5907|
+|=|          4|        178|        370|    2.130832669|       1053|00:01:08|-0.04|0.13|0.6656|
+|-|          5|        103|        370|    1.787717056|       1228|00:01:07|-0.05|0.10|0.7491|
+|=|          6|        103|        286|    1.554402622|       1328|00:00:39|-0.02|0.11|0.7623|
+|=|          8|        103|        373|    1.353943476|       1428|00:00:37|+0.02|0.13|0.7577|
+|-|          2|         53|        286|    1.181611323|       1528|00:00:41|-0.03|0.08|0.8094|
+|=|         11|         53|        286|    1.065311860|       1581|00:00:22|-0.02|0.08|0.8101|
+|=|         12|         53|        286|   0.9492475037|       1634|00:00:24|-0.02|0.07|0.8354|
++-+-----------+-----------+-----------+---------------+-----------+--------+-----+----+------+
+Best configuration:         286    mean value:    0.9492475037
+Description of the best configuration:
+    .ID.   FF   CR NP          mutation .PARENT.
+286  286 0.41 0.65 54 DE/rand-to-best/2       83
+
+# 2019-03-30 08:46:41 GMT: Elite configurations (first number is the configuration ID; listed from best to worst according to the sum of ranks):
+      FF   CR NP          mutation
+286 0.41 0.65 54 DE/rand-to-best/2
+298 0.41 0.52 69 DE/rand-to-best/2
+373 0.44 0.61 72 DE/rand-to-best/2
+# 2019-03-30 08:46:41 GMT: Iteration 3 of 3
+# experimentsUsedSoFar: 3122
+# remainingBudget: 1878
+# currentBudget: 1878
+# nbConfigurations: 147
+  Markers:
+     x No test is performed.
+     - The test is performed and some configurations are discarded.
+     = The test is performed but no configuration is discarded.
+     ! The test is performed and configurations could be discarded but elite configurations are preserved.
+                                                                   
++-+-----------+-----------+-----------+---------------+-----------+--------+-----+----+------+
+| |   Instance|      Alive|       Best|      Mean best| Exp so far|  W time|  rho|KenW|  Qvar|
++-+-----------+-----------+-----------+---------------+-----------+--------+-----+----+------+
+|x|         13|        147|        486| -0.08984164168|        147|00:00:55|   NA|  NA|    NA|
+|x|          3|        147|        566|  -0.1510786875|        291|00:00:57|+0.31|0.65|0.7507|
+|x|          4|        147|        474|  -0.1729239692|        435|00:00:53|+0.16|0.44|0.7797|
+|x|          5|        147|        497|  -0.1984552476|        579|00:00:53|+0.24|0.43|0.7347|
+|-|          6|         70|        548|  -0.2086211581|        723|00:00:54|-0.09|0.13|1.0659|
+|=|          9|         70|        286|  -0.2222863107|        790|00:00:28|-0.07|0.11|1.0515|
+|=|         10|         70|        286|    1.809468877|        857|00:00:27|-0.06|0.10|0.8919|
+|=|         12|         70|        373|    1.544470425|        924|00:00:30|-0.04|0.09|0.9003|
+|=|          7|         70|        286|    1.347949430|        991|00:00:29|-0.02|0.09|0.8972|
+|=|          8|         70|        373|    1.186132775|       1058|00:00:27|+0.00|0.10|0.8896|
+|=|         11|         70|        286|    1.067288595|       1125|00:00:30|+0.01|0.10|0.8840|
+|=|          1|         70|        286|   0.9695330232|       1192|00:00:28|+0.01|0.09|0.8114|
+|-|          2|         40|        286|   0.8699212380|       1259|00:00:28|-0.02|0.06|0.8447|
+|=|         14|         40|        286|    1.807784007|       1299|00:00:17|-0.02|0.05|0.7830|
+|=|         15|         40|        286|    1.674265872|       1339|00:00:16|-0.02|0.05|0.7986|
++-+-----------+-----------+-----------+---------------+-----------+--------+-----+----+------+
+Best configuration:         286    mean value:     1.674265872
+Description of the best configuration:
+    .ID.   FF   CR NP          mutation .PARENT.
+286  286 0.41 0.65 54 DE/rand-to-best/2       83
+
+# 2019-03-30 08:55:41 GMT: Elite configurations (first number is the configuration ID; listed from best to worst according to the sum of ranks):
+      FF   CR NP          mutation
+286 0.41 0.65 54 DE/rand-to-best/2
+546 0.39 0.44 50 DE/rand-to-best/2
+373 0.44 0.61 72 DE/rand-to-best/2
+# 2019-03-30 08:55:41 GMT: Iteration 4 of 4
+# experimentsUsedSoFar: 4461
+# remainingBudget: 539
+# currentBudget: 539
+# nbConfigurations: 36
+  Markers:
+     x No test is performed.
+     - The test is performed and some configurations are discarded.
+     = The test is performed but no configuration is discarded.
+     ! The test is performed and configurations could be discarded but elite configurations are preserved.
+                                                                   
++-+-----------+-----------+-----------+---------------+-----------+--------+-----+----+------+
+| |   Instance|      Alive|       Best|      Mean best| Exp so far|  W time|  rho|KenW|  Qvar|
++-+-----------+-----------+-----------+---------------+-----------+--------+-----+----+------+
+|x|         16|         36|        286|    14.00000000|         36|00:00:16|   NA|  NA|    NA|
+|x|         15|         36|        604|    6.895490908|         69|00:00:16|+0.00|0.50|0.4861|
+|x|         13|         36|        615|    4.569899048|        102|00:00:16|+0.10|0.40|0.5328|
+|x|         10|         36|        615|    6.927424286|        135|00:00:15|+0.07|0.30|0.4284|
+|=|         14|         36|        615|    8.341939429|        168|00:00:16|+0.05|0.24|0.3543|
+|-|          2|         26|        615|    6.901329485|        201|00:00:14|-0.04|0.14|0.4990|
+|=|          1|         26|        615|    5.900314092|        224|00:00:10|-0.03|0.12|0.4251|
+|=|          7|         26|        615|    5.140740319|        247|00:00:09|+0.01|0.13|0.4807|
+|=|         12|         26|        546|    4.526011194|        270|00:00:10|+0.01|0.12|0.5307|
+|=|          4|         26|        373|    4.053986932|        293|00:00:09|+0.01|0.11|0.5788|
+|-|          6|         15|        373|    3.660247467|        316|00:00:09|-0.05|0.05|0.6191|
+|=|         11|         15|        604|    3.349323406|        328|00:00:06|-0.04|0.05|0.6391|
+|=|          8|         15|        604|    3.067968510|        340|00:00:06|-0.02|0.06|0.6546|
+|=|          9|         15|        373|    2.829550526|        352|00:00:06|-0.01|0.06|0.6685|
+|=|          5|         15|        373|    2.622671837|        364|00:00:06|+0.01|0.08|0.6686|
+|=|          3|         15|        286|    2.444624255|        376|00:00:06|+0.03|0.09|0.6729|
+|-|         17|          9|        286|    2.283891308|        391|00:00:06|+0.02|0.08|0.6637|
+|=|         18|          9|        546|    2.143911179|        400|00:00:05|+0.04|0.09|0.6658|
+|-|         19|          5|        546|    2.012612366|        409|00:00:06|+0.06|0.11|0.5945|
+|=|         20|          5|        546|    1.895334036|        414|00:00:05|+0.04|0.09|0.6076|
+|=|         21|          5|        546|    1.796128629|        419|00:00:05|+0.01|0.06|0.6348|
++-+-----------+-----------+-----------+---------------+-----------+--------+-----+----+------+
+Best configuration:         546    mean value:     1.796128629
+Description of the best configuration:
+    .ID.   FF   CR NP          mutation .PARENT.
+546  546 0.39 0.44 50 DE/rand-to-best/2      298
+
+# 2019-03-30 08:59:09 GMT: Elite configurations (first number is the configuration ID; listed from best to worst according to the sum of ranks):
+      FF   CR NP          mutation
+546 0.39 0.44 50 DE/rand-to-best/2
+286 0.41 0.65 54 DE/rand-to-best/2
+373 0.44 0.61 72 DE/rand-to-best/2
+# 2019-03-30 08:59:09 GMT: Iteration 5 of 5
+# experimentsUsedSoFar: 4880
+# remainingBudget: 120
+# currentBudget: 120
+# nbConfigurations: 8
+  Markers:
+     x No test is performed.
+     - The test is performed and some configurations are discarded.
+     = The test is performed but no configuration is discarded.
+     ! The test is performed and configurations could be discarded but elite configurations are preserved.
+                                                                   
++-+-----------+-----------+-----------+---------------+-----------+--------+-----+----+------+
+| |   Instance|      Alive|       Best|      Mean best| Exp so far|  W time|  rho|KenW|  Qvar|
++-+-----------+-----------+-----------+---------------+-----------+--------+-----+----+------+
+|x|         22|          8|        286|  -0.1885831995|          8|00:00:05|   NA|  NA|    NA|
+|x|          7|          8|        286|  -0.1979300240|         13|00:00:05|+0.29|0.64|0.4951|
+|x|         11|          8|        286|  -0.1645142712|         18|00:00:05|+0.35|0.57|0.4853|
+|x|          5|          8|        286|  -0.1938033671|         23|00:00:05|+0.52|0.64|0.3607|
+|!|         13|          3|        286|  -0.1714414839|         28|00:00:05|+0.39|0.52|0.2794|
++-+-----------+-----------+-----------+---------------+-----------+--------+-----+----+------+
+Best configuration:         286    mean value:   -0.1714414839
+Description of the best configuration:
+    .ID.   FF   CR NP          mutation .PARENT.
+286  286 0.41 0.65 54 DE/rand-to-best/2       83
+
+# 2019-03-30 08:59:37 GMT: Elite configurations (first number is the configuration ID; listed from best to worst according to the sum of ranks):
+      FF   CR NP          mutation
+286 0.41 0.65 54 DE/rand-to-best/2
+546 0.39 0.44 50 DE/rand-to-best/2
+373 0.44 0.61 72 DE/rand-to-best/2
+# 2019-03-30 08:59:37 GMT: Iteration 6 of 6
+# experimentsUsedSoFar: 4908
+# remainingBudget: 92
+# currentBudget: 92
+# nbConfigurations: 6
+  Markers:
+     x No test is performed.
+     - The test is performed and some configurations are discarded.
+     = The test is performed but no configuration is discarded.
+     ! The test is performed and configurations could be discarded but elite configurations are preserved.
+                                                                   
++-+-----------+-----------+-----------+---------------+-----------+--------+-----+----+------+
+| |   Instance|      Alive|       Best|      Mean best| Exp so far|  W time|  rho|KenW|  Qvar|
++-+-----------+-----------+-----------+---------------+-----------+--------+-----+----+------+
+|x|         23|          6|        286|  -0.3654215352|          6|00:00:05|   NA|  NA|    NA|
+|x|          8|          6|        546|  -0.3366846327|          9|00:00:05|+0.26|0.63|0.6989|
+|x|          4|          6|        635|  -0.2978347867|         12|00:00:04|+0.14|0.43|0.5872|
+|x|         14|          6|        635|    3.276623910|         15|00:00:04|+0.10|0.32|0.5019|
+|=|          3|          6|        286|    2.584571157|         18|00:00:05|+0.09|0.27|0.4863|
+|=|          5|          6|        546|    2.107694821|         21|00:00:05|+0.19|0.33|0.4300|
+|=|          2|          6|        546|    1.759564896|         24|00:00:05|+0.18|0.30|0.5017|
+|-|         18|          4|        546|    1.499990089|         27|00:00:04|+0.14|0.25|0.5713|
+|=|         10|          4|        546|    2.888880079|         28|00:00:04|+0.12|0.22|0.5173|
+|=|         12|          4|        546|    2.563055491|         29|00:00:05|+0.12|0.21|0.5417|
+|!|         19|          3|        546|    2.298162603|         30|00:00:04|+0.18|0.25|0.4561|
++-+-----------+-----------+-----------+---------------+-----------+--------+-----+----+------+
+Best configuration:         546    mean value:     2.298162603
+Description of the best configuration:
+    .ID.   FF   CR NP          mutation .PARENT.
+546  546 0.39 0.44 50 DE/rand-to-best/2      298
+
+# 2019-03-30 09:00:32 GMT: Elite configurations (first number is the configuration ID; listed from best to worst according to the sum of ranks):
+      FF   CR NP          mutation
+546 0.39 0.44 50 DE/rand-to-best/2
+286 0.41 0.65 54 DE/rand-to-best/2
+373 0.44 0.61 72 DE/rand-to-best/2
+# 2019-03-30 09:00:32 GMT: Iteration 7 of 7
+# experimentsUsedSoFar: 4938
+# remainingBudget: 62
+# currentBudget: 62
+# nbConfigurations: 5
+  Markers:
+     x No test is performed.
+     - The test is performed and some configurations are discarded.
+     = The test is performed but no configuration is discarded.
+     ! The test is performed and configurations could be discarded but elite configurations are preserved.
+                                                                   
++-+-----------+-----------+-----------+---------------+-----------+--------+-----+----+------+
+| |   Instance|      Alive|       Best|      Mean best| Exp so far|  W time|  rho|KenW|  Qvar|
++-+-----------+-----------+-----------+---------------+-----------+--------+-----+----+------+
+|x|         24|          5|        546|  -0.1797518669|          5|00:00:05|   NA|  NA|    NA|
+|x|          9|          5|        286|  -0.2198251412|          7|00:00:04|-0.30|0.35|1.0898|
+|x|          1|          5|        286|  -0.1818095159|          9|00:00:05|-0.15|0.23|0.6299|
+|x|         16|          5|        286|    3.363642863|         11|00:00:04|-0.10|0.17|0.4483|
+|=|          5|          5|        546|    2.638264748|         13|00:00:04|+0.12|0.29|0.4498|
+|=|         17|          5|        286|    2.147510827|         15|00:00:04|+0.11|0.26|0.4608|
+|=|          7|          5|        286|    1.811112588|         17|00:00:05|+0.02|0.16|0.5329|
+|=|         23|          5|        286|    1.539045823|         19|00:00:04|+0.00|0.13|0.5605|
+|=|         20|          5|        286|    1.335089766|         21|00:00:05|-0.03|0.09|0.6068|
+|=|         13|          5|        546|    1.194409787|         23|00:00:05|-0.01|0.09|0.6178|
+|=|         15|          5|        546|    1.067918266|         25|00:00:05|-0.02|0.07|0.6431|
+|=|         19|          5|        546|   0.9496945535|         27|00:00:04|-0.02|0.06|0.6452|
+|=|          8|          5|        546|   0.8529213103|         29|00:00:04|-0.03|0.05|0.6683|
+|=|         14|          5|        546|    1.791998360|         31|00:00:04|-0.03|0.05|0.6212|
+|=|          3|          5|        546|    1.659164260|         33|00:00:04|+0.00|0.07|0.6109|
+|=|         21|          5|        546|    1.543717775|         35|00:00:04|-0.01|0.05|0.6434|
+|=|         18|          5|        546|    1.434261814|         37|00:00:05|+0.01|0.07|0.6359|
+|=|         12|          5|        546|    1.334060280|         39|00:00:05|+0.01|0.06|0.6427|
+|=|          6|          5|        546|    1.252393939|         41|00:00:04|-0.01|0.05|0.6605|
+|=|         10|          5|        546|    1.889774242|         43|00:00:04|-0.01|0.04|0.6281|
+|=|         11|          5|        546|    1.795133433|         45|00:00:05|+0.01|0.06|0.6238|
+|=|          4|          5|        546|    1.704688743|         47|00:00:05|-0.01|0.03|0.6490|
+|=|          2|          5|        546|    1.616258160|         49|00:00:05|+0.00|0.05|0.6447|
+|=|         22|          5|        546|    1.541426956|         51|00:00:05|+0.02|0.06|0.6401|
+|=|         25|          5|        546|    1.475730071|         56|00:00:04|+0.02|0.06|0.6155|
++-+-----------+-----------+-----------+---------------+-----------+--------+-----+----+------+
+Best configuration:         546    mean value:     1.475730071
+Description of the best configuration:
+    .ID.   FF   CR NP          mutation .PARENT.
+546  546 0.39 0.44 50 DE/rand-to-best/2      298
+
+# 2019-03-30 09:02:38 GMT: Elite configurations (first number is the configuration ID; listed from best to worst according to the sum of ranks):
+      FF   CR NP          mutation
+546 0.39 0.44 50 DE/rand-to-best/2
+286 0.41 0.65 54 DE/rand-to-best/2
+638 0.47 0.42 56 DE/rand-to-best/2
+# 2019-03-30 09:02:38 GMT: Stopped because there is not enough budget left to race more than the minimum (3)
+# You may either increase the budget or set 'minNbSurvival' to a lower value
+# Iteration: 8
+# nbIterations: 8
+# experimentsUsedSoFar: 4994
+# timeUsed: 0
+# remainingBudget: 6
+# currentBudget: 6
+# number of elites: 3
+# nbConfigurations: 3
+# Best configurations (first number is the configuration ID; listed from best to worst according to the sum of ranks):
+      FF   CR NP          mutation
+546 0.39 0.44 50 DE/rand-to-best/2
+286 0.41 0.65 54 DE/rand-to-best/2
+638 0.47 0.42 56 DE/rand-to-best/2
+# Best configurations as commandlines (first number is the configuration ID; same order as above):
+546  --FF 0.39 --CR 0.44 --NP 50 --mutation DE/rand-to-best/2
+286  --FF 0.41 --CR 0.65 --NP 54 --mutation DE/rand-to-best/2
+638  --FF 0.47 --CR 0.42 --NP 56 --mutation DE/rand-to-best/2

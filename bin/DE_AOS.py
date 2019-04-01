@@ -228,7 +228,7 @@ def EA_AOS(fun, x0, lbounds, ubounds, budget, instance):
     # MANUEL: What is the difference between fun and instance?
     # MUDITA: There are five classes in bbob each consisting of functions with different properties. For instance a fun, f1, from first class is sphere function. Now there are 15 instances of each fun. Eg. for f1 translated or shifted versions are instances.
     # Problem is represented as (f_i, n, j, t): f_i is i-fun, n is dimension, j is instance number and t is target.
-    print("ea-aos",budget)
+
     cost = de.DE(fun, x0, lbounds, ubounds, budget, instance, instance_best_value,
                  trace_filename, stats_filename,
                  # DE parameters
@@ -262,7 +262,7 @@ def batch_loop(solver, suite, observer, budget,
     This distribution into batches is likely to lead to similar
     runtimes for the batches, which is usually desirable.
     """
-    print("batch_loop", budget)
+
     addressed_problems = []
     short_info = ShortInfo()
     #sample_ids = list(range(360))
@@ -310,7 +310,7 @@ def coco_optimize(solver, fun, max_evals, problem_index, instance, max_runs=1):
     Return number of (almost) independent runs.
     """
     # Receives max_evaulations as budget * dim
-    print("coco_optimiser", max_evals)
+
     range_ = fun.upper_bounds - fun.lower_bounds
     center = fun.lower_bounds + range_ / 2
     if fun.evaluations:
@@ -318,7 +318,7 @@ def coco_optimize(solver, fun, max_evals, problem_index, instance, max_runs=1):
               fun.evaluations)
 
     for restarts in range(int(max_runs)):
-        remaining_evals = max_evals - fun.evaluations; print("inside coco", remaining_evals)
+        remaining_evals = max_evals - fun.evaluations
         x0 = center + (restarts > 0) * 0.8 * range_ * (
                 np.random.rand(fun.dimension) - 0.5)
         #fun(x0)  # can be incommented, if this is done by the solver
@@ -400,7 +400,7 @@ def main(instance, budget,
     """Initialize suite and observer, then benchmark solver by calling
     ``batch_loop(SOLVER, suite, observer, budget,...``
     """
-    print("def main", budget)
+    
     observer_name = default_observers()[suite_name]
     observer_options.update_gracefully(default_observer_options())
 
@@ -424,7 +424,7 @@ from argparse import ArgumentParser,RawDescriptionHelpFormatter,_StoreTrueAction
 
 if __name__ == '__main__':
     """read input parameters and call `main()`"""
-    print("after __main__")
+
     description = __doc__ + "\n" + "Recognized suite names: " + str(known_suite_names)
 
     
@@ -501,7 +501,6 @@ if __name__ == '__main__':
     NP = args.NP
     mutation = args.mutation
     budget = args.budget
-    print("budget",FF, CR, NP, mutation, budget)
     
     seed = args.seed
     # If no seed is given, we generate one.
@@ -575,7 +574,7 @@ if __name__ == '__main__':
            349: -1.335900000000e+02}
     
     instance_best_value = opt[args.instance]
-    print("above main", budget)
-    #main(instance, budget, max_runs, current_batch, number_of_batches)
-    main(instance, max_runs, current_batch, number_of_batches)
+
+    main(instance, budget, max_runs, current_batch, number_of_batches)
+    #main(instance, max_runs, current_batch, number_of_batches)
 
