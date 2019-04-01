@@ -400,7 +400,6 @@ def main(instance, budget,
     """Initialize suite and observer, then benchmark solver by calling
     ``batch_loop(SOLVER, suite, observer, budget,...``
     """
-    
     observer_name = default_observers()[suite_name]
     observer_options.update_gracefully(default_observer_options())
 
@@ -576,5 +575,4 @@ if __name__ == '__main__':
     instance_best_value = opt[args.instance]
 
     main(instance, budget, max_runs, current_batch, number_of_batches)
-    #main(instance, max_runs, current_batch, number_of_batches)
 

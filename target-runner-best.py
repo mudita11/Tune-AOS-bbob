@@ -24,7 +24,7 @@ import numpy as np
 
 dim = 20
 # fevals * dimension f-evaluations
-fevals = 500 * dim # This the value used by coco for the plots
+fevals = 500 # This the value used by coco for the plots
 # Options are: suite_name fevals batch total_batches
 exe = "python3 ../bin/DE_AOS.py bbob {} 1 1".format(fevals)
 
@@ -77,6 +77,5 @@ if not os.path.isfile(out_file):
     
 
 cost=[line.rstrip('\n') for line in open(out_file)][3]
-
 print(cost)
 sys.exit(0)

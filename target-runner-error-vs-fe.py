@@ -75,36 +75,31 @@ if not os.path.isfile(out_file):
     print(command)
     target_runner_error("output file "+ out_file  +" not found!")
     
-empty = True
 # ndmin = 2, so that we get a matrix even if there is one line.
-for line in open(trace_file):
-    li=line.strip()
-    if not li.startswith("%"):
-        empty = False
-        break
-if not empty:
-    # ndmin = 2, so that we get a matrix even if there is one line.
-    points = np.loadtxt(trace_file, comments = "%", usecols = (0,2), ndmin = 2)
-    points[:, 0] = np.log10(points[:, 0])
-    # This check is for log10(fevals/dim)
-    max_0 = np.log10(fevals)
-    assert np.min(points[:,0]) >= 0.0 and np.max(points[:,0]) <= max_0
-    points[:, 0] /= max_0 # Normalize
-    # We want to minimise the error values
-    min_error = 10**-8
-    max_error = 10**10
-    points[:,1] = (points[:,1] - min_error) / (max_error - min_error)
-    # This check is for error
-    assert np.min(points[:,1]) >= 0.0 and np.max(points[:,1]) <= 1.0
+points = np.loadtxt(trace_file, comments = "%", usecols = (0,2), ndmin = 2)
+# 0: fevals/dim, 2: error
+# We limit the minimum fevals/dim to 1.0
+points[:, 0] = np.maximum(points[:, 0], 1.0)
+points[:, 0] = np.log10(points[:, 0])
+points[:, 0] /= np.log10(fevals) # Normalize
+# This check is for log10(fevals/dim)
+assert np.min(points[:,0]) >= 0.0 and np.max(points[:,0]) <= 1.0
+# We want to minimise the error values
+min_error = 10**-8
+# WARNING: if errors are typically much larger than this, we are
+# mischaracterising the actual output.
+max_error = 10**10
+points[:, 1] = np.clip(points[:, 1], min_error, max_error)
+points[:,1] = (points[:,1] - min_error) / (max_error - min_error)
+# This check is for error
+assert np.min(points[:,1]) >= 0.0 and np.max(points[:,1]) <= 1.0
 
-    # See README.txt to install this
-    from pygmo import hypervolume
+# See README.txt to install this
+from pygmo import hypervolume
 
-    ref_point = [1.1, 1.1]
-    hv = hypervolume(points)
-    cost = hv.compute(ref_point)
-else:
-    cost = -10^4
+ref_point = [1.1, 1.1]
+hv = hypervolume(points)
+cost = hv.compute(ref_point)
 # hypervolume is maximised but irace minimises
 print(-cost)
 sys.exit(0)

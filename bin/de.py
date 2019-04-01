@@ -23,14 +23,11 @@ class TraceFile():
     def print(self, fevals, bsf, header = False):
         if not self._file:
             return
-        fevalsdim = float(fevals) / self._dim
-        if fevalsdim <= 1.0:
-            return
-        error = bsf - self._optimum
-        if error < 1e-08:
-            return
         if header:
             self._file.write("% fevals/dim | frac | F - F_opt ({}) | best fitness | fevals\n".format(self._optimum))
+        fevalsdim = float(fevals) / self._dim
+        error = bsf - self._optimum
+        assert error >= 0.0
         frac = np.sum(error <= self._targets) / float(len(self._targets))
         self._file.write("{0} {1} {2} {3} {4}\n".format(
             fevalsdim, frac, error, bsf, fevals))
@@ -148,10 +145,9 @@ def DE(fun, x0, lbounds, ubounds, budget, instance, instance_best_value,
     trace.print(1, F[0], header = True)
     # We did NP fevals, remove them, then add as many as the number
     # needed to reach the best one (+1 because best is 0-based).
-    trace.print(fun.evaluations - NP + best + 1, f_min, header = True)
+    trace.print(fun.evaluations - NP + best + 1, f_min)
 
-    while fun.evaluations + NP <= max_fevals:
-
+    while fun.evaluations + NP <= budget and not fun.final_target_hit:
         fill_points = np.random.randint(dim, size = NP)
         
         for i in range(NP):

@@ -75,35 +75,25 @@ if not os.path.isfile(out_file):
     print(command)
     target_runner_error("output file "+ out_file  +" not found!")
 
-empty = True
-# ndmin = 2, so that we get a matrix even if there is one line.
-for line in open(trace_file):
-    li=line.strip()
-    if not li.startswith("%"):
-        empty = False
-        break
-if not empty:
-    points = np.loadtxt(trace_file, comments = "%", usecols = (0,1), ndmin = 2)
-    points[:, 0] = np.log10(points[:, 0])
-    # This check is for log10(fevals/dim)
-    max_0 = np.log10(fevals)
-    if np.max(points[:,0]) > max_0 or np.min(points[:,0]) <= 0:
-        print(fevals, np.log10(fevals), np.max(points[:,0]), np.max(points[:,0])/dim, np.min(points[:,0]), np.min(points[:,0])/dim)
-    assert np.min(points[:,0]) > 0.0 and np.max(points[:,0]) <= max_0
-    points[:, 0] /= max_0 # Normalize
-    # This check is for frac
-    assert np.min(points[:,1]) >= 0.0 and np.max(points[:,1]) <= 1.0
-    # We want to maximize frac
-    points[:,1] = 1.0 - points[:,1]
+points = np.loadtxt(trace_file, comments = "%", usecols = (0,1), ndmin = 2)
+# 0: fevals/dim, 1: fraction of targets
+# We limit the minimum fevals/dim to 1.0
+points[:, 0] = np.maximum(points[:, 0], 1.0)
+points[:, 0] = np.log10(points[:, 0])
+points[:, 0] /= np.log10(fevals) # Normalize
+# This check is for log10(fevals/dim)
+assert np.min(points[:,0]) >= 0.0 and np.max(points[:,0]) <= 1.0
+# We want to maximize frac
+points[:,1] = 1.0 - points[:,1]
+# This check is for frac
+assert np.min(points[:,1]) >= 0.0 and np.max(points[:,1]) <= 1.0
 
-    # See README.txt to install this
-    from pygmo import hypervolume
+# See README.txt to install this
+from pygmo import hypervolume
 
-    ref_point = [1.1, 1.1]
-    hv = hypervolume(points)
-    cost = hv.compute(ref_point)
-else:
-    cost = -10^4
+ref_point = [1.1, 1.1]
+hv = hypervolume(points)
+cost = hv.compute(ref_point)
 # hypervolume is maximised but irace minimises
 print(-cost)
 sys.exit(0)
