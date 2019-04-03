@@ -9,5 +9,12 @@ for mutation in $mutations; do
         EXECDIR=execdir-$mutation-$targetrunner
         mkdir $EXECDIR
         irace --parameter-file ${mutation}.txt --exec-dir $EXECDIR --target-runner target-runner-${targetrunner}.py --parallel 3 &> output-${mutation}-${targetrunner} &
+        PROC_ID=$!
+        sleep 1
+        if kill -0 "$PROC_ID" >/dev/null 2>&1; then
+            echo "Executing on $EXECDIR with PID=${PROC_ID} and output in output-${mutation}-${targetrunner}"
+        else
+            echo "ERROR executing on $EXECDIR see output in output-${mutation}-${targetrunner}"
+        fi
     done
 done
