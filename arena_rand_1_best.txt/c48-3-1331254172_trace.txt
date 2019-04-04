@@ -1,2 +1,0 @@
-% fevals/dim | frac | F - F_opt (-568.88) | best fitness | fevals
-8.5 0.0 2064653.4137222988 2064084.533722299 170
