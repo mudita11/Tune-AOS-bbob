@@ -1,10 +1,10 @@
 from __future__ import print_function
-import numpy as np
-from scipy.stats import rankdata
-import math
-from scipy.spatial import distance
 import sys
 import copy
+import math
+import numpy as np
+from scipy.stats import rankdata
+from scipy.spatial import distance
 
 from abc import ABC,abstractmethod
 
@@ -398,8 +398,10 @@ class Unknown_AOS(object):
         
         for i in range(popsize):
             # if child is worse than parent
+            # MANUEL: Shouldn't this be if child is worse or equal than parent?
             if F1[i] > F[i]:
                 continue
+            # MANUEL: If child is worse than parent, we don't store the op, so it is not counted as an application, is that right? It seems wrong.
             
             window_op[i] = opu[i]
             window_met[i, 0] = offsp_fitness[i]
@@ -1191,11 +1193,13 @@ class SelectionType(ABC):
         self.n_ops = n_ops
         self.op_init_list = list(np.random.permutation(n_ops))
 
+    # MANUEL: create a base object to avoid duplicating this function.
     @classmethod
     def add_argument(cls, parser):
         "Add arguments to an ArgumentParser"
         return parser_add_arguments(cls, parser)
 
+    # MANUEL: create a base object to avoid duplicating this function.
     @classmethod
     def irace_parameters(cls, override = {}):
         return aos_irace_parameters(cls, override = override)
