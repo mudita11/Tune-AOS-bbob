@@ -270,7 +270,7 @@ def batch_loop(solver, suite, observer, budget,
     #sample_ids = set(sample_ids[0:360])
     sample_ids = instance
     for problem_index, problem in enumerate(suite):
-        if problem_index not in sample_ids:
+        if sample_ids != -1 and problem_index not in sample_ids:
             continue
         if (problem_index + current_batch - 1) % number_of_batches:
             continue
@@ -437,7 +437,7 @@ if __name__ == '__main__':
     parser.add_argument('budget', metavar='budget', type=int, help='function evaluations = BUDGET * dimension')
     parser.add_argument('current_batch', type=int, default=1, help='batch to run')
     parser.add_argument('number_of_batches', type=int, default=1, help='number of batches')
-    parser.add_argument('-i', '--instance', type=int, help='problem instance to train on')
+    parser.add_argument('-i', '--instance', type=int, default=-1, help='problem instance to train on')
     parser.add_argument('--seed', type=int, default=0, help='seed to initialise population')
     parser.add_argument('--trace', help='file to store fevals fitness progress')
     parser.add_argument('--stats', help='file to store statistics about the evolution')
@@ -487,10 +487,10 @@ if __name__ == '__main__':
     current_batch = args.current_batch
     number_of_batches = args.number_of_batches
     
-    instance =  [args.instance]
+    instance =  args.instance
     trace_filename = args.trace
     stats_filename = args.stats
-
+    
     ## FIXME: At some moment we could replace explicit parsing by implicit DE(**de_args)
     # de_args = dict.fromkeys(de_args, None)
     # for x in de_args.keys():
@@ -570,7 +570,8 @@ if __name__ == '__main__':
            311: -4.860000000000e+01,
            321: 9.980000000000e+01,
            333: -2.231200000000e+02,
-           349: -1.335900000000e+02}
+           349: -1.335900000000e+02,
+           -1: 0}
     
     instance_best_value = opt[args.instance]
 
