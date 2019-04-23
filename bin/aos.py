@@ -490,8 +490,9 @@ def UCB(N, C, reward):
 ##################################################Reward definitions######################################################################
     
 
-
+## MANUEL: Why not use the names instead of numbers to choose?
 def build_reward(choice, n_ops, rew_args, gen_window, window):
+    
     if choice == 0:
         return Pareto_Dominance(n_ops, gen_window, rew_args["fix_appl"])
     elif choice == 1:
