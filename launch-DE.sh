@@ -1,7 +1,19 @@
 #!/bin/bash
 
+
 fes=500000
 de="./bin/DE_AOS.py bbob $fes 1 1"
+
+# MANUEL: where is the output saved?
+# Also, if you read the command-line parameters from a file, one per line, you can do something like:
+# cat file | xargs -n 1 $de
+# See http://man7.org/linux/man-pages/man1/xargs.1.html
+
+# And if the computer you use has the 'parallel' command, then you can run in parallel with:
+# cat file | parallel $de
+# See https://www.gnu.org/software/parallel/man.html#EXAMPLE:-Working-as-xargs--n1.-Argument-appending
+
+
 
 # tuned_rand_1_target_fe
 $de --FF 0.36 --CR 0.21 --NP 50 --mutation DE/rand/1
