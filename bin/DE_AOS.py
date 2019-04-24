@@ -271,9 +271,10 @@ def EA_AOS(fun, x0, lbounds, ubounds, budget, instance):
            321: 9.980000000000e+01,
            333: -2.231200000000e+02,
            349: -1.335900000000e+02}
-    
-    instance_best_value = opt[instance]
 
+    instance_best_value = 0
+    if instance in opt:
+        instance_best_value = opt[instance]
     
     cost = de.DE(fun, x0, lbounds, ubounds, budget, instance, instance_best_value,
                  trace_filename, stats_filename,
