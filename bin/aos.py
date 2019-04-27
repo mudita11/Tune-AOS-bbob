@@ -310,7 +310,7 @@ class Unknown_AOS(object):
     }
     
     def __init__(self, popsize, n_ops, OM_choice, rew_choice, rew_args,
-                 qual_choice, qual_args, prob_choice, prob_args, select_choice):
+                 qual_choice, qual_args, prob_choice, prob_args, select_choice, budget):
         
         self.window = OpWindow(n_ops, metric = OM_choice - 1, max_size = 50)
         self.gen_window = GenWindow(n_ops, metric = OM_choice - 1)
@@ -320,7 +320,7 @@ class Unknown_AOS(object):
         self.reward_type = build_reward(rew_choice, n_ops, rew_args, self.gen_window, self.window)
         self.quality_type = build_quality(qual_choice, n_ops, qual_args, self.window)
         self.probability_type = build_probability(prob_choice, n_ops, prob_args)
-        self.selection_type = build_selection(select_choice, n_ops)
+        self.selection_type = build_selection(select_choice, n_ops, budget, popsize)
 
     
     @classmethod
@@ -1175,11 +1175,17 @@ Christian Igel and Martin Kreutz. “Using fitness distributions to improvethe e
 
 #############Selection definitions##############################################
 
-def build_selection(choice, n_ops):
+def build_selection(choice, n_ops, budget, popsize):
     if choice == 0:
         return Proportional_Selection(n_ops)
     elif choice == 1:
         return Greedy_Selection(n_ops)
+    elif choice == 2:
+        return Epsilon_Greedy_Selection(n_ops)
+    elif choice == 3:
+        return Proportional_Greedy_Selection(n_ops)
+    elif choice == 4:
+        return Linear_Annealed_Selection(n_ops, budget, popsize)
     else:
         raise ValueError("choice {} unknown".format(choice))
 
@@ -1193,6 +1199,7 @@ class SelectionType(ABC):
         # The initial list of operators (randomly permuted)
         self.n_ops = n_ops
         self.op_init_list = list(np.random.permutation(n_ops))
+        self.step_counter = 0
 
     # MANUEL: create a base object to avoid duplicating this function.
     @classmethod
@@ -1207,6 +1214,7 @@ class SelectionType(ABC):
 
     def check_selection(self, selected):
         assert selected >= 0 and selected <= self.n_ops
+        self.step_counter += 1
         return selected
     
     @abstractmethod
@@ -1241,4 +1249,92 @@ class Greedy_Selection(SelectionType):
         else:
             SI = np.argmax(probability)
         return super().check_selection(SI)
+
+
+class Epsilon_Greedy_Selection(SelectionType):
+    def __init__(self, n_ops):
+        super().__init__(n_ops)
+    
+    def perform_selection(self, probability):
+        # Epsilon Greedy Selection
+        if self.op_init_list:
+            SI = self.op_init_list.pop()
+        elif np.random.uniform() < eps:
+            SI = np.random.randint(0, n_ops)
+        else:
+            SI = np.argmax(probability)
+        return super().check_selection(SI)
+
+
+class Propotional_Greedy_Selection(SelectionType):
+    def __init__(self, n_ops):
+        super().__init__(n_ops)
+
+    def perform_selection(self, probability):
+        # Combination of Proportional and Greedy Selection
+        if self.op_init_list:
+            SI = self.op_init_list.pop()
+        elif np.random.uniform() < eps:
+            SI = np.random.choice(len(probability), p = probability)
+        else:
+            SI = np.argmax(probability)
+        return super().check_selection(SI)
+
+
+class Linear_Annealed_Selection(SelectionType):
+    def __init__(self, n_ops, budget, popsize):
+        self.budget = budget
+        self.popsize = popsize
+        self.n_steps = self.budget / self.popsize
+        self.max_value = 1.0
+        self.min_value = 0.0
+        self.step_size = (self.max_value - self.min_value) / self.n_steps
+        self.eps_value = np.max_value - (self.step_size * self.step_counter)
+        super().__init__(n_ops)
+
+    def perform_selection(self, probability):
+        #Linear Annealed Selection
+        if self.op_init_list:
+            SI = self.op_init_list.pop()
+        elif np.random.uniform() < self.eps_value:
+            SI = np.random.randint(0, n_ops)
+        else:
+            SI = np.argmax(probability)
+        return super().check_selection(SI)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 

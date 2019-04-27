@@ -72,7 +72,7 @@ def DE_irace_parameters(override = {}):
 def DE(fun, x0, lbounds, ubounds, budget, instance, instance_best_value,
        trace_filename, stats_filename,
        FF, CR, NP, mutation,
-       OM_choice, rew_choice, rew_args, qual_choice, qual_args, prob_choice, prob_args, select_choice):
+       OM_choice, rew_choice, rew_args, qual_choice, qual_args, prob_choice, prob_args, select_choice, budget):
 
     def rand1(population, samples, best, scale):
         """DE/rand/1"""
