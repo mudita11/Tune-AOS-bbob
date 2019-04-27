@@ -528,7 +528,7 @@ if __name__ == '__main__':
     # Handle probabilities
     prob_args_names = aos.ProbabilityType.add_argument(parser)
     # Handle Selection
-    aos.SelectionType.add_argument(parser)
+    select_args_names = aos.SelectionType.add_argument(parser)
     
     args = parser.parse_args()
 
@@ -577,9 +577,13 @@ if __name__ == '__main__':
     prob_args = {}
     for x in prob_args_names:
         prob_args[x] = getattr(args, x)
+
     # Handle selection
     select_choice = args.select_choice
-
+    select_args = {}
+    for x in select_args_names:
+        select_args[x] = getattr(args, x)
+    
     # FIXME: instance should be the last argument to match how other functions
     # work.
     main(instance, budget, max_runs, current_batch, number_of_batches)

@@ -1181,9 +1181,9 @@ def build_selection(choice, n_ops, budget, popsize):
     elif choice == 1:
         return Greedy_Selection(n_ops)
     elif choice == 2:
-        return Epsilon_Greedy_Selection(n_ops)
+        return Epsilon_Greedy_Selection(n_ops, select_args["sel_eps"])
     elif choice == 3:
-        return Proportional_Greedy_Selection(n_ops)
+        return Proportional_Greedy_Selection(n_ops, select_args["sel_eps"])
     elif choice == 4:
         return Linear_Annealed_Selection(n_ops, budget, popsize)
     else:
@@ -1191,7 +1191,7 @@ def build_selection(choice, n_ops, budget, popsize):
 
 class SelectionType(ABC):
 
-    params = []
+    params = ["sel_eps", float, [0.0,1.0], "Random selection with probability sel_eps"]
     param_choice = "select_choice"
     param_choice_help = "Selection method"
 
@@ -1252,14 +1252,15 @@ class Greedy_Selection(SelectionType):
 
 
 class Epsilon_Greedy_Selection(SelectionType):
-    def __init__(self, n_ops):
+    def __init__(self, n_ops, sel_eps = 0.1):
         super().__init__(n_ops)
+        self.sel_ops = sel_eps
     
     def perform_selection(self, probability):
         # Epsilon Greedy Selection
         if self.op_init_list:
             SI = self.op_init_list.pop()
-        elif np.random.uniform() < eps:
+        elif np.random.uniform() < self.sel_eps:
             SI = np.random.randint(0, n_ops)
         else:
             SI = np.argmax(probability)
@@ -1267,14 +1268,15 @@ class Epsilon_Greedy_Selection(SelectionType):
 
 
 class Propotional_Greedy_Selection(SelectionType):
-    def __init__(self, n_ops):
+    def __init__(self, n_ops, sel_eps = 0.1):
         super().__init__(n_ops)
+        self.sel_eps = sel_eps
 
     def perform_selection(self, probability):
         # Combination of Proportional and Greedy Selection
         if self.op_init_list:
             SI = self.op_init_list.pop()
-        elif np.random.uniform() < eps:
+        elif np.random.uniform() < self.sel_eps:
             SI = np.random.choice(len(probability), p = probability)
         else:
             SI = np.argmax(probability)
