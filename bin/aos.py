@@ -382,6 +382,7 @@ class Unknown_AOS(object):
         # See OpWindow metrics
         # Fitness is minimised but metric is maximised
         ## MANUEL: we need to think if this is the best solution to convert to maximization
+        ## MUDITA: can't think of anything better than following.
         offsp_fitness = verylarge - F1
         assert np.all(offsp_fitness >= 0)
         exp_offsp_fitness = np.exp(-F1)
@@ -399,10 +400,12 @@ class Unknown_AOS(object):
         for i in range(popsize):
             # if child is worse than parent
             # MANUEL: Shouldn't this be if child is worse or equal than parent?
-            if F1[i] > F[i]:
+            # MUDITA: Yeah, could be.
+            if F1[i] >= F[i]:
+                window_op[i] = opu[i]
                 continue
             # MANUEL: If child is worse than parent, we don't store the op, so it is not counted as an application, is that right? It seems wrong.
-            
+            # MUDITA: Ofcourse, we need to store the op. This useful to count the number of unsuccessful applications (Line 158). I have added a line above continue (see two lines above).
             window_op[i] = opu[i]
             window_met[i, 0] = offsp_fitness[i]
             window_met[i, 1] = exp_offsp_fitness[i]
@@ -491,6 +494,7 @@ def UCB(N, C, reward):
     
 
 ## MANUEL: Why not use the names instead of numbers to choose?
+## MUDITA: Then I will have to change parameter files as well. Ca we stick to numbers for now, please?
 def build_reward(choice, n_ops, rew_args, gen_window, window):
     
     if choice == 0:
@@ -525,20 +529,21 @@ class RewardType(ABC):
     # FIXME: Use __slots__ to find which parameters need to be defined.
     # FIXME: define this in the class as @property getter doctstring and get it from it
     # MANUEL: We should add the default values here as well.
+    # MUDITA: Done!
     params = [
-        "max_gen",          int,   [1, 15, 30, 50], "Maximum number of generations for generational window",
-        "fix_appl",         int,   [50, 100, 150],  "Maximum number of successful operator applications for generational window",
-        "theta",            int,   [36, 45, 54, 90],"Search direction",
-        "window_size",      int,   [20, 50],        "Size of window",
-        "decay",            float, [0.0, 1.0],      "Decay value to emphasise the choice of better operator",
-        "succ_lin_quad",    int,   [1, 2],          "Operator success as linear or quadratic",
-        "frac",             float, [0.0, 1.0],      "Fraction of sum of successes of all operators",
-        "noise",            float, [0.0, 1.0],      "Small noise for randomness",
-        "normal_factor",    int,   [0, 1],          "Choice to normalise",# MANUEL: You say that it is int but you initialise it with 0.1 # MUDITA: Its interger. Fixed.
-        "scaling_constant", float, [0.0, 1.0],      "Scaling constant",
-        "alpha",            int,   [0, 1],          "Choice to normalise by best produced by any operator",
-        "beta",             int,   [0, 1],          "Choice to include the difference between budget used by an operator in previous two generations",
-        "intensity",        float, [0.0, 1.0],      "Intensify the changes of best fitness value"
+        "max_gen",          int,    10,     [1, 15, 30, 50], "Maximum number of generations for generational window",
+        "fix_appl",         int,    20,     [50, 100, 150],  "Maximum number of successful operator applications for generational window",
+        "theta",            int,    45,     [36, 45, 54, 90],"Search direction",
+        "window_size",      int,    50,     [20, 50],        "Size of window",
+        "decay",            float,  0.4,    [0.0, 1.0],      "Decay value to emphasise the choice of better operator",
+        "succ_lin_quad",    int,    1,      [1, 2],          "Operator success as linear or quadratic",
+        "frac",             float,  0.01,   [0.0, 1.0],      "Fraction of sum of successes of all operators",
+        "noise",            float,  0.0,    [0.0, 1.0],      "Small noise for randomness",
+        "normal_factor",    int,    1,      [0, 1],          "Choice to normalise",# MANUEL: You say that it is int but you initialise it with 0.1 # MUDITA: Its interger. Fixed.
+        "scaling_constant", float,  1,      [0.0, 1.0],      "Scaling constant",
+        "alpha",            int,    0,      [0, 1],          "Choice to normalise by best produced by any operator",
+        "beta",             int,    1,      [0, 1],          "Choice to include the difference between budget used by an operator in previous two generations",
+        "intensity",        float,  0,      [0.0, 1.0],      "Intensify the changes of best fitness value"
     ]
     params_conditions = {"max_gen": [5, 7, 9, 11],
                        "fix_appl": [0, 1, 2],
@@ -937,12 +942,13 @@ class QualityType(ABC):
     # FIXME: Use __slots__ to find which parameters need to be defined.
     # FIXME: define this in the class as @property getter doctstring and get it from it
     # MANUEL: We should add the default values here as well.
+    # MUDITA: Added!
     params = [
-        "scaling_factor",    float,[0.0, 1.0],"Scaling Factor",            
-        "decay_rate",        float,[0.0, 1.0],"Decay rate",                
-        "weight_reward",     float,[0.0, 1.0],"Memory for current reward", 
-        "weight_old_reward", float,[0.0, 1.0],"Memory for previous reward", 
-        "discount_rate",     float,[0.0, 1.0],"Discount rate"
+        "scaling_factor",    float, 0.5,    [0.0, 1.0],"Scaling Factor",
+        "decay_rate",        float, 0.6,    [0.0, 1.0],"Decay rate",
+        "weight_reward",     float, 1,      [0.0, 1.0],"Memory for current reward",
+        "weight_old_reward", float, 0.9,    [0.0, 1.0],"Memory for previous reward",
+        "discount_rate",     float, 0.0,    [0.0, 1.0],"Discount rate"
     ]
     params_conditions = {"scaling_factor" : [1],
                        "decay_rate": [0, 3],
@@ -1072,10 +1078,10 @@ class ProbabilityType(ABC):
     # FIXME: Use __slots__ to find which parameters need to be defined.
     # FIXME: define this in the class as @property getter doctstring and get it from it
     params = [
-        "p_min",         float, [0.0, 0.25],"Minimum probability of selection of an operator",
-        "learning_rate", float, [0.0, 1.0], "Learning Rate",                                 
-        "error_prob",    float, [0.0, 1.0], "Probability noise",                             
-        "p_max",         float, [0.0, 1.0], "Maximum probability of selection of an operator"
+        "p_min",         float,     0.1,    [0.0, 0.25],"Minimum probability of selection of an operator",
+        "learning_rate", float,     0.1,    [0.0, 1.0], "Learning Rate",
+        "error_prob",    float,     0.0,    [0.0, 1.0], "Probability noise",
+        "p_max",         float,     0.9,    [0.0, 1.0], "Maximum probability of selection of an operator"
     ]
     # FIXME: We should use explicit class names or a function that converts from names to numbers
     params_conditions = {"p_min": [],
@@ -1191,7 +1197,7 @@ def build_selection(choice, n_ops, budget, popsize):
 
 class SelectionType(ABC):
 
-    params = ["sel_eps", float, [0.0,1.0], "Random selection with probability sel_eps"]
+    params = ["sel_eps", float,     0.1,    [0.0,1.0], "Random selection with probability sel_eps"]
     param_choice = "select_choice"
     param_choice_help = "Selection method"
 
@@ -1303,40 +1309,3 @@ class Linear_Annealed_Selection(SelectionType):
         else:
             SI = np.argmax(probability)
         return super().check_selection(SI)
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
