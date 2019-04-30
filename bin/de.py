@@ -3,7 +3,7 @@
 try: range = xrange
 except NameError: pass
 import sys
-import numpy as np  # "pip install numpy" installs numpy
+import numpy as np
 import aos
 
 class TraceFile():
@@ -156,8 +156,6 @@ def DE(fun, x0, lbounds, ubounds, budget, instance, instance_best_value,
             crossovers = (np.random.rand(dim) < CR)
             crossovers[fill_points[i]] = True
             SI = select_mutation()
-            # if stats_file:
-            #     stats_file.write("{} {}\n".format(generation, SI))
             assert SI >= 0 and SI <= len(mutations)
             opu[i] = SI
             mutate = mutations[SI]
@@ -177,11 +175,6 @@ def DE(fun, x0, lbounds, ubounds, budget, instance, instance_best_value,
 
         if mutation == "aos":
             aos_method.OM_Update(F, F1, F_bsf = f_min, opu = opu)
-                
-        #output_file.write(str(aos_method.reward)+"\n")
-        #output_file.write(str(aos_method.quality)+"\n")
-        #output_file.write(str(aos_method.probability)+"\n")
-        #fitness_swap = [a<p for a,p in zip(F1,F)]
 
         # Replace parent if their child improves them.
         F = np.where(F1 <= F, F1, F)
@@ -192,9 +185,5 @@ def DE(fun, x0, lbounds, ubounds, budget, instance, instance_best_value,
     if mutation == "aos":
         aos_method.gen_window.write_to(sys.stderr)
     
-    #output_file.write("Last generation number"+str(generation)+".................................................................................\n")
-    #output_file.close()
-    #print("one configuartion tested on one instance")
-    #file.close()
     return f_min
 
