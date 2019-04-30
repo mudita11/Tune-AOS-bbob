@@ -1,7 +1,7 @@
 #!/bin/bash
 
 
-fes=500000
+fes=500
 file="configurations.txt"
 
 de="./bin/DE_AOS.py bbob $fes 1 1"
@@ -11,7 +11,7 @@ de="./bin/DE_AOS.py bbob $fes 1 1"
 # cat file | xargs -n 1 $de
 # See http://man7.org/linux/man-pages/man1/xargs.1.html
 # cat $file | xargs -I{} -n 1 echo $de {}
-cat $file | parallel -j 6 -n 1 echo $de {}
+cat $file | parallel --eta -j 2 --colsep ' ' "$de {} > {#}.output"
 # And if the computer you use has the 'parallel' command, then you can run in parallel with:
 # cat file | parallel $de
 # See https://www.gnu.org/software/parallel/man.html#EXAMPLE:-Working-as-xargs--n1.-Argument-appending
