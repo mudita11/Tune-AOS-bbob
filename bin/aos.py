@@ -1274,6 +1274,7 @@ class Epsilon_Greedy_Selection(SelectionType):
 
 
 class Propotional_Greedy_Selection(SelectionType):
+    '''TODO'''
     def __init__(self, n_ops, sel_eps = 0.1):
         super().__init__(n_ops)
         self.sel_eps = sel_eps
@@ -1290,6 +1291,7 @@ class Propotional_Greedy_Selection(SelectionType):
 
 
 class Linear_Annealed_Selection(SelectionType):
+    '''TODO'''
     def __init__(self, n_ops, budget, popsize):
         super().__init__(n_ops)
         self.budget = budget

@@ -78,15 +78,19 @@ _default_observers = {
 def default_observer_options(budget_=None, suite_name_=None):
     """return defaults computed from input parameters or current global vars
     """
-    global budget, suite_name
+    global budget, suite_name, result_folder
     if budget_ is None:
         budget_ = budget
     if suite_name_ is None:
         suite_name_ = suite_name
     opts = {}
     try:
-        opts.update({'result_folder': '%s_on_%s_budget%04dxD'
-                    % (SOLVER.__name__, suite_name_, budget_)})
+        if result_folder is not None and result_folder != "":
+            opts.update({'result_folder': '%s-%s_on_%s_budget%04dxD'
+                         % (result_folder, SOLVER.__name__, suite_name_, budget_)})
+        else:
+            opts.update({'result_folder': '%s-%s_on_%s_budget%04dxD'
+                         % (result_folder, SOLVER.__name__, suite_name_, budget_)})
     except: pass
     try:
         solver_module = '(%s)' % SOLVER.__module__
@@ -491,7 +495,8 @@ if __name__ == '__main__':
     parser.add_argument('--seed', type=int, default=0, help='seed to initialise population')
     parser.add_argument('--trace', help='file to store fevals fitness progress')
     parser.add_argument('--stats', help='file to store statistics about the evolution')
-
+    parser.add_argument('--result_folder', default="", help='file to store statistics about the evolution')
+    
     class dump_irace_parameters(_StoreTrueAction):
         def __call__(self, parser, namespace, values, option_string=None):
             print(de.DE_irace_parameters())
@@ -536,7 +541,8 @@ if __name__ == '__main__':
     budget = args.budget
     current_batch = args.current_batch
     number_of_batches = args.number_of_batches
-    
+    result_folder = args.result_folder
+
     instance =  args.instance
     trace_filename = args.trace
     stats_filename = args.stats
