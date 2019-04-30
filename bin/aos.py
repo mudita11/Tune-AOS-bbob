@@ -35,11 +35,11 @@ def parser_add_arguments(cls, parser):
     group.add_argument("--"  + cls.param_choice, type=int, choices=choices,
                        help=cls.param_choice_help + " (" + choices_help + ")")
 
-    for i in range(0, len(cls.params), 4):
-        arg, type, domain, help = cls.params[i:i+4]
+    for i in range(0, len(cls.params), 5):
+        arg, type, default, domain, help = cls.params[i:i+5]
         group.add_argument('--' + arg, type=type, default=0, help=help)
     # Return the names
-    return cls.params[0::4]
+    return cls.params[0::5]
 
 def aos_irace_parameters(cls, override = {}):
     """All AOS components may call this function.
@@ -51,8 +51,8 @@ def aos_irace_parameters(cls, override = {}):
         choices, choices_help = get_choices(cls)
 
     output += irace_parameter(name=cls.param_choice, type=object, domain=choices, help=choices_help)
-    for i in range(0, len(cls.params), 4):
-        arg, type, domain, help = cls.params[i:i+4]
+    for i in range(0, len(cls.params), 5):
+        arg, type, default, domain, help = cls.params[i:i+5]
 
         condition = irace_condition(cls.param_choice, cls.params_conditions[arg], override)
         output += irace_parameter(name=arg, type=type, domain=domain,
@@ -531,19 +531,19 @@ class RewardType(ABC):
     # MANUEL: We should add the default values here as well.
     # MUDITA: Done!
     params = [
-        "max_gen",          int,    10,     [1, 15, 30, 50], "Maximum number of generations for generational window",
-        "fix_appl",         int,    20,     [50, 100, 150],  "Maximum number of successful operator applications for generational window",
-        "theta",            int,    45,     [36, 45, 54, 90],"Search direction",
-        "window_size",      int,    50,     [20, 50],        "Size of window",
-        "decay",            float,  0.4,    [0.0, 1.0],      "Decay value to emphasise the choice of better operator",
-        "succ_lin_quad",    int,    1,      [1, 2],          "Operator success as linear or quadratic",
-        "frac",             float,  0.01,   [0.0, 1.0],      "Fraction of sum of successes of all operators",
-        "noise",            float,  0.0,    [0.0, 1.0],      "Small noise for randomness",
-        "normal_factor",    int,    1,      [0, 1],          "Choice to normalise",# MANUEL: You say that it is int but you initialise it with 0.1 # MUDITA: Its interger. Fixed.
-        "scaling_constant", float,  1,      [0.0, 1.0],      "Scaling constant",
-        "alpha",            int,    0,      [0, 1],          "Choice to normalise by best produced by any operator",
-        "beta",             int,    1,      [0, 1],          "Choice to include the difference between budget used by an operator in previous two generations",
-        "intensity",        float,  0,      [0.0, 1.0],      "Intensify the changes of best fitness value"
+        "max_gen",          int,    10,     [1, 15, 30, 50],                "Maximum number of generations for generational window",
+        "fix_appl",         int,    20,     [20, 50, 70, 100, 125, 150],    "Maximum number of successful operator applications for generational window",
+        "theta",            int,    45,     [36, 45, 54, 90],               "Search direction",
+        "window_size",      int,    50,     [20, 50],                       "Size of window",
+        "decay",            float,  0.4,    [0.0, 1.0],                     "Decay value to emphasise the choice of better operator",
+        "succ_lin_quad",    int,    1,      [1, 2],                         "Operator success as linear or quadratic",
+        "frac",             float,  0.01,   [0.0, 1.0],                     "Fraction of sum of successes of all operators",
+        "noise",            float,  0.0,    [0.0, 1.0],                     "Small noise for randomness",
+        "normal_factor",    int,    1,      [0, 1],                         "Choice to normalise",# MANUEL: You say that it is int but you initialise it with 0.1 # MUDITA: Its interger. Fixed.
+        "scaling_constant", float,  1,      [0.0, 1.0],                     "Scaling constant",
+        "alpha",            int,    0,      [0, 1],                         "Choice to normalise by best produced by any operator",
+        "beta",             int,    1,      [0, 1],                         "Choice to include the difference between budget used by an operator in previous two generations",
+        "intensity",        float,  0,      [0.0, 1.0],                     "Intensify the changes of best fitness value"
     ]
     params_conditions = {"max_gen": [5, 7, 9, 11],
                        "fix_appl": [0, 1, 2],
