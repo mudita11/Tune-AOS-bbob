@@ -37,7 +37,7 @@ def parser_add_arguments(cls, parser):
 
     for i in range(0, len(cls.params), 5):
         arg, type, default, domain, help = cls.params[i:i+5]
-        group.add_argument('--' + arg, type=type, default=0, help=help)
+        group.add_argument('--' + arg, type=type, default=default, help=help)
     # Return the names
     return cls.params[0::5]
 
