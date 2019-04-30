@@ -309,8 +309,8 @@ class Unknown_AOS(object):
         }
     }
     
-    def __init__(self, popsize, n_ops, OM_choice, rew_choice, rew_args,
-                 qual_choice, qual_args, prob_choice, prob_args, select_choice, budget):
+    def __init__(self, popsize, budget, n_ops, OM_choice, rew_choice, rew_args,
+                 qual_choice, qual_args, prob_choice, prob_args, select_choice):
         
         self.window = OpWindow(n_ops, metric = OM_choice - 1, max_size = 50)
         self.gen_window = GenWindow(n_ops, metric = OM_choice - 1)
@@ -1291,6 +1291,7 @@ class Propotional_Greedy_Selection(SelectionType):
 
 class Linear_Annealed_Selection(SelectionType):
     def __init__(self, n_ops, budget, popsize):
+        super().__init__(n_ops)
         self.budget = budget
         self.popsize = popsize
         self.n_steps = self.budget / self.popsize
@@ -1298,7 +1299,6 @@ class Linear_Annealed_Selection(SelectionType):
         self.min_value = 0.0
         self.step_size = (self.max_value - self.min_value) / self.n_steps
         self.eps_value = np.max_value - (self.step_size * self.step_counter)
-        super().__init__(n_ops)
 
     def perform_selection(self, probability):
         #Linear Annealed Selection

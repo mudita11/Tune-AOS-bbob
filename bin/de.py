@@ -109,9 +109,9 @@ def DE(fun, x0, lbounds, ubounds, budget, instance, instance_best_value,
     
     NP = int(NP)
     opu = np.full(NP, -1)
-    max_fevals = budget
+    
     if mutation == "aos":
-        aos_method = aos.Unknown_AOS(NP, n_ops = n_operators, OM_choice = OM_choice,
+        aos_method = aos.Unknown_AOS(NP, budget, n_ops = n_operators, OM_choice = OM_choice,
                                      rew_choice = rew_choice, rew_args = rew_args,
                                      qual_choice = qual_choice, qual_args = qual_args,
                                      prob_choice = prob_choice, prob_args = prob_args,
@@ -130,7 +130,7 @@ def DE(fun, x0, lbounds, ubounds, budget, instance, instance_best_value,
     # Initial population
     X = lbounds + (ubounds - lbounds) * np.random.rand(NP, dim)
     X[0, :] = x0
-    # Evaluate it
+    # Evaluate population
     F = np.apply_along_axis(fun, 1, X)
     best = np.argmin(F)
     x_min, f_min = X[best, :], F[best]
@@ -139,7 +139,7 @@ def DE(fun, x0, lbounds, ubounds, budget, instance, instance_best_value,
     if stats_filename:
         stats_file = open(stats_filename, 'w+')
 
-    u = np.full((NP,dim), 0)
+    u = np.full((NP,dim), 0.0)
     generation = 0
     trace = TraceFile(trace_filename, dim = dim, optimum = instance_best_value)
     trace.print(1, F[0], header = True)
