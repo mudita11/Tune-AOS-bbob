@@ -24,9 +24,9 @@ normal_factor		"--normal_factor "	c		(0, 1)						| rew_choice == 8
 scaling_constant	"--scaling_constant "	r		(0.0, 1.0)					| rew_choice == 10
 alpha			"--alpha "		c		(0, 1)						| rew_choice %in% c(10, 11)
 beta			"--beta "		c		(0, 1)						| rew_choice == 10
-# choice4			"--choice4 "		c		(0, 1)						| rew_choice == 11
+# choice4		"--choice4 "		c		(0, 1)						| rew_choice == 11
 intensity		"--intensity "		r		(0.0, 1.0)					| rew_choice == 11
-# adaptation_rate		"--adaptation_rate "	r		(0.0, 1.0)					| qual_choice == 0
+# adaptation_rate	"--adaptation_rate "	r		(0.0, 1.0)					| qual_choice == 0
 scaling_factor		"--scaling_factor "	r		(0.0, 1.0)					| qual_choice == 1
 decay_rate		"--decay_rate "		r		(0.0, 1.0)					| qual_choice %in% c(0, 3)
 weight_reward		"--weight_reward "	r		(0.0, 1.0)					| qual_choice == 4
@@ -36,5 +36,5 @@ p_min			"--p_min "		r		(0.0, 0.25)					| prob_choice %in% c(0, 1, 2)
 learning_rate		"--learning_rate "	r		(0.0, 1.0)					| prob_choice %in% c(1, 2)
 error_prob		"--error_prob "		r		(0.0, 1.0)					| prob_choice == 0
 p_max			"--p_max "		r		(0.0, 1.0)					| prob_choice == 1
-sel_eps			"--sel_eps "		r		(0.0, 1.0) 					| select_choice = %in% c(2, 3) 
+sel_eps			"--sel_eps "		r		(0.0, 1.0) 					| select_choice %in% c(2, 3) 
 

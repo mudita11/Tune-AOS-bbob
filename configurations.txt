@@ -1,3 +1,12 @@
---FF 0.36 --CR 0.21 --NP 50 --mutation DE/rand/1
---FF 0.3 --CR 0.48 --NP 50 --mutation DE/rand/1
---FF 0.4 --CR 0.16 --NP 60 --mutation DE/rand/1
+--FF 0.54 --CR 0.97 --NP 101 --mutation DE/rand/1
+--FF 0.12 --CR 0.69 --NP 51 --mutation DE/rand/1
+--FF 0.28 --CR 0.62 --NP 52 --mutation DE/rand/1
+--FF 0.19 --CR 0.3 --NP 51 --mutation DE/rand/2
+--FF 0.12 --CR 0.58 --NP 50 --mutation DE/rand/2
+--FF 0.21 --CR 0.68 --NP 59 --mutation DE/rand/2
+--FF 0.28 --CR 0.28 --NP 62 --mutation DE/rand-to-best/2
+--FF 0.29 --CR 0.87 --NP 53 --mutation DE/rand-to-best/2
+--FF 0.35 --CR 0.68 --NP 52 --mutation DE/rand-to-best/2
+--FF 0.63 --CR 0.21 --NP 50 --mutation DE/current-to-rand/1
+--FF 0.59 --CR 0.23 --NP 50 --mutation DE/current-to-rand/1
+--FF 0.56 --CR 0.8 --NP 50 --mutation DE/current-to-rand/1

@@ -1,14 +1,14 @@
 #!/bin/bash
 
 #mutations="DE_rand_1 DE_rand_2 DE_rand_to_best_2 DE_current_to_rand_1"
-mutations="DE_rand_1"
-#targetrunners="best best-vs-fe target-vs-fe"
-targetrunners="best-vs-fe"
+mutations="DE_rand_2 DE_rand_to_best_2 DE_current_to_rand_1"
+#targetrunners="best error-vs-fe target-vs-fe"
+targetrunners="best error-vs-fe target-vs-fe"
 for mutation in $mutations; do
     for targetrunner in $targetrunners; do
-        EXECDIR=execdir-$mutation-$targetrunner
+        EXECDIR=arena_${mutation}_${targetrunner}
         mkdir $EXECDIR
-        irace --parameter-file ${mutation}.txt --exec-dir $EXECDIR --target-runner target-runner-${targetrunner}.py --parallel 3 &> output-${mutation}-${targetrunner} &
+        irace --parameter-file ${mutation}.txt --exec-dir $EXECDIR --target-runner target-runner-${targetrunner}.py --parallel 10 &> output_${mutation}_${targetrunner} &
         PROC_ID=$!
         sleep 1
         if kill -0 "$PROC_ID" >/dev/null 2>&1; then

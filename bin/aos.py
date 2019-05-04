@@ -127,7 +127,7 @@ class GenWindow(object):
         return value
 
     def sum_at_generation(self,gen):
-        """Get best metric value for all operators at generation gen"""
+        """Get metric sum for all operators at generation gen"""
         return self.apply_at_generation(gen, np.sum)
     
     def max_at_generation(self, gen):
@@ -262,7 +262,7 @@ class OpWindow(object):
     def append(self, op, values):
         '''Push data of improved offspring in the window. It follows First In First Out Rule.'''
         # Fill from the top
-        which = (self._window_op == -1)
+        which = (np.isinf(self._window_met[:,1]))
         if np.any(which):
             last_empty = np.max(np.flatnonzero(which))
             self._window_op[last_empty] = op
