@@ -377,7 +377,7 @@ class Unknown_AOS(object):
         F_best = np.min(F)
         F_median = np.median(F)
         eps = np.finfo(np.float32).eps
-        verylarge = 10e20
+        verylarge = 10e10
         
         # See OpWindow metrics
         # Fitness is minimised but metric is maximised
@@ -386,11 +386,11 @@ class Unknown_AOS(object):
         offsp_fitness = verylarge - F1
         assert np.all(offsp_fitness >= 0)
         exp_offsp_fitness = np.exp(-F1)
-        improv_wrt_parent = np.fabs(F - F1)
+        improv_wrt_parent = (verylarge + F) - (verylarge + F1)
         improv_wrt_pop = F_best - F1
         improv_wrt_bsf = F_bsf - F1
         improv_wrt_median = F_median - F1
-        relative_fitness_improv = (F_bsf / (F1 + eps)) * improv_wrt_parent
+        relative_fitness_improv = ((verylarge + F_bsf) / (verylarge + F1 + eps)) * improv_wrt_parent
         
         popsize = len(F)
 
@@ -405,7 +405,7 @@ class Unknown_AOS(object):
                 window_op[i] = opu[i]
                 continue
             # MANUEL: If child is worse than parent, we don't store the op, so it is not counted as an application, is that right? It seems wrong.
-            # MUDITA: Ofcourse, we need to store the op. This useful to count the number of unsuccessful applications (Line 158). I have added a line above continue (see two lines above).
+            # MUDITA: Ofcourse, we need to store the op. This is useful to count the number of unsuccessful applications (Line 158). I have added a line above continue (see two lines above).
             window_op[i] = opu[i]
             window_met[i, 0] = offsp_fitness[i]
             window_met[i, 1] = exp_offsp_fitness[i]
