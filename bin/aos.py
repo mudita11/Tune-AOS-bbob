@@ -386,11 +386,12 @@ class Unknown_AOS(object):
         offsp_fitness = verylarge - F1
         assert np.all(offsp_fitness >= 0)
         exp_offsp_fitness = np.exp(-F1)
-        improv_wrt_parent = (verylarge + F) - (verylarge + F1)
+        improv_wrt_parent = F - F1
         improv_wrt_pop = F_best - F1
         improv_wrt_bsf = F_bsf - F1
         improv_wrt_median = F_median - F1
-        relative_fitness_improv = ((verylarge + F_bsf) / (verylarge + F1 + eps)) * improv_wrt_parent
+        # MUDITA: if F_bsf = 1 and F1 = 0, then F_bsf / (F1 + eps) becomes 8388608.0 which is wrong.
+        relative_fitness_improv = (F_bsf / (F1 + eps)) * improv_wrt_parent
         
         popsize = len(F)
 
@@ -494,7 +495,7 @@ def UCB(N, C, reward):
     
 
 ## MANUEL: Why not use the names instead of numbers to choose?
-## MUDITA: Then I will have to change parameter files as well. Ca we stick to numbers for now, please?
+## MUDITA: Then I will have to change parameter files as well. Can we stick to numbers for now, please?
 def build_reward(choice, n_ops, rew_args, gen_window, window):
     
     if choice == 0:
@@ -583,6 +584,7 @@ class RewardType(ABC):
 
     def check_reward(self, reward):
         # MANUEL: Can reward be negative?
+        # MUDITA: Relative_fitness_improv holds negtaive values which might lead to negative reward value.
         assert np.all(np.isfinite(reward))
         self.old_reward[:] = reward[:]
         debug_print("{:>30}:      reward={}".format(type(self).__name__, reward))
@@ -675,24 +677,30 @@ class Compass_projection(RewardType):
     
     def calc_reward(self):
         reward = np.zeros(self.n_ops)
+        std = np.zeros(self.n_ops)
+        avg = np.zeros(self.n_ops)
+        angle = np.zeros(self.n_ops)
         # Projection on line B with thetha = pi/4
         #        B = [1, 1]
         for i in range(self.n_ops):
             b = self.gen_window.metric_for_fix_appl_of_op(i, self.fix_appl)
             if len(b) > 0:
                 # Diversity
-                std = np.std(b)
+                std[i] = np.std(b)
                 # Quality 
-                avg = np.mean(b)
-                # abs(atan(Quality / Diversity) - theta)
-                # MANUEL: What should happen if both are zero?
-                assert avg != 0.0 and std != 0.0
-                angle = np.fabs(np.arctan(np.deg2rad(avg / std)) - self.theta)
-                # Euclidean distance of the vector 
-                reward[i] = (np.sqrt(std**2 + avg**2)) * np.cos(angle)
-                # Maturana & Sablon (2008) divide by T_it defined as mean
-                # execution time of operator i over its last t applications.
-                # We do not divide
+                avg[i] = np.mean(b)
+        std = std / np.max(std)
+        avg = avg / np.max(avg)
+        # MANUEL: What should happen if both are zero?
+        # MUDITA: Conceptually, its okay to have avg and std as 0. In that case coordinate will be on origin and there won't be any projection. Thus perpendicular distance fom coordinate to plane will be 0. So to deal with 0s, I have added eps in denominator. But again the issue is 1/(0+eps) = 8388608 which is wrong. Conceptually, (std, avg) = (0, 1) is possible. On scientific calulator arctan(1/0) = 1.5707... But in python it gives division by 0 error.
+        # assert avg != 0.0 and std != 0.0
+        angle[((avg ==0) & (std == 0))] = np.fabs(np.arctan(np.deg2rad(np.inf)) - self.theta)
+        angle[std !=0] = np.fabs(np.arctan(np.deg2rad(avg / (std + eps))) - self.theta)
+        # Euclidean distance of the vector
+        reward = (np.sqrt(std**2 + avg**2)) * np.cos(angle)
+        # Maturana & Sablon (2008) divide by T_it defined as mean
+        # execution time of operator i over its last t applications.
+        # We do not divide
         reward = reward - np.min(reward)
         return super().check_reward(reward)
 
@@ -708,12 +716,10 @@ Alvaro Fialho, Marc Schoenauer, and Mich`ele Sebag. “Toward comparison-based a
     
     def calc_reward(self):
         reward = np.zeros(self.n_ops)
-        #print("Window in AUC calc ", self.window, type(self.window), np.shape(self.window))
         window = self.window.truncate(self.window_size)
         window_op_sorted, rank = window.get_ops_sorted_and_rank()
         for op in range(self.n_ops):
             reward[op] = AUC(window_op_sorted, rank, op, self.window_size, self.decay)
-            # print("Inside reward: ", reward)
         return super().check_reward(reward)
 
 class Sum_of_Rank(RewardType):
@@ -1230,7 +1236,7 @@ class SelectionType(ABC):
 # MANUEL: These should have more descriptive names and a doctstring documenting
 # where they come from (references) and what they do.
 class Proportional_Selection(SelectionType):
-    '''TODO'''
+    """ Thierens, Dirk. "An adaptive pursuit strategy for allocating operator probabilities." Proceedings of the 7th annual conference on Genetic and evolutionary computation. ACM, 2005. """
     def __init__(self, n_ops):
         super().__init__(n_ops)
     
@@ -1244,7 +1250,8 @@ class Proportional_Selection(SelectionType):
 
 
 class Greedy_Selection(SelectionType):
-    '''TODO'''
+    """ Fialho, Álvaro, Marc Schoenauer, and Michèle Sebag. "Toward comparison-based adaptive operator selection." Proceedings of the 12th annual conference on Genetic and evolutionary computation. ACM, 2010.
+"""
     def __init__(self, n_ops):
         super().__init__(n_ops)
     
@@ -1300,10 +1307,10 @@ class Linear_Annealed_Selection(SelectionType):
         self.max_value = 1.0
         self.min_value = 0.0
         self.step_size = (self.max_value - self.min_value) / self.n_steps
-        self.eps_value = np.max_value - (self.step_size * self.step_counter)
 
     def perform_selection(self, probability):
         #Linear Annealed Selection
+        self.eps_value = np.max_value - (self.step_size * self.step_counter)
         if self.op_init_list:
             SI = self.op_init_list.pop()
         elif np.random.uniform() < self.eps_value:
