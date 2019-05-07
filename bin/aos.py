@@ -301,7 +301,7 @@ class Unknown_AOS(object):
             "prob_choice": [0],
             "select_choice":[1],
             "window_size":[20, 50, 100],
-            "normal_factor":[0.0, 1.0],
+            "normal_factor":[0, 1],
             "adaptation_rate":[0.0, 1.0],
             "scaling_factor":[0.0, 1.0],
             "p_min":	[0.0, 0.25],
@@ -384,6 +384,7 @@ class Unknown_AOS(object):
         ## MANUEL: we need to think if this is the best solution to convert to maximization
         ## MUDITA: can't think of anything better than following.
         offsp_fitness = verylarge - F1
+        print(offsp_fitness)
         assert np.all(offsp_fitness >= 0)
         exp_offsp_fitness = np.exp(-F1)
         improv_wrt_parent = F - F1
@@ -544,7 +545,7 @@ class RewardType(ABC):
         "scaling_constant", float,  1,      [0.0, 1.0],                     "Scaling constant",
         "alpha",            int,    0,      [0, 1],                         "Choice to normalise by best produced by any operator",
         "beta",             int,    1,      [0, 1],                         "Choice to include the difference between budget used by an operator in previous two generations",
-        "intensity",        float,  0,      [0.0, 1.0],                     "Intensify the changes of best fitness value"
+        "intensity",        int,    1,      [1, 2, 3],                     "Intensify the changes of best fitness value"
     ]
     params_conditions = {"max_gen": [5, 7, 9, 11],
                        "fix_appl": [0, 1, 2],
@@ -909,7 +910,7 @@ class Normalised_best_sum(RewardType):
     """
 Alvaro Fialho, Marc Schoenauer, and Mich`ele Sebag. “Analysis of adaptiveoperator selection techniques on the royal road and long k-path problems”.In:Proceedings of the 11th Annual conference on Genetic and evolutionarycomputation.https://hal.archives-ouvertes.fr/docs/00/37/74/49/PDF/banditGECCO09.pdf. ACM. 2009, pp. 779–786.
 """
-    def __init__(self, n_ops, gen_window, max_gen = 10, intensity = 0, alpha = 1):
+    def __init__(self, n_ops, gen_window, max_gen = 10, intensity = 1, alpha = 1):
         super().__init__(n_ops, gen_window = gen_window, max_gen = max_gen)
         self.intensity = intensity
         self.alpha = alpha
@@ -1101,7 +1102,7 @@ class ProbabilityType(ABC):
     def __init__(self, n_ops, p_min = None, learning_rate = None):
         # n_ops, p_min_prob and learning_rate used in more than one probability definition
         self.p_min = p_min
-        assert self.p_min != 1.0 / n_ops
+        #assert self.p_min != 1.0 / n_ops
         self.learning_rate = learning_rate
         self.old_probability = np.full(n_ops, 1.0 / n_ops)
         self.eps = np.finfo(self.old_probability.dtype).eps
