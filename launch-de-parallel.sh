@@ -2,7 +2,7 @@
 
 
 fes=5000
-file="configurations.txt"
+file="configurations-de.txt"
 
 de="./bin/DE_AOS.py bbob $fes 1 1 --train_test test"
 
