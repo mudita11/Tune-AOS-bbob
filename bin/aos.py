@@ -314,8 +314,10 @@ class Unknown_AOS(object):
         
         self.window = OpWindow(n_ops, metric = OM_choice - 1, max_size = 50)
         self.gen_window = GenWindow(n_ops, metric = OM_choice - 1)
-        
+        self.tran_matrix = np.random.rand(4,4)
+        self.tran_matrix = normalize_matrix(self.tran_matrix)
         self.probability = np.full(n_ops, 1.0 / n_ops)
+        self.old_reward = np.zeros(n_ops)
         rew_args["popsize"] = popsize
         self.reward_type = build_reward(rew_choice, n_ops, rew_args, self.gen_window, self.window)
         self.quality_type = build_quality(qual_choice, n_ops, qual_args, self.window)
@@ -426,10 +428,12 @@ class Unknown_AOS(object):
         self.gen_window.append(window_op, window_met)
 
         reward = self.reward_type.calc_reward()
-        old_reward = self.reward_type.old_reward
-        old_prob = self.probability_type.old_probability
-        quality = self.quality_type.calc_quality(old_reward, reward, old_prob)
+        #old_reward = self.reward_type.old_reward
+        #old_prob = self.probability_type.old_probability
+        quality = self.quality_type.calc_quality(self.old_reward, reward, self.tran_matrix)
         self.probability = self.probability_type.calc_probability(quality)
+        self.tran_matrix = transitive_matrix(self.probability)
+        self.old_reward = np.copy(reward)
 
 ###################Other definitions############################################
 
@@ -587,7 +591,7 @@ class RewardType(ABC):
         # MANUEL: Can reward be negative?
         # MUDITA: Relative_fitness_improv holds negtaive values which might lead to negative reward value.
         assert np.all(np.isfinite(reward))
-        self.old_reward[:] = reward[:]
+        #self.old_reward[:] = reward[:]
         debug_print("{:>30}:      reward={}".format(type(self).__name__, reward))
         return reward
 
@@ -1001,7 +1005,7 @@ class Weighted_sum(QualityType):
         self.decay_rate = decay_rate
         debug_print("{:>30}: decay_rate = {}".format(type(self).__name__, self.decay_rate))
     
-    def calc_quality(self, old_reward, reward, old_probability):
+    def calc_quality(self, old_reward, reward, tran_matrix):
         quality = self.decay_rate * reward + (1.0 - self.decay_rate) * self.old_quality
         return super().check_quality(quality)
 
@@ -1015,7 +1019,7 @@ Alvaro Fialho et al. “Extreme value based adaptive operator selection”.In:In
         self.scaling_factor = scaling_factor
         debug_print("{:>30}: scaling_factor = {}".format(type(self).__name__, self.scaling_factor))
     
-    def calc_quality(self, old_reward, reward, old_probability):
+    def calc_quality(self, old_reward, reward, tran_matrix):
         #window_op_sorted, N, rank = count_op(self.n_ops, self.window, self.off_met)
         N = self.window.count_ops()
         quality = UCB(N, self.scaling_factor, reward)
@@ -1025,7 +1029,7 @@ class Identity(QualityType):
     def __init__(self, n_ops):
         super().__init__(n_ops)
     
-    def calc_quality(self, old_reward, reward, old_probability):
+    def calc_quality(self, old_reward, reward, tran_matrix):
         quality = reward
         return super().check_quality(quality)
 
@@ -1038,7 +1042,7 @@ Christian  Igel  and  Martin  Kreutz.  “Operator  adaptation  in  evolution-ar
         self.decay_rate = decay_rate
         debug_print("{:>30}: decay_rate = {}".format(type(self).__name__, self.decay_rate))
     
-    def calc_quality(self, old_reward, reward, old_probability):
+    def calc_quality(self, old_reward, reward, tran_matrix):
         if np.sum(reward) > 0:
             reward /= np.sum(reward)
         else:
@@ -1057,9 +1061,9 @@ Mudita Sharma,  Manuel Lopez-Ibanez, and  Dimitar  Kazakov. “Performance Asses
         self.discount_rate = discount_rate
         debug_print("{:>30}: weight_reward = {}, weight_old_reward = {}, discount_rate = {}".format(type(self).__name__, self.weight_reward, self.weight_old_reward, self.discount_rate))
     
-    def calc_quality(self, old_reward, reward, old_probability):
+    def calc_quality(self, old_reward, reward, tran_matrix):
         # This was called P in the original RecPM paper.
-        tran_matrix = transitive_matrix(old_probability)
+        #tran_matrix = transitive_matrix(old_probability)
         quality = self.weight_reward * reward + self.weight_old_reward * old_reward
         # Rec_PM formula:  Q_t+1 = (1 - gamma * P)^-1 x Q_t+1
         quality = np.matmul(np.linalg.pinv(1.0 - self.discount_rate * tran_matrix), quality)
