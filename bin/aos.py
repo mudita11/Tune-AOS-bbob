@@ -770,7 +770,6 @@ class Unknown_AOS(object):
         ## MANUEL: we need to think if this is the best solution to convert to maximization
         ## MUDITA: can't think of anything better than following.
         offsp_fitness = verylarge - F1
-        print(offsp_fitness)
         assert np.all(offsp_fitness >= 0)
         exp_offsp_fitness = np.exp(-F1)
         improv_wrt_parent = F - F1
@@ -1327,7 +1326,7 @@ def build_quality(choice, n_ops, qual_args, window):
     elif choice == 3:
         return Weighted_normalised_sum(n_ops, qual_args["decay_rate"])
     elif choice == 4:
-        return Markov_reward_process(n_ops, qual_args["weight_reward"], qual_args["weight_old_reward"], qual_args["discount_rate"])
+        return Bellman_Equation(n_ops, qual_args["weight_reward"], qual_args["weight_old_reward"], qual_args["discount_rate"])
     else:
         raise ValueError("choice {} unknown".format(choice))
 
@@ -1434,7 +1433,7 @@ Christian  Igel  and  Martin  Kreutz.  “Operator  adaptation  in  evolution-ar
         quality = self.decay_rate * reward  + (1.0 - self.decay_rate) * self.old_quality
         return super().check_quality(quality)
 
-class Markov_reward_process(QualityType):
+class Bellman_Equation(QualityType):
     """
 Mudita Sharma,  Manuel Lopez-Ibanez, and  Dimitar  Kazakov. “Performance Assessment of Recursive Probability Matching for Adaptive Oper-ator Selection in Differential Evolution”. In:International Conference onParallel Problem Solving from Nature.http://eprints.whiterose.ac.uk/135483/1/paper_66_1_.pdf. Springer. 2018, pp. 321–333.
  """
@@ -1660,6 +1659,7 @@ class Epsilon_Greedy_Selection(SelectionType):
     def __init__(self, n_ops, sel_eps = 0.1):
         super().__init__(n_ops)
         self.sel_ops = sel_eps
+        debug_print("{:>30}: sel_eps = {}".format(type(self).__name__, self.sel_eps))
     
     def perform_selection(self, probability):
         if self.op_init_list:
@@ -1677,6 +1677,7 @@ class Propotional_Greedy_Selection(SelectionType):
     def __init__(self, n_ops, sel_eps = 0.1):
         super().__init__(n_ops)
         self.sel_eps = sel_eps
+        debug_print("{:>30}: sel_eps = {}".format(type(self).__name__, self.sel_eps))
 
     def perform_selection(self, probability):
         if self.op_init_list:
