@@ -2,26 +2,32 @@
 # DE parameters
 FF                   "--FF "                   r (0.1, 2.0)                                          # Scaling factor
 CR                   "--CR "                   r (0.1, 1.0)                                          # Crossover rate
+mutation             "--mutation "             c (DE/rand/1)                                         # Mutation strategy
 NP                   "--NP "                   i (50, 400)                                           # Population size
-mutation             "--mutation "             c (aos)                                               # Mutation strategy
-##### AOS: AUC-AP.txt
+##### AOS:  AUC_AP.txt
 # Unknown_AOS
-OM_choice            "--OM_choice "            c (2)                                                 # Offspring metric selected (2:Fitness_improv_wrt_parent)
+OM_choice            "--OM_choice "            c (2)                                                 # Offspring metric selected (2:exp_offsp_fitness)
+# ProbabilityType
+prob_choice          "--prob_choice "          c (1)                                                 # 1:Adaptive_Pursuit
+p_min                "--p_min "                r (0.0, 0.24)                                         # Minimum probability of selection of an operator
+learning_rate        "--learning_rate "        r (0.0, 1.0)           | prob_choice == 1             # Learning Rate
+error_prob           "--error_prob "           r (0.0, 1.0)                                          # Probability noise
+p_max                "--p_max "                r (0.0, 1.0)           | prob_choice == 1             # Maximum probability of selection of an operator
 # RewardType
-rew_choice           "--rew_choice "           c (3)                                                 # 3:Area_Under_the_Curve
+rew_choice           "--rew_choice "           c (3)                                                 # 3:Normalised_success_sum_gen
 max_gen              "--max_gen "              i (1, 15, 30, 50)                                     # Maximum number of generations for generational window
-fix_appl             "--fix_appl "             i (50, 100, 150)                                      # Maximum number of successful operator applications for generational window
+fix_appl             "--fix_appl "             i (20, 50, 70, 100, 125, 150)                                # Maximum number of successful operator applications for generational window
 theta                "--theta "                i (36, 45, 54, 90)                                    # Search direction
-window_size          "--window_size "          i (20, 50, 100)        | rew_choice == 3              # Size of window
+window_size          "--window_size "          i (20, 50, 75, 100, 150) | rew_choice == 3              # Size of window
 decay                "--decay "                r (0.0, 1.0)           | rew_choice == 3              # Decay value to emphasise the choice of better operator
 succ_lin_quad        "--succ_lin_quad "        i (1, 2)                                              # Operator success as linear or quadratic
 frac                 "--frac "                 r (0.0, 1.0)                                          # Fraction of sum of successes of all operators
 noise                "--noise "                r (0.0, 1.0)                                          # Small noise for randomness
-normal_factor        "--normal_factor "        i (0.0, 1.0)          		                     # Choice to normalise
-scaling_constant     "--scaling_constant "     r (0.0, 1.0)                                          # Scaling constant
+normal_factor        "--normal_factor "        i (0, 1)                                              # Choice to normalise
+scaling_constant     "--scaling_constant "     r (0.001, 1.0)                                        # Scaling constant
 alpha                "--alpha "                i (0, 1)                                              # Choice to normalise by best produced by any operator
 beta                 "--beta "                 i (0, 1)                                              # Choice to include the difference between budget used by an operator in previous two generations
-intensity            "--intensity "            r (0.0, 1.0)                                          # Intensify the changes of best fitness value
+intensity            "--intensity "            i (1, 2, 3)                                           # Intensify the changes of best fitness value
 # QualityType
 qual_choice          "--qual_choice "          c (0)                                                 # 0:Weighted_sum
 scaling_factor       "--scaling_factor "       r (0.0, 1.0)                                          # Scaling Factor
@@ -29,13 +35,6 @@ decay_rate           "--decay_rate "           r (0.0, 1.0)           | qual_cho
 weight_reward        "--weight_reward "        r (0.0, 1.0)                                          # Memory for current reward
 weight_old_reward    "--weight_old_reward "    r (0.0, 1.0)                                          # Memory for previous reward
 discount_rate        "--discount_rate "        r (0.0, 1.0)                                          # Discount rate
-# ProbabilityType
-prob_choice          "--prob_choice "          c (1)                                                 # 1:Adaptive_Pursuit
-p_min                "--p_min "                r (0.0, 0.25)                                         # Minimum probability of selection of an operator
-learning_rate        "--learning_rate "        r (0.0, 1.0)           | rew_choice == 1              # Learning Rate
-error_prob           "--error_prob "           r (0.0, 1.0)                  			     # Probability noise
-p_max                "--p_max "                r (0.0, 1.0)           | rew_choice == 1              # Maximum probability of selection of an operator
 # SelectionType
-select_choice        "--select_choice "        c (0)                                                 # 0:Roulette_Wheel_Selection
-
-
+select_choice        "--select_choice "        c (0)                                                 # 0:Proportional_Selection
+sel_eps              "--sel_eps "              r (0.0, 1.0)                                          # Random selection with probability sel_eps

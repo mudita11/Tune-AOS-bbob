@@ -318,7 +318,7 @@ def batch_loop(solver, suite, observer, budget,
     global train_or_test
     addressed_problems = []
     short_info = ShortInfo()
-    #problem_subset = range(330, 360)
+    problem_subset = range(165, 360)
     for problem_index, problem in enumerate(suite):
         if problem_subset and problem_index not in problem_subset:
             continue

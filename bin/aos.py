@@ -305,7 +305,7 @@ class Unknown_AOS(object):
             "decay_rate" : [0.0, 1.0],
             "p_min" : [0.0, 0.24],
             "error_prob" : [0.0, 1.0],
-        }
+        },
         
         "ADOPP" : {
             "OM_choice" : [5],
@@ -320,7 +320,8 @@ class Unknown_AOS(object):
             "decay_rate": [0.0, 1.0],
             "p_min" : [0.0, 0.24],
             "error_prob" : [0.0, 1.0],
-        }
+        },
+        
         "ADOPP_ext" : {
             "OM_choice" : [5],
             "rew_choice" : [5],
@@ -334,7 +335,7 @@ class Unknown_AOS(object):
             "decay_rate": [0.0, 1.0],
             "p_min" : [0.0, 0.24],
             "error_prob" : [0.0, 1.0],
-        }
+        },
 
         "AUC_AP" : {
             "OM_choice" : [2],
@@ -348,7 +349,7 @@ class Unknown_AOS(object):
             "p_min" : [0.0, 0.24],
             "p_max" : [0.0, 1.0],
             "learning_rate" : [0.0, 1.0],
-        }
+        },
 
         "AUC_MAB" : {
             "OM_choice" : [2],
@@ -361,7 +362,7 @@ class Unknown_AOS(object):
             "scaling_factor" : [0.0, 1.0],
             "p_min" : [0.0, 0.24],
             "error_prob" : [0.0, 1.0],
-        }
+        },
 
         "AUC_PM" : {
             "OM_choice" : [2],
@@ -374,7 +375,7 @@ class Unknown_AOS(object):
             "decay_rate" : [0.0, 1.0],
             "p_min" : [0.0, 0.24],
             "error_prob" : [0.0, 1.0],
-        }
+        },
 
         "Adap_NN" : {
             "OM_choice" : [2],
@@ -386,7 +387,7 @@ class Unknown_AOS(object):
             "decay_rate": [0.0, 1.0],
             "p_min" : [0.0, 0.24],
             "error_prob" : [0.0, 1.0],
-        }
+        },
 
         "Compass" : {
             "OM_choice" : [2],
@@ -398,7 +399,7 @@ class Unknown_AOS(object):
             "theta" : [36, 45, 54, 90],
             "p_min" : [0.0, 0.24],
             "error_prob" : [0.0, 1.0],
-        }
+        },
 
         "Dynamic_GEPv1" : {
             "OM_choice" : [2],
@@ -412,7 +413,7 @@ class Unknown_AOS(object):
             "discount_rate" : [0.0, 1.0],
             "p_min" : [0.0, 0.24],
             "error_prob" : [0.0, 1.0],
-        }
+        },
 
         "Dynamic_GEPv2" : {
             "OM_choice" : [2],
@@ -428,7 +429,7 @@ class Unknown_AOS(object):
             "discount_rate" : [0.0, 1.0],
             "p_min" : [0.0, 0.24],
             "error_prob" : [0.0, 1.0],
-        }
+        },
 
         "Ext_AP" : {
             "OM_choice" : [2],
@@ -443,7 +444,7 @@ class Unknown_AOS(object):
             "p_min" : [0.0, 0.24],
             "p_max" : [0.0, 1.0],
             "learning_rate" : [0.0, 1.0],
-        }
+        },
 
         "Ext_MAB" : {
             "OM_choice" : [2],
@@ -457,7 +458,7 @@ class Unknown_AOS(object):
             "scaling_factor" : [0.0, 1.0],
             "p_min" : [0.0, 0.24],
             "error_prob" : [0.0, 1.0],
-        }
+        },
 
         "Ext_PM" : {
             "OM_choice" : [2],
@@ -471,7 +472,7 @@ class Unknown_AOS(object):
             "decay_rate" : [0.0, 1.0],
             "p_min" : [0.0, 0.24],
             "error_prob" : [0.0, 1.0],
-        }
+        },
 
         "Hybridv1" : {
             "OM_choice" : [0],
@@ -487,7 +488,7 @@ class Unknown_AOS(object):
             "discount_rate" : [0.0, 1.0],
             "p_min" : [0.0, 0.24],
             "error_prob" : [0.0, 1.0],
-        }
+        },
 
         "Hybridv2" : {
             "OM_choice" : [2],
@@ -503,7 +504,7 @@ class Unknown_AOS(object):
             "discount_rate" : [0.0, 1.0],
             "p_min" : [0.0, 0.24],
             "error_prob" : [0.0, 1.0],
-        }
+        },
 
         "MEANS" : {
             "OM_choice" : [0],
@@ -518,7 +519,7 @@ class Unknown_AOS(object):
             "scaling_factor" : [0.0, 1.0],
             "p_min" : [0.0, 0.24],
             "error_prob" : [0.0, 1.0],
-        }
+        },
 
         "MMRDE" : {
             "OM_choice" : [2],
@@ -532,7 +533,7 @@ class Unknown_AOS(object):
             "noise": [0.0,1.0],
             "p_min" : [0.0, 0.24],
             "error_prob" : [0.0, 1.0],
-        }
+        },
 
         "op_adapt" : {
             "OM_choice" : [3],
@@ -543,7 +544,7 @@ class Unknown_AOS(object):
             "max_gen" : [1, 15, 30, 50],
             "p_min" : [0.0, 0.24],
             "learning_rate" : [0.0, 1.0],
-        }
+        },
 
         "PD_PM" : {
             "OM_choice" : [2],
@@ -555,7 +556,7 @@ class Unknown_AOS(object):
             "decay_rate" : [0.0, 1.0],
             "p_min" : [0.0, 0.24],
             "error_prob" : [0.0, 1.0],
-        }
+        },
 
         "PDP" : {
             "OM_choice" : [2],
@@ -563,13 +564,13 @@ class Unknown_AOS(object):
             "qual_choice": [2],
             "prob_choice": [0],
             "select_choice": [0],
-            "max_gen" : [1, 15, 30, 50]
-            "succ_lin_quad": [1, 2]
+            "max_gen" : [1, 15, 30, 50],
+            "succ_lin_quad": [1, 2],
             "frac": [0.0, 1.0],
             "noise": [0.0,1.0],
             "p_min" : [0.0, 0.24],
             "error_prob" : [0.0, 1.0],
-        }
+        },
 
         "PR_PM" : {
             "OM_choice" : [2],
@@ -581,7 +582,7 @@ class Unknown_AOS(object):
             "decay_rate" : [0.0, 1.0],
             "p_min" : [0.0, 0.24],
             "error_prob" : [0.0, 1.0],
-        }
+        },
 
         "Proj_PM" : {
             "OM_choice" : [2],
@@ -594,7 +595,7 @@ class Unknown_AOS(object):
             "decay_rate" : [0.0, 1.0],
             "p_min" : [0.0, 0.24],
             "error_prob" : [0.0, 1.0],
-        }
+        },
 
         "RFI_AA_PM" : {
             "OM_choice" : [6],
@@ -607,7 +608,7 @@ class Unknown_AOS(object):
             "decay_rate" : [0.0, 1.0],
             "p_min" : [0.0, 0.24],
             "error_prob" : [0.0, 1.0],
-        }
+        },
 
         "RFI_EA_PM" : {
             "OM_choice" : [6],
@@ -621,7 +622,7 @@ class Unknown_AOS(object):
             "decay_rate" : [0.0, 1.0],
             "p_min" : [0.0, 0.24],
             "error_prob" : [0.0, 1.0],
-        }
+        },
 
         "RecPM" : {
             "OM_choice" : [2],
@@ -634,7 +635,7 @@ class Unknown_AOS(object):
             "discount_rate" : [0.0, 1.0],
             "p_min" : [0.0, 0.24],
             "error_prob" : [0.0, 1.0],
-        }
+        },
             
         "SR_AP" : {
             "OM_choice" : [2],
@@ -648,7 +649,7 @@ class Unknown_AOS(object):
             "p_min" : [0.0, 0.24],
             "p_max" : [0.0, 1.0],
             "learning_rate" : [0.0, 1.0],
-        }
+        },
 
         "SR_MAB" : {
             "OM_choice" : [2],
@@ -661,7 +662,7 @@ class Unknown_AOS(object):
             "scaling_factor" : [0.0, 1.0],
             "p_min" : [0.0, 0.24],
             "error_prob" : [0.0, 1.0],
-        }
+        },
 
         "SR_PM" : {
             "OM_choice" : [2],
@@ -674,7 +675,7 @@ class Unknown_AOS(object):
             "decay_rate" : [0.0, 1.0],
             "p_min" : [0.0, 0.24],
             "error_prob" : [0.0, 1.0],
-        }
+        },
 
         "SaDE" : {
             "OM_choice" : [2],
