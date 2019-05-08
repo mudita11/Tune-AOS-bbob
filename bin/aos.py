@@ -299,27 +299,27 @@ class Unknown_AOS(object):
             "rew_choice" : [8],
             "qual_choice": [0],
             "prob_choice": [0],
-            "select_choice":[1],
-            "window_size":[20, 50, 100],
-            "normal_factor":[0, 1],
-            "adaptation_rate":[0.0, 1.0],
-            "scaling_factor":[0.0, 1.0],
-            "p_min":	[0.0, 0.25],
-            "error_prob":	[0.0, 1.0],
+            "select_choice" : [1],
+            "window_size": [20, 50, 75, 100, 150],
+            "normal_factor" : [0, 1],
+            "decay_rate" : [0.0, 1.0],
+            "p_min" : [0.0, 0.24],
+            "error_prob" : [0.0, 1.0],
         }
+        
         "ADOPP" : {
             "OM_choice" : [5],
             "rew_choice" : [5],
             "qual_choice": [3],
             "prob_choice": [0],
-            "select_choice":[0],
-            "max_gen":
-            "succ_lin_quad":
-            "frac":
-            "noise":
-            "decay_rate":
-            "p_min":
-            "error_prob""
+            "select_choice" : [0],
+            "max_gen" : [1, 15, 30, 50],
+            "succ_lin_quad": [1, 2],
+            "frac": [0.0, 1.0],
+            "noise": [0.0,1.0],
+            "decay_rate": [0.0, 1.0],
+            "p_min" : [0.0, 0.24],
+            "error_prob" : [0.0, 1.0],
         }
         "ADOPP_ext" : {
             "OM_choice" : [5],
@@ -327,6 +327,13 @@ class Unknown_AOS(object):
             "qual_choice": [3],
             "prob_choice": [0],
             "select_choice":[0],
+            "max_gen" : [1, 15, 30, 50],
+            "succ_lin_quad": [1, 2],
+            "frac": [0.0, 1.0],
+            "noise": [0.0,1.0],
+            "decay_rate": [0.0, 1.0],
+            "p_min" : [0.0, 0.24],
+            "error_prob" : [0.0, 1.0],
         }
 
         "AUC_AP" : {
@@ -335,13 +342,25 @@ class Unknown_AOS(object):
             "qual_choice": [0],
             "prob_choice": [1],
             "select_choice":[0],
+            "window_size" : [20, 50, 75, 100, 150],
+            "decay" : [0.0, 1.0],
+            "decay_rate" : [0.0, 1.0],
+            "p_min" : [0.0, 0.24],
+            "p_max" : [0.0, 1.0],
+            "learning_rate" : [0.0, 1.0],
         }
+
         "AUC_MAB" : {
             "OM_choice" : [2],
             "rew_choice" : [3],
             "qual_choice": [1],
             "prob_choice": [0],
             "select_choice":[1],
+            "window_size" : [20, 50, 75, 100, 150],
+            "decay" : [0.0, 1.0],
+            "scaling_factor" : [0.0, 1.0],
+            "p_min" : [0.0, 0.24],
+            "error_prob" : [0.0, 1.0],
         }
 
         "AUC_PM" : {
@@ -350,6 +369,11 @@ class Unknown_AOS(object):
             "qual_choice": [0],
             "prob_choice": [0],
             "select_choice":[0],
+            "window_size" : [20, 50, 75, 100, 150],
+            "decay" : [0.0, 1.0],
+            "decay_rate" : [0.0, 1.0],
+            "p_min" : [0.0, 0.24],
+            "error_prob" : [0.0, 1.0],
         }
 
         "Adap_NN" : {
@@ -358,14 +382,22 @@ class Unknown_AOS(object):
             "qual_choice": [3],
             "prob_choice": [0],
             "select_choice":[0],
+            "max_gen" : [1, 15, 30, 50],
+            "decay_rate": [0.0, 1.0],
+            "p_min" : [0.0, 0.24],
+            "error_prob" : [0.0, 1.0],
         }
 
         "Compass" : {
             "OM_choice" : [2],
             "rew_choice" : [2],
-            "qual_choice": [8],
+            "qual_choice": [2],
             "prob_choice": [0],
             "select_choice":[0],
+            "fix_appl" : [20, 50, 70, 100, 125, 150],
+            "theta" : [36, 45, 54, 90],
+            "p_min" : [0.0, 0.24],
+            "error_prob" : [0.0, 1.0],
         }
 
         "Dynamic_GEPv1" : {
@@ -374,6 +406,12 @@ class Unknown_AOS(object):
             "qual_choice": [4],
             "prob_choice": [0],
             "select_choice":[0],
+            "max_gen" : [1, 15, 30, 50],
+            "weight_reward" : [0.0, 1.0],
+            "weight_old_reward" : [0.0, 1.0],
+            "discount_rate" : [0.0, 1.0],
+            "p_min" : [0.0, 0.24],
+            "error_prob" : [0.0, 1.0],
         }
 
         "Dynamic_GEPv2" : {
@@ -382,6 +420,14 @@ class Unknown_AOS(object):
             "qual_choice": [4],
             "prob_choice": [0],
             "select_choice":[0],
+            "max_gen" : [1, 15, 30, 50],
+            "intensity" : [1, 2, 3],
+            "alpha" : [0, 1],
+            "weight_reward" : [0.0, 1.0],
+            "weight_old_reward" : [0.0, 1.0],
+            "discount_rate" : [0.0, 1.0],
+            "p_min" : [0.0, 0.24],
+            "error_prob" : [0.0, 1.0],
         }
 
         "Ext_AP" : {
@@ -390,6 +436,13 @@ class Unknown_AOS(object):
             "qual_choice": [0],
             "prob_choice": [1],
             "select_choice":[0],
+            "max_gen" : [1, 15, 30, 50],
+            "intensity" : [1, 2, 3],
+            "alpha" : [0, 1],
+            "decay_rate" : [0.0, 1.0],
+            "p_min" : [0.0, 0.24],
+            "p_max" : [0.0, 1.0],
+            "learning_rate" : [0.0, 1.0],
         }
 
         "Ext_MAB" : {
@@ -398,6 +451,12 @@ class Unknown_AOS(object):
             "qual_choice": [1],
             "prob_choice": [0],
             "select_choice":[1],
+            "max_gen" : [1, 15, 30, 50],
+            "intensity" : [1, 2, 3],
+            "alpha" : [0, 1],
+            "scaling_factor" : [0.0, 1.0],
+            "p_min" : [0.0, 0.24],
+            "error_prob" : [0.0, 1.0],
         }
 
         "Ext_PM" : {
@@ -406,6 +465,12 @@ class Unknown_AOS(object):
             "qual_choice": [0],
             "prob_choice": [0],
             "select_choice":[0],
+            "max_gen" : [1, 15, 30, 50],
+            "intensity" : [1, 2, 3],
+            "alpha" : [0, 1],
+            "decay_rate" : [0.0, 1.0],
+            "p_min" : [0.0, 0.24],
+            "error_prob" : [0.0, 1.0],
         }
 
         "Hybridv1" : {
@@ -414,6 +479,14 @@ class Unknown_AOS(object):
             "qual_choice": [4],
             "prob_choice": [0],
             "select_choice":[0],
+            "scaling_constant" : [0.001, 1.0],
+            "alpha" : [0, 1],
+            "beta" : [0,1],
+            "weight_reward" : [0.0, 1.0],
+            "weight_old_reward" : [0.0, 1.0],
+            "discount_rate" : [0.0, 1.0],
+            "p_min" : [0.0, 0.24],
+            "error_prob" : [0.0, 1.0],
         }
 
         "Hybridv2" : {
@@ -422,6 +495,14 @@ class Unknown_AOS(object):
             "qual_choice": [4],
             "prob_choice": [0],
             "select_choice":[0],
+            "scaling_constant" : [0.001, 1.0],
+            "alpha" : [0, 1],
+            "beta" : [0,1],
+            "weight_reward" : [0.0, 1.0],
+            "weight_old_reward" : [0.0, 1.0],
+            "discount_rate" : [0.0, 1.0],
+            "p_min" : [0.0, 0.24],
+            "error_prob" : [0.0, 1.0],
         }
 
         "MEANS" : {
@@ -430,6 +511,13 @@ class Unknown_AOS(object):
             "qual_choice": [1],
             "prob_choice": [0],
             "select_choice":[0],
+            "max_gen" : [1, 15, 30, 50],
+            "succ_lin_quad": [1, 2],
+            "frac": [0.0, 1.0],
+            "noise": [0.0,1.0],
+            "scaling_factor" : [0.0, 1.0],
+            "p_min" : [0.0, 0.24],
+            "error_prob" : [0.0, 1.0],
         }
 
         "MMRDE" : {
@@ -438,6 +526,12 @@ class Unknown_AOS(object):
             "qual_choice": [2],
             "prob_choice": [0],
             "select_choice":[0],
+            "max_gen" : [1, 15, 30, 50],
+            "succ_lin_quad": [1, 2],
+            "frac": [0.0, 1.0],
+            "noise": [0.0,1.0],
+            "p_min" : [0.0, 0.24],
+            "error_prob" : [0.0, 1.0],
         }
 
         "op_adapt" : {
@@ -445,7 +539,10 @@ class Unknown_AOS(object):
             "rew_choice" : [9],
             "qual_choice": [2],
             "prob_choice": [2],
-            "select_choice":[0],
+            "select_choice": [0],
+            "max_gen" : [1, 15, 30, 50],
+            "p_min" : [0.0, 0.24],
+            "learning_rate" : [0.0, 1.0],
         }
 
         "PD_PM" : {
@@ -453,7 +550,11 @@ class Unknown_AOS(object):
             "rew_choice" : [0],
             "qual_choice": [0],
             "prob_choice": [0],
-            "select_choice":[0],
+            "select_choice": [0],
+            "fix_appl" : [20, 50, 70, 100, 125, 150],
+            "decay_rate" : [0.0, 1.0],
+            "p_min" : [0.0, 0.24],
+            "error_prob" : [0.0, 1.0],
         }
 
         "PDP" : {
@@ -461,7 +562,13 @@ class Unknown_AOS(object):
             "rew_choice" : [5],
             "qual_choice": [2],
             "prob_choice": [0],
-            "select_choice":[0],
+            "select_choice": [0],
+            "max_gen" : [1, 15, 30, 50]
+            "succ_lin_quad": [1, 2]
+            "frac": [0.0, 1.0],
+            "noise": [0.0,1.0],
+            "p_min" : [0.0, 0.24],
+            "error_prob" : [0.0, 1.0],
         }
 
         "PR_PM" : {
@@ -469,7 +576,11 @@ class Unknown_AOS(object):
             "rew_choice" : [1],
             "qual_choice": [0],
             "prob_choice": [0],
-            "select_choice":[0],
+            "select_choice": [0],
+            "fix_appl" : [20, 50, 70, 100, 125, 150],
+            "decay_rate" : [0.0, 1.0],
+            "p_min" : [0.0, 0.24],
+            "error_prob" : [0.0, 1.0],
         }
 
         "Proj_PM" : {
@@ -477,7 +588,12 @@ class Unknown_AOS(object):
             "rew_choice" : [2],
             "qual_choice": [0],
             "prob_choice": [0],
-            "select_choice":[0],
+            "select_choice": [0],
+            "fix_appl" : [20, 50, 70, 100, 125, 150],
+            "theta" : [36, 45, 54, 90],
+            "decay_rate" : [0.0, 1.0],
+            "p_min" : [0.0, 0.24],
+            "error_prob" : [0.0, 1.0],
         }
 
         "RFI_AA_PM" : {
@@ -486,6 +602,11 @@ class Unknown_AOS(object):
             "qual_choice": [0],
             "prob_choice": [0],
             "select_choice":[0],
+            "window_size":[20, 50, 75, 100, 150],
+            "normal_factor":[0, 1],
+            "decay_rate" : [0.0, 1.0],
+            "p_min" : [0.0, 0.24],
+            "error_prob" : [0.0, 1.0],
         }
 
         "RFI_EA_PM" : {
@@ -494,6 +615,12 @@ class Unknown_AOS(object):
             "qual_choice": [0],
             "prob_choice": [0],
             "select_choice":[0],
+            "max_gen" : [1, 15, 30, 50],
+            "intensity" : [1, 2, 3],
+            "alpha" : [0, 1],
+            "decay_rate" : [0.0, 1.0],
+            "p_min" : [0.0, 0.24],
+            "error_prob" : [0.0, 1.0],
         }
 
         "RecPM" : {
@@ -502,6 +629,11 @@ class Unknown_AOS(object):
             "qual_choice": [4],
             "prob_choice": [0],
             "select_choice":[0],
+            "weight_reward" : [0.0, 1.0],
+            "weight_old_reward" : [0.0, 1.0],
+            "discount_rate" : [0.0, 1.0],
+            "p_min" : [0.0, 0.24],
+            "error_prob" : [0.0, 1.0],
         }
             
         "SR_AP" : {
@@ -510,6 +642,12 @@ class Unknown_AOS(object):
             "qual_choice": [0],
             "prob_choice": [1],
             "select_choice":[0],
+            "window_size" : [20, 50, 75, 100, 150],
+            "decay" : [0.0, 1.0],
+            "decay_rate" : [0.0, 1.0],
+            "p_min" : [0.0, 0.24],
+            "p_max" : [0.0, 1.0],
+            "learning_rate" : [0.0, 1.0],
         }
 
         "SR_MAB" : {
@@ -518,6 +656,11 @@ class Unknown_AOS(object):
             "qual_choice": [1],
             "prob_choice": [0],
             "select_choice":[1],
+            "window_size" : [20, 50, 75, 100, 150],
+            "decay" : [0.0, 1.0],
+            "scaling_factor" : [0.0, 1.0],
+            "p_min" : [0.0, 0.24],
+            "error_prob" : [0.0, 1.0],
         }
 
         "SR_PM" : {
@@ -526,6 +669,11 @@ class Unknown_AOS(object):
             "qual_choice": [0],
             "prob_choice": [0],
             "select_choice":[0],
+            "window_size" : [20, 50, 75, 100, 150],
+            "decay" : [0.0, 1.0],
+            "decay_rate" : [0.0, 1.0],
+            "p_min" : [0.0, 0.24],
+            "error_prob" : [0.0, 1.0],
         }
 
         "SaDE" : {
@@ -534,6 +682,12 @@ class Unknown_AOS(object):
             "qual_choice": [2],
             "prob_choice": [0],
             "select_choice":[0],
+            "max_gen" : [1, 15, 30, 50],
+            "succ_lin_quad": [1, 2],
+            "frac": [0.0, 1.0],
+            "noise": [0.0,1.0],
+            "p_min" : [0.0, 0.24],
+            "error_prob" : [0.0, 1.0],
         }
     }
     
