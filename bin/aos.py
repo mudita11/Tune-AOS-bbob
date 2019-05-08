@@ -307,6 +307,234 @@ class Unknown_AOS(object):
             "p_min":	[0.0, 0.25],
             "error_prob":	[0.0, 1.0],
         }
+        "ADOPP" : {
+            "OM_choice" : [5],
+            "rew_choice" : [5],
+            "qual_choice": [3],
+            "prob_choice": [0],
+            "select_choice":[0],
+            "max_gen":
+            "succ_lin_quad":
+            "frac":
+            "noise":
+            "decay_rate":
+            "p_min":
+            "error_prob""
+        }
+        "ADOPP_ext" : {
+            "OM_choice" : [5],
+            "rew_choice" : [5],
+            "qual_choice": [3],
+            "prob_choice": [0],
+            "select_choice":[0],
+        }
+
+        "AUC_AP" : {
+            "OM_choice" : [2],
+            "rew_choice" : [3],
+            "qual_choice": [0],
+            "prob_choice": [1],
+            "select_choice":[0],
+        }
+        "AUC_MAB" : {
+            "OM_choice" : [2],
+            "rew_choice" : [3],
+            "qual_choice": [1],
+            "prob_choice": [0],
+            "select_choice":[1],
+        }
+
+        "AUC_PM" : {
+            "OM_choice" : [2],
+            "rew_choice" : [3],
+            "qual_choice": [0],
+            "prob_choice": [0],
+            "select_choice":[0],
+        }
+
+        "Adap_NN" : {
+            "OM_choice" : [2],
+            "rew_choice" : [7],
+            "qual_choice": [3],
+            "prob_choice": [0],
+            "select_choice":[0],
+        }
+
+        "Compass" : {
+            "OM_choice" : [2],
+            "rew_choice" : [2],
+            "qual_choice": [8],
+            "prob_choice": [0],
+            "select_choice":[0],
+        }
+
+        "Dynamic_GEPv1" : {
+            "OM_choice" : [2],
+            "rew_choice" : [7],
+            "qual_choice": [4],
+            "prob_choice": [0],
+            "select_choice":[0],
+        }
+
+        "Dynamic_GEPv2" : {
+            "OM_choice" : [2],
+            "rew_choice" : [11],
+            "qual_choice": [4],
+            "prob_choice": [0],
+            "select_choice":[0],
+        }
+
+        "Ext_AP" : {
+            "OM_choice" : [2],
+            "rew_choice" : [11],
+            "qual_choice": [0],
+            "prob_choice": [1],
+            "select_choice":[0],
+        }
+
+        "Ext_MAB" : {
+            "OM_choice" : [2],
+            "rew_choice" : [11],
+            "qual_choice": [1],
+            "prob_choice": [0],
+            "select_choice":[1],
+        }
+
+        "Ext_PM" : {
+            "OM_choice" : [2],
+            "rew_choice" : [11],
+            "qual_choice": [0],
+            "prob_choice": [0],
+            "select_choice":[0],
+        }
+
+        "Hybridv1" : {
+            "OM_choice" : [0],
+            "rew_choice" : [10],
+            "qual_choice": [4],
+            "prob_choice": [0],
+            "select_choice":[0],
+        }
+
+        "Hybridv2" : {
+            "OM_choice" : [2],
+            "rew_choice" : [10],
+            "qual_choice": [4],
+            "prob_choice": [0],
+            "select_choice":[0],
+        }
+
+        "MEANS" : {
+            "OM_choice" : [0],
+            "rew_choice" : [5],
+            "qual_choice": [1],
+            "prob_choice": [0],
+            "select_choice":[0],
+        }
+
+        "MMRDE" : {
+            "OM_choice" : [2],
+            "rew_choice" : [5],
+            "qual_choice": [2],
+            "prob_choice": [0],
+            "select_choice":[0],
+        }
+
+        "op_adapt" : {
+            "OM_choice" : [3],
+            "rew_choice" : [9],
+            "qual_choice": [2],
+            "prob_choice": [2],
+            "select_choice":[0],
+        }
+
+        "PD_PM" : {
+            "OM_choice" : [2],
+            "rew_choice" : [0],
+            "qual_choice": [0],
+            "prob_choice": [0],
+            "select_choice":[0],
+        }
+
+        "PDP" : {
+            "OM_choice" : [2],
+            "rew_choice" : [5],
+            "qual_choice": [2],
+            "prob_choice": [0],
+            "select_choice":[0],
+        }
+
+        "PR_PM" : {
+            "OM_choice" : [2],
+            "rew_choice" : [1],
+            "qual_choice": [0],
+            "prob_choice": [0],
+            "select_choice":[0],
+        }
+
+        "Proj_PM" : {
+            "OM_choice" : [2],
+            "rew_choice" : [2],
+            "qual_choice": [0],
+            "prob_choice": [0],
+            "select_choice":[0],
+        }
+
+        "RFI_AA_PM" : {
+            "OM_choice" : [6],
+            "rew_choice" : [8],
+            "qual_choice": [0],
+            "prob_choice": [0],
+            "select_choice":[0],
+        }
+
+        "RFI_EA_PM" : {
+            "OM_choice" : [6],
+            "rew_choice" : [11],
+            "qual_choice": [0],
+            "prob_choice": [0],
+            "select_choice":[0],
+        }
+
+        "RecPM" : {
+            "OM_choice" : [2],
+            "rew_choice" : [6],
+            "qual_choice": [4],
+            "prob_choice": [0],
+            "select_choice":[0],
+        }
+            
+        "SR_AP" : {
+            "OM_choice" : [2],
+            "rew_choice" : [4],
+            "qual_choice": [0],
+            "prob_choice": [1],
+            "select_choice":[0],
+        }
+
+        "SR_MAB" : {
+            "OM_choice" : [2],
+            "rew_choice" : [4],
+            "qual_choice": [1],
+            "prob_choice": [0],
+            "select_choice":[1],
+        }
+
+        "SR_PM" : {
+            "OM_choice" : [2],
+            "rew_choice" : [4],
+            "qual_choice": [0],
+            "prob_choice": [0],
+            "select_choice":[0],
+        }
+
+        "SaDE" : {
+            "OM_choice" : [2],
+            "rew_choice" : [5],
+            "qual_choice": [2],
+            "prob_choice": [0],
+            "select_choice":[0],
+        }
     }
     
     def __init__(self, popsize, budget, n_ops, OM_choice, rew_choice, rew_args,
@@ -319,10 +547,11 @@ class Unknown_AOS(object):
         self.probability = np.full(n_ops, 1.0 / n_ops)
         self.old_reward = np.zeros(n_ops)
         rew_args["popsize"] = popsize
+        select_args["popsize"] = popsize
         self.reward_type = build_reward(rew_choice, n_ops, rew_args, self.gen_window, self.window)
         self.quality_type = build_quality(qual_choice, n_ops, qual_args, self.window)
         self.probability_type = build_probability(prob_choice, n_ops, prob_args)
-        self.selection_type = build_selection(select_choice, n_ops, budget, popsize)
+        self.selection_type = build_selection(select_choice, n_ops, budget)
 
     
     @classmethod
@@ -379,7 +608,7 @@ class Unknown_AOS(object):
         F_best = np.min(F)
         F_median = np.median(F)
         eps = np.finfo(np.float32).eps
-        verylarge = 10e10
+        verylarge = 10e20
         
         # See OpWindow metrics
         # Fitness is minimised but metric is maximised
@@ -524,7 +753,7 @@ def build_reward(choice, n_ops, rew_args, gen_window, window):
     elif choice == 9:
         return Normalised_success_sum_gen(n_ops, gen_window, rew_args["max_gen"])
     elif choice == 10:
-        return Best2gen(n_ops, gen_window, rew_args["scaling_constant"], rew_args["alpha"], rew_args["alpha"])
+        return Best2gen(n_ops, gen_window, rew_args["scaling_constant"], rew_args["alpha"], rew_args["beta"])
     elif choice == 11:
         return Normalised_best_sum(n_ops, gen_window, rew_args["max_gen"], rew_args["intensity"], rew_args["alpha"])
     else:
@@ -540,28 +769,28 @@ class RewardType(ABC):
         "max_gen",          int,    10,     [1, 15, 30, 50],                "Maximum number of generations for generational window",
         "fix_appl",         int,    20,     [20, 50, 70, 100, 125, 150],    "Maximum number of successful operator applications for generational window",
         "theta",            int,    45,     [36, 45, 54, 90],               "Search direction",
-        "window_size",      int,    50,     [20, 50],                       "Size of window",
+        "window_size",      int,    50,     [20, 50, 75, 100, 150],         "Size of window",
         "decay",            float,  0.4,    [0.0, 1.0],                     "Decay value to emphasise the choice of better operator",
         "succ_lin_quad",    int,    1,      [1, 2],                         "Operator success as linear or quadratic",
         "frac",             float,  0.01,   [0.0, 1.0],                     "Fraction of sum of successes of all operators",
         "noise",            float,  0.0,    [0.0, 1.0],                     "Small noise for randomness",
         "normal_factor",    int,    1,      [0, 1],                         "Choice to normalise",# MANUEL: You say that it is int but you initialise it with 0.1 # MUDITA: Its interger. Fixed.
-        "scaling_constant", float,  1,      [0.0, 1.0],                     "Scaling constant",
+        "scaling_constant", float,  1,      [0.001, 1.0],                   "Scaling constant",
         "alpha",            int,    0,      [0, 1],                         "Choice to normalise by best produced by any operator",
         "beta",             int,    1,      [0, 1],                         "Choice to include the difference between budget used by an operator in previous two generations",
-        "intensity",        int,    1,      [1, 2, 3],                     "Intensify the changes of best fitness value"
+        "intensity",        int,    1,      [1, 2, 3],                      "Intensify the changes of best fitness value"
     ]
     params_conditions = {"max_gen": [5, 7, 9, 11],
                        "fix_appl": [0, 1, 2],
                        "theta": [2],
                        "window_size": [3, 4, 8],
-		       "decay": [3, 4],
-		       "succ_lin_quad" : [5],
+                       "decay": [3, 4],
+                       "succ_lin_quad" : [5],
                        "frac": [5],
                        "noise": [5],
                        "normal_factor": [8],
-		       "scaling_constant": [10],
-		       "alpha" : [10, 11],
+                       "scaling_constant": [10],
+                       "alpha" : [10, 11],
                        "beta": [10],
                        "intensity": [11]}
     
@@ -576,7 +805,7 @@ class RewardType(ABC):
         self.window_size = window_size
         self.decay = decay
         self.fix_appl = fix_appl
-        self.old_reward = np.zeros(self.n_ops)
+        #self.old_reward = np.zeros(self.n_ops)
     
     @classmethod
     def add_argument(cls, parser):
@@ -965,7 +1194,7 @@ class QualityType(ABC):
                        "decay_rate": [0, 3],
                        "weight_reward": [4],
                        "weight_old_reward": [4],
-		       "discount_rate": [4]}
+                       "discount_rate": [4]}
 
     param_choice = "qual_choice"
     param_choice_help = "Quality method selected"
@@ -993,7 +1222,7 @@ class QualityType(ABC):
         return(quality)
     
     @abstractmethod
-    def calc_quality(self, old_reward, reward):
+    def calc_quality(self, old_reward, reward, tran_matrix):
         pass
 
 class Weighted_sum(QualityType):
@@ -1089,7 +1318,7 @@ class ProbabilityType(ABC):
     # FIXME: Use __slots__ to find which parameters need to be defined.
     # FIXME: define this in the class as @property getter doctstring and get it from it
     params = [
-        "p_min",         float,     0.1,    [0.0, 0.25],"Minimum probability of selection of an operator",
+        "p_min",         float,     0.1,    [0.0, 0.24],"Minimum probability of selection of an operator",
         "learning_rate", float,     0.1,    [0.0, 1.0], "Learning Rate",
         "error_prob",    float,     0.0,    [0.0, 1.0], "Probability noise",
         "p_max",         float,     0.9,    [0.0, 1.0], "Maximum probability of selection of an operator"
@@ -1202,13 +1431,15 @@ def build_selection(choice, n_ops, budget, popsize):
     elif choice == 3:
         return Proportional_Greedy_Selection(n_ops, select_args["sel_eps"])
     elif choice == 4:
-        return Linear_Annealed_Selection(n_ops, budget, popsize)
+        return Linear_Annealed_Selection(n_ops, budget, select_args["popsize"])
     else:
         raise ValueError("choice {} unknown".format(choice))
 
 class SelectionType(ABC):
+    params = ["sel_eps", float,     0.1,    [0.0, 1.0], "Random selection with probability sel_eps"
+              ]
+    params_conditions = {"sel_eps": [2, 3]}
 
-    params = ["sel_eps", float,     0.1,    [0.0,1.0], "Random selection with probability sel_eps"]
     param_choice = "select_choice"
     param_choice_help = "Selection method"
 
@@ -1270,12 +1501,12 @@ class Greedy_Selection(SelectionType):
 
 
 class Epsilon_Greedy_Selection(SelectionType):
+    # Epsilon Greedy Selection
     def __init__(self, n_ops, sel_eps = 0.1):
         super().__init__(n_ops)
         self.sel_ops = sel_eps
     
     def perform_selection(self, probability):
-        # Epsilon Greedy Selection
         if self.op_init_list:
             SI = self.op_init_list.pop()
         elif np.random.uniform() < self.sel_eps:
@@ -1286,13 +1517,13 @@ class Epsilon_Greedy_Selection(SelectionType):
 
 
 class Propotional_Greedy_Selection(SelectionType):
+    # Combination of Proportional and Greedy Selection
     '''TODO'''
     def __init__(self, n_ops, sel_eps = 0.1):
         super().__init__(n_ops)
         self.sel_eps = sel_eps
 
     def perform_selection(self, probability):
-        # Combination of Proportional and Greedy Selection
         if self.op_init_list:
             SI = self.op_init_list.pop()
         elif np.random.uniform() < self.sel_eps:
@@ -1303,6 +1534,7 @@ class Propotional_Greedy_Selection(SelectionType):
 
 
 class Linear_Annealed_Selection(SelectionType):
+    # Linear Annealed Selection
     '''TODO'''
     def __init__(self, n_ops, budget, popsize):
         super().__init__(n_ops)
@@ -1314,7 +1546,6 @@ class Linear_Annealed_Selection(SelectionType):
         self.step_size = (self.max_value - self.min_value) / self.n_steps
 
     def perform_selection(self, probability):
-        #Linear Annealed Selection
         self.eps_value = np.max_value - (self.step_size * self.step_counter)
         if self.op_init_list:
             SI = self.op_init_list.pop()
