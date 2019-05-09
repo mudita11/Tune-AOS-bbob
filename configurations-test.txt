@@ -1,0 +1,32 @@
+FF	CR	NP	mutation	OM_choice	rew_choice	qual_choice	prob_choice	select_choice	fix_appl	max_gen	theta	window_size	decay	succ_lin_quad	frac	noise	normal_factor	scaling_constant	alpha	beta	intensity	scaling_factor	decay_rate	weight_reward	weight_old_reward	discount_rate	p_min	learning_rate	error_prob	p_max	sel_eps	
+0.50	0.70	300	DE/rand/1		2		6		2		0		0	NA	NA	NA	NA	NA	NA	NA	NA	NA	NA	NA	NA	NA	NA	NA	NA	NA	NA	0.0	NA	0.0	NA	NA
+
+#0.54	0.97	101	DE/rand/1		2		6		2		0		0	NA	NA	NA	NA	NA	NA	NA	NA	NA	NA	NA	NA	NA	NA	NA	NA	NA	NA	0.0	NA	0.0	NA	NA
+
+#0.12	0.69	51 	DE/rand/1		2		6		2		0		0	NA	NA	NA	NA	NA	NA	NA	NA	NA	NA	NA	NA	NA	NA	NA	NA	NA	NA	0.0	NA	0.0	NA	NA
+
+#0.28	0.62 	52 	DE/rand/1		2		6		2		0		0	NA	NA	NA	NA	NA	NA	NA	NA	NA	NA	NA	NA	NA	NA	NA	NA	NA	NA	0.0	NA	0.0	NA	NA
+
+#0.50	0.70	300	DE/rand/2		2		6		2		0		0	NA	NA	NA	NA	NA	NA	NA	NA	NA	NA	NA	NA	NA	NA	NA	NA	NA	NA	0.0	NA	0.0	NA	NA
+
+#0.15	0.44	77	DE/rand/2		2		6		2		0		0	NA	NA	NA	NA	NA	NA	NA	NA	NA	NA	NA	NA	NA	NA	NA	NA	NA	NA	0.0	NA	0.0	NA	NA
+
+#0.12	0.58	50	DE/rand/2		2		6		2		0		0	NA	NA	NA	NA	NA	NA	NA	NA	NA	NA	NA	NA	NA	NA	NA	NA	NA	NA	0.0	NA	0.0	NA	NA
+
+#0.21	0.68	59	DE/rand/2		2		6		2		0		0	NA	NA	NA	NA	NA	NA	NA	NA	NA	NA	NA	NA	NA	NA	NA	NA	NA	NA	0.0	NA	0.0	NA	NA
+
+#0.50	0.70	300	DE/rand-to-best/2		2		6		2		0		0	NA	NA	NA	NA	NA	NA	NA	NA	NA	NA	NA	NA	NA	NA	NA	NA	NA	NA	0.0	NA	0.0	NA	NA
+
+#0.28	0.28	62	DE/rand-to-best/2		2		6		2		0		0	NA	NA	NA	NA	NA	NA	NA	NA	NA	NA	NA	NA	NA	NA	NA	NA	NA	NA	0.0	NA	0.0	NA	NA
+
+#0.29	0.87	53	DE/rand-to-best/2		2		6		2		0		0	NA	NA	NA	NA	NA	NA	NA	NA	NA	NA	NA	NA	NA	NA	NA	NA	NA	NA	0.0	NA	0.0	NA	NA
+
+#0.35	0.68	52	DE/rand-to-best/2		2		6		2		0		0	NA	NA	NA	NA	NA	NA	NA	NA	NA	NA	NA	NA	NA	NA	NA	NA	NA	NA	0.0	NA	0.0	NA	NA
+
+#0.50	0.70	300	DE/current-to-rand/1		2		6		2		0		0	NA	NA	NA	NA	NA	NA	NA	NA	NA	NA	NA	NA	NA	NA	NA	NA	NA	NA	0.0	NA	0.0	NA	NA
+
+#0.60	0.97	105	DE/current-to-rand/1		2		6		2		0		0	NA	NA	NA	NA	NA	NA	NA	NA	NA	NA	NA	NA	NA	NA	NA	NA	NA	NA	0.0	NA	0.0	NA	NA
+
+#0.49	0.65	50	DE/current-to-rand/1		2		6		2		0		0	NA	NA	NA	NA	NA	NA	NA	NA	NA	NA	NA	NA	NA	NA	NA	NA	NA	NA	0.0	NA	0.0	NA	NA
+
+#0.56	0.80	50	DE/current-to-rand/1		2		6		2		0		0	NA	NA	NA	NA	NA	NA	NA	NA	NA	NA	NA	NA	NA	NA	NA	NA	NA	NA	0.0	NA	0.0	NA	NA

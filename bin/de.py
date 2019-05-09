@@ -72,7 +72,7 @@ def DE_irace_parameters(override = {}):
 def DE(fun, x0, lbounds, ubounds, budget, instance, instance_best_value,
        trace_filename, stats_filename,
        FF, CR, NP, mutation,
-       OM_choice, rew_choice, rew_args, qual_choice, qual_args, prob_choice, prob_args, select_choice):
+       OM_choice, rew_choice, rew_args, qual_choice, qual_args, prob_choice, prob_args, select_choice, select_args):
 
     def rand1(population, samples, best, scale):
         """DE/rand/1"""
@@ -115,7 +115,7 @@ def DE(fun, x0, lbounds, ubounds, budget, instance, instance_best_value,
                                      rew_choice = rew_choice, rew_args = rew_args,
                                      qual_choice = qual_choice, qual_args = qual_args,
                                      prob_choice = prob_choice, prob_args = prob_args,
-                                     select_choice = select_choice)
+                                     select_choice = select_choice, select_args = select_args)
         select_mutation = aos_method.select_operator
     elif mutation == "random":
         select_mutation = lambda : np.random.randint(n_operators) 

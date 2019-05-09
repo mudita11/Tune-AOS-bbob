@@ -693,7 +693,7 @@ class Unknown_AOS(object):
     }
     
     def __init__(self, popsize, budget, n_ops, OM_choice, rew_choice, rew_args,
-                 qual_choice, qual_args, prob_choice, prob_args, select_choice):
+                 qual_choice, qual_args, prob_choice, prob_args, select_choice, select_args):
         
         self.window = OpWindow(n_ops, metric = OM_choice - 1, max_size = 50)
         self.gen_window = GenWindow(n_ops, metric = OM_choice - 1)
@@ -706,13 +706,13 @@ class Unknown_AOS(object):
         self.reward_type = build_reward(rew_choice, n_ops, rew_args, self.gen_window, self.window)
         self.quality_type = build_quality(qual_choice, n_ops, qual_args, self.window)
         self.probability_type = build_probability(prob_choice, n_ops, prob_args)
-        self.selection_type = build_selection(select_choice, n_ops, budget)
+        self.selection_type = build_selection(select_choice, n_ops, select_args, budget)
 
     
     @classmethod
     def add_argument(cls, parser):
         metrics_names = OpWindow.metrics.keys()
-        choices = range(1, 1 + len(metrics_names))
+        choices = range(0, len(metrics_names))
         choices_help = ', '.join("{0}:{1}".format(i,j) for i,j in zip(choices, metrics_names))
         parser.add_argument("--" + cls.param_choice, type=int, choices=choices, default = 0,
                             help=cls.param_choice_help + " (" + choices_help + ")")
@@ -1575,7 +1575,7 @@ Christian Igel and Martin Kreutz. “Using fitness distributions to improvethe e
 
 #############Selection definitions##############################################
 
-def build_selection(choice, n_ops, budget, popsize):
+def build_selection(choice, n_ops, select_args, budget):
     if choice == 0:
         return Proportional_Selection(n_ops)
     elif choice == 1:
@@ -1671,7 +1671,7 @@ class Epsilon_Greedy_Selection(SelectionType):
         return super().check_selection(SI)
 
 
-class Propotional_Greedy_Selection(SelectionType):
+class Proportional_Greedy_Selection(SelectionType):
     # Combination of Proportional and Greedy Selection
     '''TODO'''
     def __init__(self, n_ops, sel_eps = 0.1):

@@ -293,7 +293,7 @@ def EA_AOS(fun, x0, lbounds, ubounds, budget, instance):
                  # Probabilities
                  prob_choice = prob_choice, prob_args = prob_args,
                  # Selection
-                 select_choice = select_choice)
+                 select_choice = select_choice, select_args = select_args)
     print("\n",cost)
     return cost
 
@@ -318,7 +318,7 @@ def batch_loop(solver, suite, observer, budget,
     global train_or_test
     addressed_problems = []
     short_info = ShortInfo()
-    problem_subset = range(165, 360)
+    # problem_subset = range(165, 360)
     for problem_index, problem in enumerate(suite):
         if problem_subset and problem_index not in problem_subset:
             continue
