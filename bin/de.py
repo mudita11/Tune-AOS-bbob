@@ -27,6 +27,7 @@ class TraceFile():
             self._file.write("% fevals/dim | frac | F - F_opt ({}) | best fitness | fevals\n".format(self._optimum))
         fevalsdim = float(fevals) / self._dim
         error = bsf - self._optimum
+        print(bsf, self._optimum, error)
         assert error >= 0.0
         frac = np.sum(error <= self._targets) / float(len(self._targets))
         self._file.write("{0} {1} {2} {3} {4}\n".format(

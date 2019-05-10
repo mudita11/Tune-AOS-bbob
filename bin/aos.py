@@ -973,6 +973,7 @@ class RewardType(ABC):
     def check_reward(self, reward):
         # MANUEL: Can reward be negative?
         # MUDITA: Relative_fitness_improv holds negtaive values which might lead to negative reward value.
+        print("reward: ", reward)
         assert np.all(np.isfinite(reward))
         #self.old_reward[:] = reward[:]
         debug_print("{:>30}:      reward={}".format(type(self).__name__, reward))
@@ -1658,7 +1659,7 @@ class Epsilon_Greedy_Selection(SelectionType):
     # Epsilon Greedy Selection
     def __init__(self, n_ops, sel_eps = 0.1):
         super().__init__(n_ops)
-        self.sel_ops = sel_eps
+        self.sel_eps = sel_eps
         debug_print("{:>30}: sel_eps = {}".format(type(self).__name__, self.sel_eps))
     
     def perform_selection(self, probability):
@@ -1702,7 +1703,7 @@ class Linear_Annealed_Selection(SelectionType):
         self.step_size = (self.max_value - self.min_value) / self.n_steps
 
     def perform_selection(self, probability):
-        self.eps_value = np.max_value - (self.step_size * self.step_counter)
+        self.eps_value = self.max_value - (self.step_size * self.step_counter)
         if self.op_init_list:
             SI = self.op_init_list.pop()
         elif np.random.uniform() < self.eps_value:
