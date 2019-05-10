@@ -9,7 +9,8 @@ import aos
 class TraceFile():
     # There are 51 targets equidistant between 1e2 and 1e-08 for each
     # problem instance.
-    #_targets = 10**np.linspace(2,-8, 51, endpoint=True)
+    # _targets = 10**np.linspace(2,-8, 51, endpoint=True)
+    # targets = [10**i for i in np.arange(2, -8.1, -0.2)] is used by coco (taken from coco code)
     # We increase the targets so that bad algorithms get a positive value
     _targets = 10**np.linspace(4,-8, 1 + 5*(4+8), endpoint=True)
     _file = None

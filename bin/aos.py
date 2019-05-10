@@ -121,9 +121,10 @@ class GenWindow(object):
         window_op = self._gen_window_op[gen, :]
         value = np.zeros(self.n_ops)
         for op in range(self.n_ops):
+            temp_window_met = np.zeros(len(window_op))
             # Assign 0.0 to any entry that is nan or belongs to a different op
-            window_met = np.where((window_op == op) & ~np.isnan(window_met), window_met, 0.0)
-            value[op] = function(window_met)
+            temp_window_met = np.where((window_op == op) & ~np.isnan(window_met), window_met, 0.0)
+            value[op] = function(temp_window_met)
         return value
 
     def sum_at_generation(self,gen):
@@ -154,8 +155,8 @@ class GenWindow(object):
         total_success = np.zeros(self.n_ops)
         total_unsuccess = np.zeros(self.n_ops)
         for op in range(self.n_ops):
-            total_success[op] = np.sum((window_op == op) & np.isnan(window_met))
-            total_unsuccess[op] = np.sum((window_op == op) & ~np.isnan(window_met))
+            total_success[op] = np.sum((window_op == op) & ~np.isnan(window_met))
+            total_unsuccess[op] = np.sum((window_op == op) & np.isnan(window_met))
         return total_success, total_unsuccess
 
     def metric_for_fix_appl_of_op(self, op, fix_appl):
@@ -202,7 +203,7 @@ class OpWindow(object):
                "improv_wrt_median": 5,
                "relative_fitness_improv": 6}
     
-    def __init__(self, n_ops, metric, max_size = 50):
+    def __init__(self, n_ops, metric, max_size = 150):
         self.max_size = max_size
         self.n_ops = n_ops
         # FIXME: Use strings instead of numbers:
@@ -223,6 +224,7 @@ class OpWindow(object):
     
     def truncate(self, size):
         where = self.where_truncate(size)
+        # MUDITA: truncated working is not clear.
         truncated = copy.copy(self)
         truncated._window_op = truncated._window_op[where]
         truncated._window_met = truncated._window_met[where, :]
@@ -695,8 +697,8 @@ class Unknown_AOS(object):
     def __init__(self, popsize, budget, n_ops, OM_choice, rew_choice, rew_args,
                  qual_choice, qual_args, prob_choice, prob_args, select_choice, select_args):
         
-        self.window = OpWindow(n_ops, metric = OM_choice - 1, max_size = 50)
-        self.gen_window = GenWindow(n_ops, metric = OM_choice - 1)
+        self.window = OpWindow(n_ops, metric = OM_choice, max_size = 150)
+        self.gen_window = GenWindow(n_ops, metric = OM_choice)
         self.tran_matrix = np.random.rand(4,4)
         self.tran_matrix = normalize_matrix(self.tran_matrix)
         self.probability = np.full(n_ops, 1.0 / n_ops)
@@ -707,7 +709,7 @@ class Unknown_AOS(object):
         self.quality_type = build_quality(qual_choice, n_ops, qual_args, self.window)
         self.probability_type = build_probability(prob_choice, n_ops, prob_args)
         self.selection_type = build_selection(select_choice, n_ops, select_args, budget)
-
+        self.select_counter = 0
     
     @classmethod
     def add_argument(cls, parser):
@@ -745,7 +747,7 @@ class Unknown_AOS(object):
         
 
     def select_operator(self):
-        return self.selection_type.perform_selection(self.probability)
+        return self.selection_type.perform_selection(self.probability, self.select_counter)
 
 ############################Offspring Metric definitions#######################
     def OM_Update(self, F, F1, F_bsf, opu):
@@ -817,6 +819,7 @@ class Unknown_AOS(object):
         self.probability = self.probability_type.calc_probability(quality)
         self.tran_matrix = transitive_matrix(self.probability)
         self.old_reward = np.copy(reward)
+        self.select_counter += 1
 
 ###################Other definitions############################################
 
@@ -876,7 +879,7 @@ def AUC(operators, rank, op, decay, window_size, ndcg = True):
 def UCB(N, C, reward):
     '''Calculates Upper Confidence Bound as a quality'''
     ucb = reward + C * np.sqrt( 2 * np.log(np.sum(N)) / N)
-    ucb[np.isinf(ucb) | np.isnan(ucb)] = 0
+    ucb[np.isinf(ucb) | np.isnan(ucb)] = 0.0
     return ucb
 
 ##################################################Reward definitions######################################################################
@@ -974,7 +977,6 @@ class RewardType(ABC):
     def check_reward(self, reward):
         # MANUEL: Can reward be negative?
         # MUDITA: Relative_fitness_improv holds negtaive values which might lead to negative reward value.
-        print("reward: ", reward)
         assert np.all(np.isfinite(reward))
         #self.old_reward[:] = reward[:]
         debug_print("{:>30}:      reward={}".format(type(self).__name__, reward))
@@ -1180,7 +1182,6 @@ acc=ACTIVE%20SERVICE&key=BF07A2EE685417C5%2E26BE4091F5AC6C0A%
         reward += self.noise
         return super().check_reward(reward)
 
-
 class Immediate_Success(RewardType):
     """
  Mudita  Sharma,  Manuel  L ́opez-Ib ́a ̃nez,  and  Dimitar  Kazakov.  “Perfor-mance Assessment of Recursive Probability Matching for Adaptive Oper-ator Selection in Differential Evolution”. In:International Conference onParallel Problem Solving from Nature.http://eprints.whiterose.ac.uk/135483/1/paper_66_1_.pdf. Springer. 2018, pp. 321–333.
@@ -1292,7 +1293,6 @@ Giorgos Karafotias, Agoston Endre Eiben, and Mark Hoogendoorn. “Genericparamet
             best_t_1[best_t_1 == 0] = 1
         else:
             best_t_1 = np.ones(self.n_ops)
-            
         reward = self.scaling_constant * np.fabs(best_t - best_t_1) / ((best_t_1**self.alpha) * (np.fabs(n_applications)**self.beta))
         return super().check_reward(reward)
 
@@ -1604,7 +1604,6 @@ class SelectionType(ABC):
         # The initial list of operators (randomly permuted)
         self.n_ops = n_ops
         self.op_init_list = list(np.random.permutation(n_ops))
-        self.step_counter = 0
 
     # MANUEL: create a base object to avoid duplicating this function.
     @classmethod
@@ -1619,11 +1618,10 @@ class SelectionType(ABC):
 
     def check_selection(self, selected):
         assert selected >= 0 and selected <= self.n_ops
-        self.step_counter += 1
         return selected
     
     @abstractmethod
-    def perform_selection(self, probability):
+    def perform_selection(self, probability, select_counter):
         pass
 
 # MANUEL: These should have more descriptive names and a doctstring documenting
@@ -1633,7 +1631,7 @@ class Proportional_Selection(SelectionType):
     def __init__(self, n_ops):
         super().__init__(n_ops)
     
-    def perform_selection(self, probability):
+    def perform_selection(self, probability, select_counter):
         # Roulette wheel selection
         if self.op_init_list:
             SI = self.op_init_list.pop()
@@ -1648,7 +1646,7 @@ class Greedy_Selection(SelectionType):
     def __init__(self, n_ops):
         super().__init__(n_ops)
     
-    def perform_selection(self, probability):
+    def perform_selection(self, probability, select_counter):
         # Greedy Selection
         if self.op_init_list:
             SI = self.op_init_list.pop()
@@ -1664,11 +1662,11 @@ class Epsilon_Greedy_Selection(SelectionType):
         self.sel_eps = sel_eps
         debug_print("{:>30}: sel_eps = {}".format(type(self).__name__, self.sel_eps))
     
-    def perform_selection(self, probability):
+    def perform_selection(self, probability, select_counter):
         if self.op_init_list:
             SI = self.op_init_list.pop()
         elif np.random.uniform() < self.sel_eps:
-            SI = np.random.randint(0, n_ops)
+            SI = np.random.randint(0, self.n_ops)
         else:
             SI = np.argmax(probability)
         return super().check_selection(SI)
@@ -1682,7 +1680,7 @@ class Proportional_Greedy_Selection(SelectionType):
         self.sel_eps = sel_eps
         debug_print("{:>30}: sel_eps = {}".format(type(self).__name__, self.sel_eps))
 
-    def perform_selection(self, probability):
+    def perform_selection(self, probability, select_counter):
         if self.op_init_list:
             SI = self.op_init_list.pop()
         elif np.random.uniform() < self.sel_eps:
@@ -1704,12 +1702,12 @@ class Linear_Annealed_Selection(SelectionType):
         self.min_value = 0.0
         self.step_size = (self.max_value - self.min_value) / self.n_steps
 
-    def perform_selection(self, probability):
-        self.eps_value = self.max_value - (self.step_size * self.step_counter)
+    def perform_selection(self, probability, select_counter):
+        self.eps_value = self.max_value - (self.step_size * select_counter)
         if self.op_init_list:
             SI = self.op_init_list.pop()
         elif np.random.uniform() < self.eps_value:
-            SI = np.random.randint(0, n_ops)
+            SI = np.random.randint(0, self.n_ops)
         else:
             SI = np.argmax(probability)
         return super().check_selection(SI)
