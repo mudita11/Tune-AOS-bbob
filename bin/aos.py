@@ -959,6 +959,7 @@ class RewardType(ABC):
         self.window_size = window_size
         self.decay = decay
         self.fix_appl = fix_appl
+        self.eps = np.finfo(np.float32).eps
         #self.old_reward = np.zeros(self.n_ops)
     
     @classmethod
@@ -1083,8 +1084,9 @@ class Compass_projection(RewardType):
         # MANUEL: What should happen if both are zero?
         # MUDITA: Conceptually, its okay to have avg and std as 0. In that case coordinate will be on origin and there won't be any projection. Thus perpendicular distance fom coordinate to plane will be 0. So to deal with 0s, I have added eps in denominator. But again the issue is 1/(0+eps) = 8388608 which is wrong. Conceptually, (std, avg) = (0, 1) is possible. On scientific calulator arctan(1/0) = 1.5707... But in python it gives division by 0 error.
         # assert avg != 0.0 and std != 0.0
-        angle[((avg ==0) & (std == 0))] = np.fabs(np.arctan(np.deg2rad(np.inf)) - self.theta)
-        angle[std !=0] = np.fabs(np.arctan(np.deg2rad(avg / (std + eps))) - self.theta)
+        #angle[((avg ==0) & (std == 0))] = 0.0
+        where = np.flatnonzero((std!=0) | (avg!=0))
+        angle[where] = np.fabs(np.arctan(np.deg2rad(avg[where] / std[where]) - np.deg2rad(self.theta)))
         # Euclidean distance of the vector
         reward = (np.sqrt(std**2 + avg**2)) * np.cos(angle)
         # Maturana & Sablon (2008) divide by T_it defined as mean
