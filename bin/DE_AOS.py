@@ -322,7 +322,6 @@ def batch_loop(solver, suite, observer, budget,
     for problem_index, problem in enumerate(suite):
         if problem_subset and problem_index not in problem_subset:
             continue
-        print("problem_index", problem_index)
         if (problem_index + current_batch - 1) % number_of_batches:
             continue
         observer.observe(problem)

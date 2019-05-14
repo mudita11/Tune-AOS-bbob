@@ -977,7 +977,10 @@ class RewardType(ABC):
     def check_reward(self, reward):
         # MANUEL: Can reward be negative?
         # MUDITA: Relative_fitness_improv holds negtaive values which might lead to negative reward value.
-        assert np.all(np.isfinite(reward))
+        try:
+            assert np.all(np.isfinite(reward))
+        except:
+            print("infinite valued reward: ",reward)
         #self.old_reward[:] = reward[:]
         debug_print("{:>30}:      reward={}".format(type(self).__name__, reward))
         return reward
@@ -1081,12 +1084,13 @@ class Compass_projection(RewardType):
                 std[i] = np.std(b)
                 # Quality 
                 avg[i] = np.mean(b)
-        std = std / np.max(std)
-        avg = avg / np.max(avg)
+        if np.max(std) != 0:
+            std = std / np.max(std)
+        if np.max(avg) != 0:
+            avg = avg / np.max(avg)
         # MANUEL: What should happen if both are zero?
         # MUDITA: Conceptually, its okay to have avg and std as 0. In that case coordinate will be on origin and there won't be any projection. Thus perpendicular distance fom coordinate to plane will be 0. So to deal with 0s, I have added eps in denominator. But again the issue is 1/(0+eps) = 8388608 which is wrong. Conceptually, (std, avg) = (0, 1) is possible. On scientific calulator arctan(1/0) = 1.5707... But in python it gives division by 0 error.
         # assert avg != 0.0 and std != 0.0
-        #angle[((avg ==0) & (std == 0))] = 0.0
         where = np.flatnonzero((std!=0) | (avg!=0))
         angle[where] = np.fabs(np.arctan(np.deg2rad(avg[where] / std[where]) - np.deg2rad(self.theta)))
         # Euclidean distance of the vector
