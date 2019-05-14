@@ -779,7 +779,8 @@ class Unknown_AOS(object):
         improv_wrt_bsf = F_bsf - F1
         improv_wrt_median = F_median - F1
         # MUDITA: if F_bsf = 1 and F1 = 0, then F_bsf / (F1 + eps) becomes 8388608.0 which is wrong.
-        relative_fitness_improv = (F_bsf / (F1 + eps)) * improv_wrt_parent
+        #relative_fitness_improv = (F_bsf / (F1 + eps)) * improv_wrt_parent
+        relative_fitness_improv = (verylarge - (F_bsf / (F1 + eps))) * improv_wrt_parent
         
         popsize = len(F)
 
@@ -1317,7 +1318,9 @@ Alvaro Fialho, Marc Schoenauer, and Mich`ele Sebag. “Analysis of adaptiveopera
         max_gen = self.gen_window.get_max_gen()
         for i in range(self.n_ops):
             reward[i] = np.sum(self.gen_window.max_per_generation(i))
-        reward = (1.0 / max_gen) * (reward**self.intensity) / (np.max(reward)**self.alpha)
+        reward = (1.0 / max_gen) * (reward**self.intensity)
+        reward[reward == 0.0] = 1.0
+        reward = reward / np.max(reward)**self.alpha
         return super().check_reward(reward)
 
 
