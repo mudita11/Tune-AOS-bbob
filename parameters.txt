@@ -4,7 +4,8 @@
 FF			"--FF "			r		(0.1, 2.0)
 CR             		"--CR "         	r  		(0.1, 1.0)
 NP			"--NP "              	i	        (50, 400)
-mutation            	"--mutation "           c 		(DE/rand/1, DE/rand/2, DE/rand-to-best/2, DE/current-to-rand/1, random, aos)
+mutation            	"--mutation "           c 		(aos)
+#(DE/rand/1, DE/rand/2, DE/rand-to-best/2, DE/current-to-rand/1, random, aos)
 
 # aos components' choices
 OM_choice		"--OM_choice "		c		(0, 1, 2, 3, 4, 5, 6)
@@ -14,7 +15,7 @@ prob_choice		"--prob_choice "	c		(0, 1, 2)
 select_choice		"--select_choice "	c		(0, 1, 2, 3, 4)
 
 # reward parameters
-fix_appl		"--fix_appl "		c		(20, 50, 70, 100, 125, 150)			| rew_choice %in% c(0, 1, 2)
+fix_appl		"--fix_appl "		c		(10, 20, 50, 70, 100, 125, 150)			| rew_choice %in% c(0, 1, 2)
 max_gen			"--max_gen "		c		(1, 15, 30, 50)					| rew_choice %in% c(5, 7, 9, 11)
 theta			"--theta "		c		(36, 45, 54, 90)				| rew_choice == 2
 window_size		"--window_size "	c		(20, 50, 75, 100, 150)  			| rew_choice %in% c(3, 4, 8)

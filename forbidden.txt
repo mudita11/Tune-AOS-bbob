@@ -1,2 +1,5 @@
 ## forbidden file
 p_min == 0.25
+OM_choice == 1 & rew_choice == 2
+OM_choice == 1 & rew_choice == 10
+OM_choice == 1 & rew_choice == 11

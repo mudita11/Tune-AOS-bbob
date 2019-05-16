@@ -765,14 +765,17 @@ class Unknown_AOS(object):
         F_best = np.min(F)
         F_median = np.median(F)
         eps = np.finfo(np.float32).eps
-        verylarge = 10e20
+        verylarge = 10e30
         
         # See OpWindow metrics
         # Fitness is minimised but metric is maximised
         ## MANUEL: we need to think if this is the best solution to convert to maximization
         ## MUDITA: can't think of anything better than following.
         offsp_fitness = verylarge - F1
+        if np.any(offsp_fitness < 0):
+            print("-----------------------------offspring fitness= ",offsp_fitness)
         assert np.all(offsp_fitness >= 0)
+        
         exp_offsp_fitness = np.exp(-F1)
         improv_wrt_parent = F - F1
         improv_wrt_pop = F_best - F1
@@ -806,9 +809,13 @@ class Unknown_AOS(object):
                 window_met[i, 4] = improv_wrt_bsf[i]
             if improv_wrt_median[i] >= 0:
                 window_met[i, 5] = improv_wrt_median[i]
-                
             window_met[i, 6] = relative_fitness_improv[i]
-            
+            if window_met[i, 2] < 0:
+                print("-----------------------------wrt parent= ",window_met[i,2])
+            assert window_met[i, 2] >= 0
+            if window_met[i, 6] < 0:
+                print("-----------------------------relative= ",relative_fitness_improv)
+            assert window_met[i,6] >= 0
             self.window.append(window_op[i], window_met[i, :])
         
         self.gen_window.append(window_op, window_met)
@@ -978,10 +985,7 @@ class RewardType(ABC):
     def check_reward(self, reward):
         # MANUEL: Can reward be negative?
         # MUDITA: Relative_fitness_improv holds negtaive values which might lead to negative reward value.
-        try:
-            assert np.all(np.isfinite(reward))
-        except:
-            print("infinite valued reward: ",reward)
+        assert np.all(np.isfinite(reward))
         #self.old_reward[:] = reward[:]
         debug_print("{:>30}:      reward={}".format(type(self).__name__, reward))
         return reward
@@ -1076,7 +1080,7 @@ class Compass_projection(RewardType):
         std = np.zeros(self.n_ops)
         avg = np.zeros(self.n_ops)
         angle = np.zeros(self.n_ops)
-        # Projection on line B with thetha = pi/4
+        # Projection on line B with theta = pi/4
         #        B = [1, 1]
         for i in range(self.n_ops):
             b = self.gen_window.metric_for_fix_appl_of_op(i, self.fix_appl)
