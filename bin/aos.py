@@ -13,7 +13,7 @@ def debug_print(*args, **kwargs):
 
     
 def softmax(x):
-    """TODO"""
+    """Normalises each real value in a vector in the range 0 and 1 (normalised exponential function)"""
     return np.exp(x - np.max(x))
 
 def get_choices(cls, override = []):
