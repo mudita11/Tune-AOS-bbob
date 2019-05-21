@@ -43,7 +43,7 @@ DE_params = {
         'CR': [float, 1.0, [0.1, 1.0],'Crossover rate'],
         'NP': [int,   200, [50, 400], 'Population size'],
         'mutation': [object, "DE/rand/1",
-                     ["DE/rand/1","DE/rand/2","DE/rand-to-best/2","DE/current-to-rand/1", "random", "aos"],
+                     ["DE/rand/1", "DE/rand/2", "DE/rand-to-best/2", "DE/current-to-rand/1", "DE/current_to_pbest", "DE/current_to_pbest_archived", "DE/best/1", "DE/current_to_best/1", "DE/best/2", "random", "aos"],
                      "Mutation strategy"]
         }
 

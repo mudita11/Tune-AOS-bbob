@@ -699,7 +699,7 @@ class Unknown_AOS(object):
         
         self.window = OpWindow(n_ops, metric = OM_choice, max_size = 150)
         self.gen_window = GenWindow(n_ops, metric = OM_choice)
-        self.tran_matrix = np.random.rand(4,4)
+        self.tran_matrix = np.random.rand(n_ops, n_ops)
         self.tran_matrix = normalize_matrix(self.tran_matrix)
         self.probability = np.full(n_ops, 1.0 / n_ops)
         self.old_reward = np.zeros(n_ops)
@@ -810,11 +810,7 @@ class Unknown_AOS(object):
             if improv_wrt_median[i] >= 0:
                 window_met[i, 5] = improv_wrt_median[i]
             window_met[i, 6] = relative_fitness_improv[i]
-            if window_met[i, 2] < 0:
-                print("-----------------------------wrt parent= ",window_met[i,2])
             assert window_met[i, 2] >= 0
-            if window_met[i, 6] < 0:
-                print("-----------------------------relative= ",relative_fitness_improv)
             assert window_met[i,6] >= 0
             self.window.append(window_op[i], window_met[i, :])
         
@@ -830,8 +826,6 @@ class Unknown_AOS(object):
         self.select_counter += 1
 
 ###################Other definitions############################################
-
-
 
 def transitive_matrix(p):
     """Calculates Transitive Matrix."""
@@ -1451,7 +1445,7 @@ class Bellman_Equation(QualityType):
     """
 Mudita Sharma,  Manuel Lopez-Ibanez, and  Dimitar  Kazakov. “Performance Assessment of Recursive Probability Matching for Adaptive Oper-ator Selection in Differential Evolution”. In:International Conference onParallel Problem Solving from Nature.http://eprints.whiterose.ac.uk/135483/1/paper_66_1_.pdf. Springer. 2018, pp. 321–333.
  """
-    def __init__(self, n_ops, weight_reward = 1, weight_old_reward = 0.9, discount_rate = 0.0):
+    def __init__(self, n_ops, weight_reward = 1, weight_old_reward = 0.9, discount_rate = 0.01):
         super().__init__(n_ops)
         self.weight_reward = weight_reward
         self.weight_old_reward = weight_old_reward
