@@ -1,0 +1,1 @@
+--FF 0.31 --CR 0.67 --NP 51 --mutation aos --OM_choice 3 --rew_choice 10 --qual_choice 1 --prob_choice 2 --select_choice 0 --scaling_constant 0.37 --alpha 0 --beta 0 --scaling_factor 0.9 --p_min 0.05 --learning_rate 1

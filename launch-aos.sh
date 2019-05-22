@@ -2,7 +2,7 @@
 
 
 fes=100000
-file="configurations-aos.txt"
+file="configurations-aos-9op.txt"
 
 de="./bin/DE_AOS.py bbob $fes 1 1 --train_test test"
 
