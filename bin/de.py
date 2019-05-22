@@ -175,6 +175,8 @@ def DE(fun, x0, lbounds, ubounds, budget, instance, instance_best_value,
 
     archive = np.copy(X)
 
+    statistics_file = open('si_vs_fe', 'a+')
+    statistics_file.write(str(fun)+'\n')
     while fun.evaluations + NP <= budget and not fun.final_target_hit:
         fill_points = np.random.randint(dim, size = NP)
         
@@ -186,6 +188,7 @@ def DE(fun, x0, lbounds, ubounds, budget, instance, instance_best_value,
             SI = select_mutation()
             assert SI >= 0 and SI <= len(mutations)
             opu[i] = SI
+            statistics_file.write(str(SI)+'\n')
             mutate = mutations[SI]
             bprime = mutate(X, r, best, FF, NP, archive)
             u[i,:] = np.where(crossovers, bprime, X[i, :])
@@ -215,6 +218,7 @@ def DE(fun, x0, lbounds, ubounds, budget, instance, instance_best_value,
 
     if mutation == "aos":
         aos_method.gen_window.write_to(sys.stderr)
-    
+    statistics_file.close()
+
     return f_min
 
