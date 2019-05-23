@@ -104,9 +104,14 @@ def DE(fun, x0, lbounds, ubounds, budget, instance, instance_best_value,
     def current_to_pbest_archived(population, samples, best, scale, NP, archive):
         '''current to pbest (JADE-with archive)'''
         r0 = samples[:1]
-        percent_population = int(0.05 * NP)
-        union = np.concatenate((population, archive), axis = 0)
-        return (population[i] + scale * (population[np.random.randint(percent_population)] - population[i] + population[r0] - union[np.random.randint(len(union))]))
+        percent_population = int(0.1 * NP)
+        if archive != []:
+            union = np.concatenate((population, archive), axis = 0)
+        else:
+            union = np.copy(population)
+        if len(union) > NP:
+            union = union[np.random.randint(len(union), size = NP), :]
+        return (population[i] + scale * (population[np.random.randint(percent_population)] - population[i] + population[r0] - union[np.random.randint(NP)]))
     
     def best1(population, samples, best, scale, NP, archive):
         r0, r1 = samples[:2]
@@ -173,10 +178,10 @@ def DE(fun, x0, lbounds, ubounds, budget, instance, instance_best_value,
     # needed to reach the best one (+1 because best is 0-based).
     trace.print(fun.evaluations - NP + best + 1, f_min)
 
-    archive = np.copy(X)
+    archive = []
 
-    statistics_file = open('si_vs_fe', 'a+')
-    statistics_file.write(str(fun)+'\n')
+    #statistics_file = open('si_vs_fe', 'a+')
+    #statistics_file.write(str(fun)+'\n')
     while fun.evaluations + NP <= budget and not fun.final_target_hit:
         fill_points = np.random.randint(dim, size = NP)
         
@@ -188,7 +193,7 @@ def DE(fun, x0, lbounds, ubounds, budget, instance, instance_best_value,
             SI = select_mutation()
             assert SI >= 0 and SI <= len(mutations)
             opu[i] = SI
-            statistics_file.write(str(SI)+'\n')
+            #statistics_file.write(str(SI)+'\n')
             mutate = mutations[SI]
             bprime = mutate(X, r, best, FF, NP, archive)
             u[i,:] = np.where(crossovers, bprime, X[i, :])
@@ -206,9 +211,9 @@ def DE(fun, x0, lbounds, ubounds, budget, instance, instance_best_value,
 
         if mutation == "aos":
             aos_method.OM_Update(F, F1, F_bsf = f_min, opu = opu)
-
+        
         which = np.where(F1 <= F)
-        p = np.append(archive, X[which], axis = 0)
+        archive.extend(X[which])
         
         # Replace parent if their child improves them.
         F = np.where(F1 <= F, F1, F)
@@ -218,7 +223,7 @@ def DE(fun, x0, lbounds, ubounds, budget, instance, instance_best_value,
 
     if mutation == "aos":
         aos_method.gen_window.write_to(sys.stderr)
-    statistics_file.close()
+    #statistics_file.close()
 
     return f_min
 
