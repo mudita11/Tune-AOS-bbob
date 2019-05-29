@@ -1,1 +1,1 @@
---FF 0.53 --CR 0.95 --NP 98 --mutation aos --OM_choice 1 --rew_choice 6 --qual_choice 2 --prob_choice 0 --select_choice 3 --p_min 0.06 --error_prob 0.61 --sel_eps 0.99
+--FF 0.2 --CR 0.42 --NP 162 --mutation aos --OM_choice 4 --rew_choice 3 --qual_choice 4 --prob_choice 2 --select_choice 3 --window_size 20 --decay 0.55 --weight_reward 0.93 --weight_old_reward 0.81 --discount_rate 0.3 --p_min 0.02 --learning_rate 0.93 --sel_eps 0.97

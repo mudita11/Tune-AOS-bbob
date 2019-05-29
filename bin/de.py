@@ -172,11 +172,11 @@ def DE(fun, x0, lbounds, ubounds, budget, instance, instance_best_value,
 
     u = np.full((NP,dim), 0.0)
     generation = 0
-    trace = TraceFile(trace_filename, dim = dim, optimum = instance_best_value)
-    trace.print(1, F[0], header = True)
+    #trace = TraceFile(trace_filename, dim = dim, optimum = instance_best_value)
+    #trace.print(1, F[0], header = True)
     # We did NP fevals, remove them, then add as many as the number
     # needed to reach the best one (+1 because best is 0-based).
-    trace.print(fun.evaluations - NP + best + 1, f_min)
+    #trace.print(fun.evaluations - NP + best + 1, f_min)
 
     archive = []
 
@@ -207,7 +207,7 @@ def DE(fun, x0, lbounds, ubounds, budget, instance, instance_best_value,
             x_min, f_min = u[best, :], F1[best]
             # We did NP fevals, remove them, then add as many as the number
             # needed to reach the best one (+1 because best is 0-based).
-            trace.print(fun.evaluations - NP + best + 1, f_min)
+            #trace.print(fun.evaluations - NP + best + 1, f_min)
 
         if mutation == "aos":
             aos_method.OM_Update(F, F1, F_bsf = f_min, opu = opu)
