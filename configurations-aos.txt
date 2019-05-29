@@ -1,1 +1,0 @@
---FF 0.47 --CR 0.97 --NP 163 --mutation aos --OM_choice 6 --rew_choice 7 --qual_choice 3 --prob_choice 2 --select_choice 0 --max_gen 1 --decay_rate 0.93 --p_min 0.2 --learning_rate 0.68
