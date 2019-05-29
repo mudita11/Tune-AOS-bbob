@@ -75,53 +75,55 @@ def DE(fun, x0, lbounds, ubounds, budget, instance, instance_best_value,
        FF, CR, NP, mutation,
        OM_choice, rew_choice, rew_args, qual_choice, qual_args, prob_choice, prob_args, select_choice, select_args):
 
-    def rand1(population, samples, best, scale, NP, archive):
+    def rand1(population, samples, best, scale, NP, archive, F):
         """DE/rand/1"""
         r0, r1, r2 = samples[:3]
         return (population[r0] + scale * (population[r1] - population[r2]))
 
-    def rand2(population, samples, best, scale, NP, archive):
+    def rand2(population, samples, best, scale, NP, archive, F):
         '''DE/rand/2'''
         r0, r1, r2, r3, r4 = samples[:5]
         return (population[r0] + scale * (population[r1] - population[r2] + population[r3] - population[r4]))
 
-    def rand_to_best2(population, samples, best, scale, NP, archive):
+    def rand_to_best2(population, samples, best, scale, NP, archive, F):
         '''DE/rand-to-best/2'''
         r0, r1, r2, r3, r4 = samples[:5]
         return (population[r0] + scale * (population[best] - population[r0] + population[r1] - population[r2] + population[r3] - population[r4]))
 
-    def current_to_rand1(population, samples, best, scale, NP, archive):
+    def current_to_rand1(population, samples, best, scale, NP, archive, F):
         '''DE/current-to-rand/1'''
         r0, r1, r2 = samples[:3]
         return (population[i] + scale * (population[r0] - population[i] + population[r1] - population[r2]))
     
-    def current_to_pbest(population, samples, best, scale, NP, archive):
+    def current_to_pbest(population, samples, best, scale, NP, archive, F):
         '''current to pbest (JADE-without archive)'''
         r0, r1 = samples[:2]
-        percent_population = int(0.05 * NP)
-        return (population[i] + scale * (population[np.random.randint(percent_population)] - population[i] + population[r0] - population[r1]))
+        #percent_population = int(0.05 * NP)
+        top_best_index = [idx for (idx,v) in sorted(enumerate(F), key = lambda x: x[1])[:int(0.05 * NP)]]
+        return (population[i] + scale * (population[np.random.choice(top_best_index)] - population[i] + population[r0] - population[r1]))
     
-    def current_to_pbest_archived(population, samples, best, scale, NP, archive):
+    def current_to_pbest_archived(population, samples, best, scale, NP, archive, F):
         '''current to pbest (JADE-with archive)'''
         r0 = samples[:1]
-        percent_population = int(0.1 * NP)
+        #percent_population = int(0.1 * NP)
+        top_best_index = [idx for (idx,v) in sorted(enumerate(F), key = lambda x: x[1])[:int(0.05 * NP)]]
         if archive != []:
             union = np.concatenate((population, archive), axis = 0)
         else:
             union = np.copy(population)
         if len(union) > NP:
             union = union[np.random.randint(len(union), size = NP), :]
-        return (population[i] + scale * (population[np.random.randint(percent_population)] - population[i] + population[r0] - union[np.random.randint(NP)]))
+        return (population[i] + scale * (population[np.random.choice(top_best_index)] - population[i] + population[r0] - union[np.random.randint(NP)]))
     
-    def best1(population, samples, best, scale, NP, archive):
+    def best1(population, samples, best, scale, NP, archive, F):
         r0, r1 = samples[:2]
         return (population[best] + scale * (population[r0] - population[r1]))
     
-    def current_to_best1(population, samples, best, scale, NP, archive):
+    def current_to_best1(population, samples, best, scale, NP, archive, F):
         r0, r1 = samples[:2]
         return (population[i] +scale * (population[best] - population[i] + population[r0] - population[r1]))
     
-    def best2(population, samples, best, scale, NP, archive):
+    def best2(population, samples, best, scale, NP, archive, F):
         r0, r1, r2, r3 = samples[:4]
         return (population[best] + scale * (population[r0] - population[r1] + population[r2] - population[r3]))
     
@@ -195,7 +197,7 @@ def DE(fun, x0, lbounds, ubounds, budget, instance, instance_best_value,
             opu[i] = SI
             #statistics_file.write(str(SI)+'\n')
             mutate = mutations[SI]
-            bprime = mutate(X, r, best, FF, NP, archive)
+            bprime = mutate(X, r, best, FF, NP, archive, F)
             u[i,:] = np.where(crossovers, bprime, X[i, :])
 
         # Evaluate the child population
