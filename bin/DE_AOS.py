@@ -517,7 +517,7 @@ if __name__ == '__main__':
                 with open(filename, "w") as f:
                     debug_print("Creating", filename)
                     output = "##### AOS:  " + key + ".txt\n"
-                    f.write(de.DE_irace_parameters(override = dict(mutation=["aos"])))
+                    f.write(de.DE_irace_parameters(override = dict(mutation=["DE/rand/1"])))
                     f.write(aos.Unknown_AOS.irace_dump_knownAOS(key))
 
             parser.exit(0)

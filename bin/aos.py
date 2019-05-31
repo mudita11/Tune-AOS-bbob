@@ -927,17 +927,17 @@ class RewardType(ABC):
     params = [
         "max_gen",          int,        10,     [1, 50],                        "Maximum number of generations for generational window",
         "fix_appl",         int,        20,     [10, 150],                      "Maximum number of successful operator applications for generational window",
-        "theta",            object,     45,     [36, 45, 54, 90],               "Search direction",
+        "theta",            int,        45,     [36, 45, 54, 90],               "Search direction",
         "window_size",      int,        50,     [20, 150],                      "Size of window",
         "decay",            float,      0.4,    [0.0, 1.0],                     "Decay value to emphasise the choice of better operator",
-        "succ_lin_quad",    object,     1,      [1, 2],                         "Operator success as linear or quadratic",
+        "succ_lin_quad",    int,        1,      [1, 2],                         "Operator success as linear or quadratic",
         "frac",             float,      0.01,   [0.0, 1.0],                     "Fraction of sum of successes of all operators",
         "noise",            float,      0.0,    [0.0, 1.0],                     "Small noise for randomness",
-        "normal_factor",    object,     1,      [0, 1],                         "Choice to normalise",# MANUEL: You say that it is int but you initialise it with 0.1 # MUDITA: Its interger. Fixed.
+        "normal_factor",    int,        1,      [0, 1],                         "Choice to normalise",# MANUEL: You say that it is int but you initialise it with 0.1 # MUDITA: Its interger. Fixed.
         "scaling_constant", float,      1,      [0.001, 1.0],                   "Scaling constant",
-        "alpha",            object,     0,      [0, 1],                         "Choice to normalise by best produced by any operator",
-        "beta",             object,     1,      [0, 1],                         "Choice to include the difference between budget used by an operator in previous two generations",
-        "intensity",        object,     1,      [1, 2, 3],                      "Intensify the changes of best fitness value"
+        "alpha",            int,        0,      [0, 1],                         "Choice to normalise by best produced by any operator",
+        "beta",             int,        1,      [0, 1],                         "Choice to include the difference between budget used by an operator in previous two generations",
+        "intensity",        int,        1,      [1, 2, 3],                      "Intensify the changes of best fitness value"
     ]
     params_conditions = {"max_gen": [5, 7, 9, 11],
                        "fix_appl": [0, 1, 2],

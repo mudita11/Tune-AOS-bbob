@@ -1,13 +1,13 @@
 
 # DE parameters
-top_NP               "--top_NP "               r (0.02, 1.0)                                         # Top candidates
+FF                   "--FF "                   r (0.1, 2.0)                                          # Scaling factor
 NP                   "--NP "                   i (50, 400)                                           # Population size
 CR                   "--CR "                   r (0.1, 1.0)                                          # Crossover rate
-FF                   "--FF "                   r (0.1, 2.0)                                          # Scaling factor
-mutation             "--mutation "             c (aos)                                               # Mutation strategy
+top_NP               "--top_NP "               r (0.02, 1.0)                                         # Top candidates
+mutation             "--mutation "             c (DE/rand/1)                                         # Mutation strategy
 ##### AOS:  AP.txt
 # Unknown_AOS
-OM_choice            "--OM_choice "            c (6)                                                 # Offspring metric selected (6:offsp_fitness)
+OM_choice            "--OM_choice "            c (6)                                                 # Offspring metric selected (6:relative_fitness_improv)
 # ProbabilityType
 prob_choice          "--prob_choice "          c (0)                                                 # 0:Probability_Matching
 p_min                "--p_min "                r (0.0, 1.0)                                          # Minimum probability of selection of an operator
@@ -15,7 +15,7 @@ learning_rate        "--learning_rate "        r (0.0, 1.0)                     
 error_prob           "--error_prob "           r (0.0, 1.0)           | prob_choice == 0             # Probability noise
 p_max                "--p_max "                r (0.0, 1.0)                                          # Maximum probability of selection of an operator
 # RewardType
-rew_choice           "--rew_choice "           c (8)                                                 # 8:Compass_projection
+rew_choice           "--rew_choice "           c (8)                                                 # 8:Area_Under_The_Curve
 max_gen              "--max_gen "              i (1, 50)                                             # Maximum number of generations for generational window
 fix_appl             "--fix_appl "             i (10, 150)                                           # Maximum number of successful operator applications for generational window
 theta                "--theta "                c (36, 45, 54, 90)                                    # Search direction
