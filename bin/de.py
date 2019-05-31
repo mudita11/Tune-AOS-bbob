@@ -44,7 +44,7 @@ DE_params = {
         'NP':       [int,   200, [50, 400], 'Population size'],
         'top_NP': [float, 0.05, [0.02, 1.0], 'Top candidates'],
         'mutation': [object, "DE/rand/1",
-                     ["DE/rand/1", "DE/rand/2", "DE/rand-to-best/2", "DE/current-to-rand/1", "DE/current_to_pbest", "DE/current_to_pbest_archived", "DE/best/1", "DE/current_to_best/1", "DE/best/2", "random", "aos"],
+                     ["DE/rand/1", "DE/rand/2", "DE/rand-to-best/2", "DE/current-to-rand/1", "DE/current_to_pbest", "DE/current_to_pbest_archived", "DE/best/1", "DE/current_to_best/1", "DE/best/2", "random", "aos", "known_aos"],
                      "Mutation strategy"]
         }
 
@@ -144,7 +144,7 @@ def DE(fun, x0, lbounds, ubounds, budget, instance, instance_best_value,
     NP = int(NP)
     opu = np.full(NP, -1)
     
-    if mutation == "aos":
+    if mutation == "aos" or "known_aos":
         aos_method = aos.Unknown_AOS(NP, budget, n_ops = n_operators, OM_choice = OM_choice,
                                      rew_choice = rew_choice, rew_args = rew_args,
                                      qual_choice = qual_choice, qual_args = qual_args,
@@ -195,7 +195,7 @@ def DE(fun, x0, lbounds, ubounds, budget, instance, instance_best_value,
             crossovers[fill_points[i]] = True
             SI = select_mutation()
             assert SI >= 0 and SI <= len(mutations)
-            opu[i] = SI
+            opu[i] = SI; print(SI)
             #statistics_file.write(str(SI)+'\n')
             mutate = mutations[SI]
             bprime = mutate(X, r, best, FF, NP, archive, F)
