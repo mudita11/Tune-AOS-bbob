@@ -4,6 +4,7 @@
 FF			"--FF "			r		(0.1, 2.0)
 CR             		"--CR "         	r  		(0.1, 1.0)
 NP			"--NP "              	i	        (50, 400)
+top_NP			"--top_NP "		r		(0.02, 1.0)
 mutation            	"--mutation "           c 		(aos)
 #(DE/rand/1, DE/rand/2, DE/rand-to-best/2, DE/current-to-rand/1, DE/current_to_pbest, DE/current_to_pbest_archived, DE/best/1, DE/current_to_best/1, DE/best/2, random, aos)
 
@@ -15,10 +16,10 @@ prob_choice		"--prob_choice "	c		(0, 1, 2)
 select_choice		"--select_choice "	c		(0, 1, 2, 3, 4)
 
 # reward parameters
-fix_appl		"--fix_appl "		c		(10, 20, 50, 70, 100, 125, 150)			| rew_choice %in% c(0, 1, 2)
-max_gen			"--max_gen "		c		(1, 15, 30, 50)					| rew_choice %in% c(5, 7, 9, 11)
+fix_appl		"--fix_appl "		i		(10, 150)					| rew_choice %in% c(0, 1, 2)
+max_gen			"--max_gen "		i		(1, 50)						| rew_choice %in% c(5, 7, 9, 11)
 theta			"--theta "		c		(36, 45, 54, 90)				| rew_choice == 2
-window_size		"--window_size "	c		(20, 50, 75, 100, 150)  			| rew_choice %in% c(3, 4, 8)
+window_size		"--window_size "	i		(20, 150)		  			| rew_choice %in% c(3, 4, 8)
 decay			"--decay "		r		(0.0, 1.0)					| rew_choice %in% c(3, 4)
 succ_lin_quad		"--succ_lin_quad "	c		(1, 2)						| rew_choice == 5
 frac			"--frac "		r		(0.0, 1.0)					| rew_choice == 5

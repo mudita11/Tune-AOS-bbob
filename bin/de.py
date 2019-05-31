@@ -39,9 +39,10 @@ class TraceFile():
 
             
 DE_params = {
-        'FF': [float, 0.5, [0.1, 2.0],'Scaling factor'],
-        'CR': [float, 1.0, [0.1, 1.0],'Crossover rate'],
-        'NP': [int,   200, [50, 400], 'Population size'],
+        'FF':       [float, 0.5, [0.1, 2.0],'Scaling factor'],
+        'CR':       [float, 1.0, [0.1, 1.0],'Crossover rate'],
+        'NP':       [int,   200, [50, 400], 'Population size'],
+        'top_NP': [float, 0.05, [0.02, 1.0], 'Top candidates'],
         'mutation': [object, "DE/rand/1",
                      ["DE/rand/1", "DE/rand/2", "DE/rand-to-best/2", "DE/current-to-rand/1", "DE/current_to_pbest", "DE/current_to_pbest_archived", "DE/best/1", "DE/current_to_best/1", "DE/best/2", "random", "aos"],
                      "Mutation strategy"]
@@ -213,7 +214,7 @@ def DE(fun, x0, lbounds, ubounds, budget, instance, instance_best_value,
 
         if mutation == "aos":
             aos_method.OM_Update(F, F1, F_bsf = f_min, opu = opu)
-        
+        # archive is a list
         which = np.where(F1 <= F)
         archive.extend(X[which])
         

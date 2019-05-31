@@ -537,7 +537,7 @@ class Unknown_AOS(object):
             "error_prob" : [0.0, 1.0],
         },
 
-        "op_adapt" : {
+        "Op_adapt" : {
             "OM_choice" : [3],
             "rew_choice" : [9],
             "qual_choice": [2],

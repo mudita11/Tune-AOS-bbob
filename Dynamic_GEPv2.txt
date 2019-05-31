@@ -1,12 +1,13 @@
 
 # DE parameters
+top_NP               "--top_NP "               r (0.02, 1.0)                                         # Top candidates
+NP                   "--NP "                   i (50, 400)                                           # Population size
 FF                   "--FF "                   r (0.1, 2.0)                                          # Scaling factor
 CR                   "--CR "                   r (0.1, 1.0)                                          # Crossover rate
-mutation             "--mutation "             c (DE/rand/1)                                         # Mutation strategy
-NP                   "--NP "                   i (50, 400)                                           # Population size
+mutation             "--mutation "             c (aos)                                               # Mutation strategy
 ##### AOS:  Dynamic_GEPv2.txt
 # Unknown_AOS
-OM_choice            "--OM_choice "            c (2)                                                 # Offspring metric selected (2:exp_offsp_fitness)
+OM_choice            "--OM_choice "            c (2)                                                 # Offspring metric selected (2:improv_wrt_pop)
 # ProbabilityType
 prob_choice          "--prob_choice "          c (0)                                                 # 0:Probability_Matching
 p_min                "--p_min "                r (0.0, 0.24)                                         # Minimum probability of selection of an operator
