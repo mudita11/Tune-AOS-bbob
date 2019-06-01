@@ -1194,7 +1194,6 @@ y """
         self.popsize = popsize
     
     def calc_reward(self):
-        print("inside immediate success")
         gen_window_len = len(self.gen_window)
         total_success, total_unsuccess = self.gen_window.count_total_succ_unsucc(gen_window_len - 1)
         reward = total_success / self.popsize

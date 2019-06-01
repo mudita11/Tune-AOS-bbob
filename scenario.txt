@@ -6,7 +6,7 @@
 ## value on the command line).
 
 ## File that contains the description of the parameters.
-parameterFile = "./RecPM.txt"
+parameterFile = "./parameters.txt"
 
 ## Directory where the programs will be run.
 execDir = "./arena"
@@ -20,7 +20,7 @@ targetRunner = "./target-runner-best.py"
 
 ## The maximum number of runs (invocations of targetRunner.py) that will performed. It
 ## determines the (maximum) budget of experiments for the tuning.
-maxExperiments = 30000
+maxExperiments = 50000
 
 ## Indicates the number of decimal places to be considered for the
 ## real parameters.

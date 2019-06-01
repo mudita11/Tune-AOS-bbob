@@ -39,10 +39,10 @@ class TraceFile():
 
             
 DE_params = {
-        'FF':       [float, 0.5, [0.1, 2.0],'Scaling factor'],
-        'CR':       [float, 1.0, [0.1, 1.0],'Crossover rate'],
-        'NP':       [int,   200, [50, 400], 'Population size'],
-        'top_NP': [float, 0.05, [0.02, 1.0], 'Top candidates'],
+        'FF':       [float, 0.5,    [0.1, 2.0],     'Scaling factor'],
+        'CR':       [float, 1.0,    [0.1, 1.0],     'Crossover rate'],
+        'NP':       [int,   200,    [50, 400],      'Population size'],
+        'top_NP':   [float, 0.05,   [0.02, 1.0],    'Top candidates'],
         'mutation': [object, "DE/rand/1",
                      ["DE/rand/1", "DE/rand/2", "DE/rand-to-best/2", "DE/current-to-rand/1", "DE/current_to_pbest", "DE/current_to_pbest_archived", "DE/best/1", "DE/current_to_best/1", "DE/best/2", "random", "aos", "known_aos"],
                      "Mutation strategy"]
@@ -73,58 +73,51 @@ def DE_irace_parameters(override = {}):
     
 def DE(fun, x0, lbounds, ubounds, budget, instance, instance_best_value,
        trace_filename, stats_filename,
-       FF, CR, NP, mutation,
+       FF, CR, NP, top_NP, mutation,
        OM_choice, rew_choice, rew_args, qual_choice, qual_args, prob_choice, prob_args, select_choice, select_args):
 
-    def rand1(population, samples, best, scale, NP, archive, F):
+    def rand1(population, samples, best, scale, NP, F, union):
         """DE/rand/1"""
         r0, r1, r2 = samples[:3]
         return (population[r0] + scale * (population[r1] - population[r2]))
 
-    def rand2(population, samples, best, scale, NP, archive, F):
+    def rand2(population, samples, best, scale, NP, F, union):
         '''DE/rand/2'''
         r0, r1, r2, r3, r4 = samples[:5]
         return (population[r0] + scale * (population[r1] - population[r2] + population[r3] - population[r4]))
 
-    def rand_to_best2(population, samples, best, scale, NP, archive, F):
+    def rand_to_best2(population, samples, best, scale, NP, F, union):
         '''DE/rand-to-best/2'''
         r0, r1, r2, r3, r4 = samples[:5]
         return (population[r0] + scale * (population[best] - population[r0] + population[r1] - population[r2] + population[r3] - population[r4]))
 
-    def current_to_rand1(population, samples, best, scale, NP, archive, F):
+    def current_to_rand1(population, samples, best, scale, NP, F, union):
         '''DE/current-to-rand/1'''
         r0, r1, r2 = samples[:3]
         return (population[i] + scale * (population[r0] - population[i] + population[r1] - population[r2]))
     
-    def current_to_pbest(population, samples, best, scale, NP, archive, F):
+    def current_to_pbest(population, samples, best, scale, NP, F, union):
         '''current to pbest (JADE-without archive)'''
         r0, r1 = samples[:2]
         #percent_population = int(0.05 * NP)
-        top_best_index = [idx for (idx,v) in sorted(enumerate(F), key = lambda x: x[1])[:int(0.05 * NP)]]
+        top_best_index = [idx for (idx,v) in sorted(enumerate(F), key = lambda x: x[1])[:int(top_NP * NP)]]
         return (population[i] + scale * (population[np.random.choice(top_best_index)] - population[i] + population[r0] - population[r1]))
     
-    def current_to_pbest_archived(population, samples, best, scale, NP, archive, F):
+    def current_to_pbest_archived(population, samples, best, scale, NP, F, union):
         '''current to pbest (JADE-with archive)'''
         r0 = samples[:1]
-        #percent_population = int(0.1 * NP)
-        top_best_index = [idx for (idx,v) in sorted(enumerate(F), key = lambda x: x[1])[:int(0.05 * NP)]]
-        if archive != []:
-            union = np.concatenate((population, archive), axis = 0)
-        else:
-            union = np.copy(population)
-        if len(union) > NP:
-            union = union[np.random.randint(len(union), size = NP), :]
+        top_best_index = [idx for (idx,v) in sorted(enumerate(F), key = lambda x: x[1])[:int(top_NP * NP)]]; print(top_best_index)
         return (population[i] + scale * (population[np.random.choice(top_best_index)] - population[i] + population[r0] - union[np.random.randint(NP)]))
     
-    def best1(population, samples, best, scale, NP, archive, F):
+    def best1(population, samples, best, scale, NP, F, union):
         r0, r1 = samples[:2]
         return (population[best] + scale * (population[r0] - population[r1]))
     
-    def current_to_best1(population, samples, best, scale, NP, archive, F):
+    def current_to_best1(population, samples, best, scale, NP, F, union):
         r0, r1 = samples[:2]
         return (population[i] +scale * (population[best] - population[i] + population[r0] - population[r1]))
     
-    def best2(population, samples, best, scale, NP, archive, F):
+    def best2(population, samples, best, scale, NP, F, union):
         r0, r1, r2, r3 = samples[:4]
         return (population[best] + scale * (population[r0] - population[r1] + population[r2] - population[r3]))
     
@@ -181,13 +174,18 @@ def DE(fun, x0, lbounds, ubounds, budget, instance, instance_best_value,
     # needed to reach the best one (+1 because best is 0-based).
     #trace.print(fun.evaluations - NP + best + 1, f_min)
 
-    archive = []
-
+    archive = np.full(((budget+NP), dim), np.nan)
+    union = np.copy(archive)
     #statistics_file = open('si_vs_fe', 'a+')
     #statistics_file.write(str(fun)+'\n')
     while fun.evaluations + NP <= budget and not fun.final_target_hit:
         fill_points = np.random.randint(dim, size = NP)
-        
+        archive[:NP] = X
+        union = np.copy(archive)
+        union = union[~np.isnan(union[:,0])]
+        if len(union) > NP:
+            union = union[np.random.randint(len(union), size = NP), :]
+    
         for i in range(NP):
             # No mutation strategy needs more than 5.
             r = select_samples(NP, i, 5)
@@ -195,10 +193,10 @@ def DE(fun, x0, lbounds, ubounds, budget, instance, instance_best_value,
             crossovers[fill_points[i]] = True
             SI = select_mutation()
             assert SI >= 0 and SI <= len(mutations)
-            opu[i] = SI; print(SI)
+            opu[i] = SI; SI = 5
             #statistics_file.write(str(SI)+'\n')
             mutate = mutations[SI]
-            bprime = mutate(X, r, best, FF, NP, archive, F)
+            bprime = mutate(X, r, best, FF, NP, F, union)
             u[i,:] = np.where(crossovers, bprime, X[i, :])
 
         # Evaluate the child population
@@ -214,10 +212,13 @@ def DE(fun, x0, lbounds, ubounds, budget, instance, instance_best_value,
 
         if mutation == "aos":
             aos_method.OM_Update(F, F1, F_bsf = f_min, opu = opu)
-        # archive is a list
-        which = np.where(F1 <= F)
-        archive.extend(X[which])
-        
+    
+        # Maintainng archive (a list)
+        start = np.argwhere(np.isnan(archive[:,0]))[0][0]
+        poor_chandidates = X[F>F1]
+        end = start+len(poor_chandidates)
+        archive[start:end] = poor_chandidates
+    
         # Replace parent if their child improves them.
         F = np.where(F1 <= F, F1, F)
         X[F1 <= F, :] = u[F1 <= F, :]

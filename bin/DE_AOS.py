@@ -283,7 +283,7 @@ def EA_AOS(fun, x0, lbounds, ubounds, budget, instance):
     cost = de.DE(fun, x0, lbounds, ubounds, budget, instance, instance_best_value,
                  trace_filename, stats_filename,
                  # DE parameters
-                 FF, CR, NP, mutation = mutation,
+                 FF, CR, NP, top_NP, mutation = mutation,
                  # Offspring Metrics
                  OM_choice = OM_choice,
                  # Rewards
@@ -558,6 +558,7 @@ if __name__ == '__main__':
     FF = args.FF
     CR = args.CR
     NP = args.NP
+    top_NP = args.top_NP
     mutation = args.mutation
     budget = args.budget
     
