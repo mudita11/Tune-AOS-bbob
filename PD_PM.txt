@@ -1,13 +1,13 @@
 
 # DE parameters
-top_NP               "--top_NP "               r (0.02, 1.0)                                         # Top candidates
 mutation             "--mutation "             c (known_aos)                                         # Mutation strategy
-FF                   "--FF "                   r (0.1, 2.0)                                          # Scaling factor
-CR                   "--CR "                   r (0.1, 1.0)                                          # Crossover rate
 NP                   "--NP "                   i (50, 400)                                           # Population size
+FF                   "--FF "                   r (0.1, 2.0)                                          # Scaling factor
+top_NP               "--top_NP "               r (0.02, 1.0)                                         # Top candidates
+CR                   "--CR "                   r (0.1, 1.0)                                          # Crossover rate
 ##### AOS:  PD_PM.txt
 # Unknown_AOS
-OM_choice            "--OM_choice "            c (2)                                                 # Offspring metric selected (2:improv_wrt_median)
+OM_choice            "--OM_choice "            c (2)                                                 # Offspring metric selected (2:improv_wrt_bsf)
 # ProbabilityType
 prob_choice          "--prob_choice "          c (0)                                                 # 0:Probability_Matching
 p_min                "--p_min "                r (0.0, 1.0)                                          # Minimum probability of selection of an operator

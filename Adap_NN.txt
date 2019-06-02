@@ -1,13 +1,13 @@
 
 # DE parameters
-top_NP               "--top_NP "               r (0.02, 1.0)                                         # Top candidates
 mutation             "--mutation "             c (known_aos)                                         # Mutation strategy
-FF                   "--FF "                   r (0.1, 2.0)                                          # Scaling factor
-CR                   "--CR "                   r (0.1, 1.0)                                          # Crossover rate
 NP                   "--NP "                   i (50, 400)                                           # Population size
+FF                   "--FF "                   r (0.1, 2.0)                                          # Scaling factor
+top_NP               "--top_NP "               r (0.02, 1.0)                                         # Top candidates
+CR                   "--CR "                   r (0.1, 1.0)                                          # Crossover rate
 ##### AOS:  Adap_NN.txt
 # Unknown_AOS
-OM_choice            "--OM_choice "            c (2)                                                 # Offspring metric selected (2:improv_wrt_median)
+OM_choice            "--OM_choice "            c (2)                                                 # Offspring metric selected (2:improv_wrt_bsf)
 # ProbabilityType
 prob_choice          "--prob_choice "          c (0)                                                 # 0:Probability_Matching
 p_min                "--p_min "                r (0.0, 1.0)                                          # Minimum probability of selection of an operator
@@ -15,7 +15,7 @@ learning_rate        "--learning_rate "        r (0.0, 1.0)                     
 error_prob           "--error_prob "           r (0.0, 1.0)           | prob_choice == 0             # Probability noise
 p_max                "--p_max "                r (0.0, 1.0)                                          # Maximum probability of selection of an operator
 # RewardType
-rew_choice           "--rew_choice "           c (7)                                                 # 7:Best2gen
+rew_choice           "--rew_choice "           c (7)                                                 # 7:Sum_of_Rank
 max_gen              "--max_gen "              i (1, 50)              | rew_choice == 7              # Maximum number of generations for generational window
 fix_appl             "--fix_appl "             i (10, 150)                                           # Maximum number of successful operator applications for generational window
 theta                "--theta "                c (36, 45, 54, 90)                                    # Search direction
