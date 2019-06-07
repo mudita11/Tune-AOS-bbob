@@ -48,7 +48,7 @@ from numpy.linalg import inv
 import shutil
 
 import aos
-import de
+import de, R_de
 
 verbose = 1
 
@@ -280,7 +280,7 @@ def EA_AOS(fun, x0, lbounds, ubounds, budget, instance):
     if instance in opt:
         instance_best_value = opt[instance]
     
-    cost = de.DE(fun, x0, lbounds, ubounds, budget, instance, instance_best_value,
+    cost = R_de.DE(fun, x0, lbounds, ubounds, budget, instance, instance_best_value,
                  trace_filename, stats_filename,
                  # DE parameters
                  FF, CR, NP, top_NP, mutation = mutation,

@@ -71,7 +71,7 @@ def DE_irace_parameters(override = {}):
 # f_min = fitness minimum
 # x_min = position minimum
 
-def initialise_evaluate(lbounds, ubounds, NP, dim, fun):
+def initialise_evaluate(lbounds, ubounds, NP, dim, fun, x0):
     # Initialise population
     X = lbounds + (ubounds - lbounds) * np.random.rand(NP, dim)
     X[0, :] = x0
@@ -164,12 +164,13 @@ def DE(fun, x0, lbounds, ubounds, budget, instance, instance_best_value,
 
     lbounds, ubounds = np.array(lbounds), np.array(ubounds)
     dim = len(lbounds)
-    X, F, best, x_min, f_min = initialise_evaluate(lbounds, ubounds, NP, dim, fun)
+    X, F, best, x_min, f_min = initialise_evaluate(lbounds, ubounds, NP, dim, fun, x0)
     #stats_file = None
     #if stats_filename:
         #stats_file = open(stats_filename, 'w+')
     u = np.full((NP,dim), 0.0)
-
+    
+    stagnation_count = 0
     generation = 0
     #trace = TraceFile(trace_filename, dim = dim, optimum = instance_best_value)
     #trace.print(1, F[0], header = True)
@@ -186,16 +187,16 @@ def DE(fun, x0, lbounds, ubounds, budget, instance, instance_best_value,
         min_X = np.min(X, axis = 1)
         max_F = np.max(F)
         min_F = np.min(F)
-        if np.any((max_X - min_X) < 1e-12 * np.fabs(max_X) or np.any(max_F - min_F) < 1e-12 * np.fabs(max_F) or stagnation_count >= 500*dim:
-            X, F, best, x_min, f_min = initialise_evaluate(lbounds, ubounds, NP, dim, fun)
-
+        if (np.any((max_X - min_X) < (1e-12 * np.fabs(max_X))) or (np.any(max_F - min_F) < (1e-12 * np.fabs(max_F))) or (stagnation_count >= 500*dim)):
+            X, F, best, x_min, f_min = initialise_evaluate(lbounds, ubounds, NP, dim, fun, x0)
+        
         fill_points = np.random.randint(dim, size = NP)
         archive[:NP] = X
         union = np.copy(archive)
         union = union[~np.isnan(union[:,0])]
         if len(union) > NP:
             union = union[np.random.randint(len(union), size = NP), :]
-    
+        
         for i in range(NP):
             # No mutation strategy needs more than 5.
             r = select_samples(NP, i, 5)
@@ -218,10 +219,10 @@ def DE(fun, x0, lbounds, ubounds, budget, instance, instance_best_value,
             x_min, f_min = u[best, :], F1[best]
             stagnation_count = 0
         else:
-            stagnation_count += 1
-            # We did NP fevals, remove them, then add as many as the number
-            # needed to reach the best one (+1 because best is 0-based).
-            #trace.print(fun.evaluations - NP + best + 1, f_min)
+            stagnation_count += NP
+        # We did NP fevals, remove them, then add as many as the number
+        # needed to reach the best one (+1 because best is 0-based).
+        #trace.print(fun.evaluations - NP + best + 1, f_min)
 
         if mutation == "aos":
             aos_method.OM_Update(F, F1, F_bsf = f_min, opu = opu)
