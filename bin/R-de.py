@@ -182,9 +182,13 @@ def DE(fun, x0, lbounds, ubounds, budget, instance, instance_best_value,
     #statistics_file = open('si_vs_fe', 'a+')
     #statistics_file.write(str(fun)+'\n')
     while fun.evaluations + NP <= budget and not fun.final_target_hit:
-        np.any((np.max(X, axis = 1) - np.min(X, axis = 1)) < 1e-12 * np.fabs(np.max(X, axis = 1))):
+        max_X = np.max(X, axis = 1)
+        min_X = np.min(X, axis = 1)
+        max_F = np.max(F)
+        min_F = np.min(F)
+        if np.any((max_X - min_X) < 1e-12 * np.fabs(max_X) or np.any(max_F - min_F) < 1e-12 * np.fabs(max_F) or stagnation_count >= 500*dim:
             X, F, best, x_min, f_min = initialise_evaluate(lbounds, ubounds, NP, dim, fun)
-        
+
         fill_points = np.random.randint(dim, size = NP)
         archive[:NP] = X
         union = np.copy(archive)
@@ -212,6 +216,9 @@ def DE(fun, x0, lbounds, ubounds, budget, instance, instance_best_value,
         best = np.argmin(F1)
         if F1[best] < f_min:
             x_min, f_min = u[best, :], F1[best]
+            stagnation_count = 0
+        else:
+            stagnation_count += 1
             # We did NP fevals, remove them, then add as many as the number
             # needed to reach the best one (+1 because best is 0-based).
             #trace.print(fun.evaluations - NP + best + 1, f_min)
