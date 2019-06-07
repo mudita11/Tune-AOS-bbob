@@ -172,7 +172,8 @@ def DE(fun, x0, lbounds, ubounds, budget, instance, instance_best_value,
 
     lbounds, ubounds = np.array(lbounds), np.array(ubounds)
     dim = len(lbounds)
-    X, F, best, x_min, f_min = initialise_evaluate(lbounds, ubounds, NP, dim, fun, x0, x_min)
+    
+    X, F, best, x_min, f_min = initialise_evaluate(lbounds, ubounds, NP, dim, fun, x0)
     #stats_file = None
     #if stats_filename:
         #stats_file = open(stats_filename, 'w+')
