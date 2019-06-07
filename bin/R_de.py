@@ -71,63 +71,71 @@ def DE_irace_parameters(override = {}):
 # f_min = fitness minimum
 # x_min = position minimum
 
-def initialise_evaluate(lbounds, ubounds, NP, dim, fun, x0):
+def initialise_evaluate(lbounds, ubounds, NP, dim, fun, x0, x_min=None):
     # Initialise population
     X = lbounds + (ubounds - lbounds) * np.random.rand(NP, dim)
     X[0, :] = x0
+    if x_min is not None:
+        X[1, :] = x_min
     # Evaluate population
     F = np.apply_along_axis(fun, 1, X)
     best = np.argmin(F)
     x_min, f_min = X[best, :], F[best]
-    return X, F, best, x_min, f_min
+    u = np.full((NP,dim), 0.0)
+    archive = np.full(((budget+NP), dim), np.nan)
+    union = np.copy(archive)
+    return X, F, best, x_min, f_min, u, archive, union
 
 def DE(fun, x0, lbounds, ubounds, budget, instance, instance_best_value,
        trace_filename, stats_filename,
        FF, CR, NP, top_NP, mutation,
        OM_choice, rew_choice, rew_args, qual_choice, qual_args, prob_choice, prob_args, select_choice, select_args):
 
-    def rand1(population, samples, best, scale, NP, F, union):
+    def rand1(population, samples, best, scale, NP, F, union, x_min):
         """DE/rand/1"""
         r0, r1, r2 = samples[:3]
         return (population[r0] + scale * (population[r1] - population[r2]))
 
-    def rand2(population, samples, best, scale, NP, F, union):
+    def rand2(population, samples, best, scale, NP, F, union, x_min):
         '''DE/rand/2'''
         r0, r1, r2, r3, r4 = samples[:5]
         return (population[r0] + scale * (population[r1] - population[r2] + population[r3] - population[r4]))
 
-    def rand_to_best2(population, samples, best, scale, NP, F, union):
+    def rand_to_best2(population, samples, best, scale, NP, F, union, x_min):
         '''DE/rand-to-best/2'''
         r0, r1, r2, r3, r4 = samples[:5]
         return (population[r0] + scale * (population[best] - population[r0] + population[r1] - population[r2] + population[r3] - population[r4]))
 
-    def current_to_rand1(population, samples, best, scale, NP, F, union):
+    def current_to_rand1(population, samples, best, scale, NP, F, union, x_min):
         '''DE/current-to-rand/1'''
         r0, r1, r2 = samples[:3]
         return (population[i] + scale * (population[r0] - population[i] + population[r1] - population[r2]))
     
-    def current_to_pbest(population, samples, best, scale, NP, F, union):
+    def current_to_pbest(population, samples, best, scale, NP, F, union, x_min):
         '''current to pbest (JADE-without archive)'''
         r0, r1 = samples[:2]
         #percent_population = int(0.05 * NP)
         top_best_index = [idx for (idx,v) in sorted(enumerate(F), key = lambda x: x[1])[:int(top_NP * NP)]]
         return (population[i] + scale * (population[np.random.choice(top_best_index)] - population[i] + population[r0] - population[r1]))
     
-    def current_to_pbest_archived(population, samples, best, scale, NP, F, union):
+    def current_to_pbest_archived(population, samples, best, scale, NP, F, union, x_min):
         '''current to pbest (JADE-with archive)'''
         r0 = samples[:1]
         top_best_index = [idx for (idx,v) in sorted(enumerate(F), key = lambda x: x[1])[:int(top_NP * NP)]]
         return (population[i] + scale * (population[np.random.choice(top_best_index)] - population[i] + population[r0] - union[np.random.randint(NP)]))
     
-    def best1(population, samples, best, scale, NP, F, union):
-        r0, r1 = samples[:2]
-        return (population[best] + scale * (population[r0] - population[r1]))
-    
-    def current_to_best1(population, samples, best, scale, NP, F, union):
+    def current_to_best1(population, samples, best, scale, NP, F, union, x_min):
+        '''DE/current-to-best/1'''
         r0, r1 = samples[:2]
         return (population[i] +scale * (population[best] - population[i] + population[r0] - population[r1]))
     
-    def best2(population, samples, best, scale, NP, F, union):
+    def best1(population, samples, best, scale, NP, F, union, x_min):
+        '''DE/best/1'''
+        r0, r1 = samples[:2]
+        return (population[best] + scale * (population[r0] - population[r1]))
+    
+    def best2(population, samples, best, scale, NP, F, union, x_min):
+        '''DE/best/2'''
         r0, r1, r2, r3 = samples[:4]
         return (population[best] + scale * (population[r0] - population[r1] + population[r2] - population[r3]))
     
@@ -164,11 +172,10 @@ def DE(fun, x0, lbounds, ubounds, budget, instance, instance_best_value,
 
     lbounds, ubounds = np.array(lbounds), np.array(ubounds)
     dim = len(lbounds)
-    X, F, best, x_min, f_min = initialise_evaluate(lbounds, ubounds, NP, dim, fun, x0)
+    X, F, best, x_min, f_min = initialise_evaluate(lbounds, ubounds, NP, dim, fun, x0, x_min)
     #stats_file = None
     #if stats_filename:
         #stats_file = open(stats_filename, 'w+')
-    u = np.full((NP,dim), 0.0)
     
     stagnation_count = 0
     generation = 0
@@ -178,8 +185,6 @@ def DE(fun, x0, lbounds, ubounds, budget, instance, instance_best_value,
     # needed to reach the best one (+1 because best is 0-based).
     #trace.print(fun.evaluations - NP + best + 1, f_min)
 
-    archive = np.full(((budget+NP), dim), np.nan)
-    union = np.copy(archive)
     #statistics_file = open('si_vs_fe', 'a+')
     #statistics_file.write(str(fun)+'\n')
     while fun.evaluations + NP <= budget and not fun.final_target_hit:
@@ -188,7 +193,9 @@ def DE(fun, x0, lbounds, ubounds, budget, instance, instance_best_value,
         max_F = np.max(F)
         min_F = np.min(F)
         if (np.any((max_X - min_X) < (1e-12 * np.fabs(max_X))) or (np.any(max_F - min_F) < (1e-12 * np.fabs(max_F))) or (stagnation_count >= 500*dim)):
-            X, F, best, x_min, f_min = initialise_evaluate(lbounds, ubounds, NP, dim, fun, x0)
+            print("provoke ", generation, ((max_X - min_X) < (1e-12 * np.fabs(max_X))), (np.any(max_F - min_F) < (1e-12 * np.fabs(max_F))), (stagnation_count >= 500*dim))
+            X, F, best, x_min, f_min, u, archive, union = initialise_evaluate(lbounds, ubounds, NP, dim, fun, x0, x_min)
+            stagnation_count = 0
         
         fill_points = np.random.randint(dim, size = NP)
         archive[:NP] = X
@@ -207,7 +214,7 @@ def DE(fun, x0, lbounds, ubounds, budget, instance, instance_best_value,
             opu[i] = SI
             #statistics_file.write(str(SI)+'\n')
             mutate = mutations[SI]
-            bprime = mutate(X, r, best, FF, NP, F, union)
+            bprime = mutate(X, r, best, FF, NP, F, union, x_min)
             u[i,:] = np.where(crossovers, bprime, X[i, :])
 
         # Evaluate the child population
