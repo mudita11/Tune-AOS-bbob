@@ -71,7 +71,7 @@ def DE_irace_parameters(override = {}):
 # f_min = fitness minimum
 # x_min = position minimum
 
-def initialise_evaluate(lbounds, ubounds, NP, dim, fun, x0, x_min=None):
+def initialise_evaluate(lbounds, ubounds, NP, budget, dim, fun, x0, x_min=None):
     # Initialise population
     X = lbounds + (ubounds - lbounds) * np.random.rand(NP, dim)
     X[0, :] = x0
@@ -173,7 +173,7 @@ def DE(fun, x0, lbounds, ubounds, budget, instance, instance_best_value,
     lbounds, ubounds = np.array(lbounds), np.array(ubounds)
     dim = len(lbounds)
     
-    X, F, best, x_min, f_min = initialise_evaluate(lbounds, ubounds, NP, dim, fun, x0)
+    X, F, best, x_min, f_min, u, archive, union = initialise_evaluate(lbounds, ubounds, NP, budget, dim, fun, x0)
     #stats_file = None
     #if stats_filename:
         #stats_file = open(stats_filename, 'w+')
@@ -193,9 +193,8 @@ def DE(fun, x0, lbounds, ubounds, budget, instance, instance_best_value,
         min_X = np.min(X, axis = 1)
         max_F = np.max(F)
         min_F = np.min(F)
-        if (np.any((max_X - min_X) < (1e-12 * np.fabs(max_X))) or (np.any(max_F - min_F) < (1e-12 * np.fabs(max_F))) or (stagnation_count >= 500*dim)):
-            print("provoke ", generation, ((max_X - min_X) < (1e-12 * np.fabs(max_X))), (np.any(max_F - min_F) < (1e-12 * np.fabs(max_F))), (stagnation_count >= 500*dim))
-            X, F, best, x_min, f_min, u, archive, union = initialise_evaluate(lbounds, ubounds, NP, dim, fun, x0, x_min)
+        if (np.any((max_X - min_X) < (1e-12 * np.fabs(max_X)))) or (np.any((max_F - min_F) < (1e-12 * np.fabs(max_F)))) or (stagnation_count >= 500*dim):
+            X, F, best, x_min, f_min, u, archive, union = initialise_evaluate(lbounds, ubounds, NP, budget, dim, fun, x0, x_min)
             stagnation_count = 0
         
         fill_points = np.random.randint(dim, size = NP)
