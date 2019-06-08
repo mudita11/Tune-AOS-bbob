@@ -193,7 +193,8 @@ def DE(fun, x0, lbounds, ubounds, budget, instance, instance_best_value,
         min_X = np.min(X, axis = 1)
         max_F = np.max(F)
         min_F = np.min(F)
-        if (np.any((max_X - min_X) < (1e-12 * np.fabs(max_X)))) or (np.any((max_F - min_F) < (1e-12 * np.fabs(max_F)))) or (stagnation_count >= 500*dim):
+        if (np.any((max_X - min_X) < (1e-12 * np.fabs(max_X)))) or ((max_F - min_F) < (1e-12 * np.fabs(max_F))) or (stagnation_count >= 500*dim):
+            print("provoke ", generation, ((max_X - min_X) < (1e-12 * np.fabs(max_X))), (np.any(max_F - min_F) < (1e-12 * np.fabs(max_F))), (stagnation_count >= 500*dim))
             X, F, best, x_min, f_min, u, archive, union = initialise_evaluate(lbounds, ubounds, NP, budget, dim, fun, x0, x_min)
             stagnation_count = 0
         
