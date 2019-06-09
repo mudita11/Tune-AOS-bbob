@@ -247,8 +247,8 @@ def DE(fun, x0, lbounds, ubounds, budget, instance, instance_best_value,
 
         generation += 1
 
-    if mutation == "aos":
-        aos_method.gen_window.write_to(sys.stderr)
+    #if mutation == "aos":
+        #aos_method.gen_window.write_to(sys.stderr)
     #statistics_file.close()
 
     return f_min
