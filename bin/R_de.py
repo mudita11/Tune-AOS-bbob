@@ -83,8 +83,7 @@ def initialise_evaluate(lbounds, ubounds, NP, budget, dim, fun, x0, x_min=None):
     x_min, f_min = X[best, :], F[best]
     u = np.full((NP,dim), 0.0)
     archive = np.full(((budget+NP), dim), np.nan)
-    union = np.copy(archive)
-    return X, F, best, x_min, f_min, u, archive, union
+    return X, F, best, x_min, f_min, u, archive
 
 def DE(fun, x0, lbounds, ubounds, budget, instance, instance_best_value,
        trace_filename, stats_filename,
@@ -173,7 +172,7 @@ def DE(fun, x0, lbounds, ubounds, budget, instance, instance_best_value,
     lbounds, ubounds = np.array(lbounds), np.array(ubounds)
     dim = len(lbounds)
     
-    X, F, best, x_min, f_min, u, archive, union = initialise_evaluate(lbounds, ubounds, NP, budget, dim, fun, x0)
+    X, F, best, x_min, f_min, u, archive = initialise_evaluate(lbounds, ubounds, NP, budget, dim, fun, x0)
     #stats_file = None
     #if stats_filename:
         #stats_file = open(stats_filename, 'w+')
@@ -195,13 +194,12 @@ def DE(fun, x0, lbounds, ubounds, budget, instance, instance_best_value,
         min_F = np.min(F)
         if (np.any((max_X - min_X) < (1e-12 * np.fabs(max_X)))) or ((max_F - min_F) < (1e-12 * np.fabs(max_F))) or (stagnation_count >= 500*dim):
             print("provoke ", generation, ((max_X - min_X) < (1e-12 * np.fabs(max_X))), ((max_F - min_F) < (1e-12 * np.fabs(max_F))), (stagnation_count >= 500*dim))
-            X, F, best, x_min, f_min, u, archive, union = initialise_evaluate(lbounds, ubounds, NP, budget, dim, fun, x0, x_min)
+            X, F, best, x_min, f_min, u, archive = initialise_evaluate(lbounds, ubounds, NP, budget, dim, fun, x0, x_min)
             stagnation_count = 0
         
         fill_points = np.random.randint(dim, size = NP)
         archive[:NP] = X
-        union = np.copy(archive)
-        union = union[~np.isnan(union[:,0])]
+        union = archive[~np.isnan(archive[:,0])]
         if len(union) > NP:
             union = union[np.random.randint(len(union), size = NP), :]
         

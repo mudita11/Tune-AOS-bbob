@@ -175,14 +175,13 @@ def DE(fun, x0, lbounds, ubounds, budget, instance, instance_best_value,
     #trace.print(fun.evaluations - NP + best + 1, f_min)
 
     archive = np.full(((budget+NP), dim), np.nan)
-    union = np.copy(archive)
+    
     #statistics_file = open('si_vs_fe', 'a+')
     #statistics_file.write(str(fun)+'\n')
     while fun.evaluations + NP <= budget and not fun.final_target_hit:
         fill_points = np.random.randint(dim, size = NP)
         archive[:NP] = X
-        union = np.copy(archive)
-        union = union[~np.isnan(union[:,0])]
+        union = archive[~np.isnan(archive[:,0])]
         if len(union) > NP:
             union = union[np.random.randint(len(union), size = NP), :]
     
