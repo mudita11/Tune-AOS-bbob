@@ -924,6 +924,7 @@ class RewardType(ABC):
     # FIXME: define this in the class as @property getter doctstring and get it from it
     # MANUEL: We should add the default values here as well.
     # MUDITA: Done!
+    # MUDITA_check: To generate existiong parameter files, I had to change categorical parameter (theta, succ_lin_quad, normal_factor, alpha, beta, intensity) type to object. Because in irace_parameter() function, categorical is represented as object. But to run this code for parameter tuning, I had to change these categorical to int.
     params = [
         "max_gen",          int,        10,     [1, 50],                        "Maximum number of generations for generational window",
         "fix_appl",         int,        20,     [10, 150],                      "Maximum number of successful operator applications for generational window",
@@ -1661,6 +1662,7 @@ class Greedy_Selection(SelectionType):
 
 
 class Epsilon_Greedy_Selection(SelectionType):
+    # MUDITA_check: You have not checked the working of this definition, can you please check it?
     # Epsilon Greedy Selection
     def __init__(self, n_ops, sel_eps = 0.1):
         super().__init__(n_ops)
@@ -1678,6 +1680,7 @@ class Epsilon_Greedy_Selection(SelectionType):
 
 
 class Proportional_Greedy_Selection(SelectionType):
+    # MUDITA_check: You have not checked the working of this definition, can you please check it?
     # Combination of Proportional and Greedy Selection
     '''TODO'''
     def __init__(self, n_ops, sel_eps = 0.1):
@@ -1696,6 +1699,7 @@ class Proportional_Greedy_Selection(SelectionType):
 
 
 class Linear_Annealed_Selection(SelectionType):
+    # MUDITA_check: You have not checked the working of this definition, can you please check it?
     # Linear Annealed Selection
     '''TODO'''
     def __init__(self, n_ops, budget, popsize):

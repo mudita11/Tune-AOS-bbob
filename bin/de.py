@@ -97,13 +97,16 @@ def DE(fun, x0, lbounds, ubounds, budget, instance, instance_best_value,
         return (population[i] + scale * (population[r0] - population[i] + population[r1] - population[r2]))
     
     def current_to_pbest(population, samples, best, scale, NP, F, union):
+        '''Jade: https://ieeexplore.ieee.org/stamp/stamp.jsp?arnumber=5208221'''
         '''current to pbest (JADE-without archive)'''
         r0, r1 = samples[:2]
         #percent_population = int(0.05 * NP)
+        # MUDITA_check: In the following line top_best_index is collection of index representing top_NP number of best candidates from current parent population.
         top_best_index = [idx for (idx,v) in sorted(enumerate(F), key = lambda x: x[1])[:int(top_NP * NP)]]
         return (population[i] + scale * (population[np.random.choice(top_best_index)] - population[i] + population[r0] - population[r1]))
     
     def current_to_pbest_archived(population, samples, best, scale, NP, F, union):
+        '''Jade: https://ieeexplore.ieee.org/stamp/stamp.jsp?arnumber=5208221'''
         '''current to pbest (JADE-with archive)'''
         r0 = samples[:1]
         top_best_index = [idx for (idx,v) in sorted(enumerate(F), key = lambda x: x[1])[:int(top_NP * NP)]]
@@ -173,13 +176,15 @@ def DE(fun, x0, lbounds, ubounds, budget, instance, instance_best_value,
     # We did NP fevals, remove them, then add as many as the number
     # needed to reach the best one (+1 because best is 0-based).
     #trace.print(fun.evaluations - NP + best + 1, f_min)
-
+    
+    # MUDITA_check: archive is a mutation concept taken from Jade strategy (link to the paper given above mutation startegy current_to_pbest_archived). Its shape is initialised to be (budget + pop_size, dim) as nap values. Everytime a new parent population evolves, this population is put on archive from range(0:pop_size). Rest of the rows with nans in archive are replaced as worse parents are found compared to offspring, denoted as poor_candidates. Before this archive is used by Jade archived mutation startegy, a new list is created named union with all the non-nan rows from archive. Also if rows in union are more than pop_size, rows are randomly removed.
     archive = np.full(((budget+NP), dim), np.nan)
     
     #statistics_file = open('si_vs_fe', 'a+')
     #statistics_file.write(str(fun)+'\n')
     while fun.evaluations + NP <= budget and not fun.final_target_hit:
         fill_points = np.random.randint(dim, size = NP)
+        # MUDITA_check: Following 4 lines are added to implement above explained idea. Basically, top pop_size rows are replaced by cuurent parent population. non-nan union is created and its len of pop_size is maintained.
         archive[:NP] = X
         union = archive[~np.isnan(archive[:,0])]
         if len(union) > NP:
@@ -212,6 +217,7 @@ def DE(fun, x0, lbounds, ubounds, budget, instance, instance_best_value,
         if mutation == "aos":
             aos_method.OM_Update(F, F1, F_bsf = f_min, opu = opu)
     
+        # MUDITA_check: Following 4 lines append the archive with worse parents than offsprings.
         # Maintainng archive (a list)
         start = np.argwhere(np.isnan(archive[:,0]))[0][0]
         poor_chandidates = X[F>F1]
