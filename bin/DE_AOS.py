@@ -315,7 +315,7 @@ def batch_loop(solver, suite, observer, budget,
 
     problem_subset is a list of problem_index(es). If empty, run all problems.
     """
-    global train_or_test
+    #global train_or_test
     addressed_problems = []
     short_info = ShortInfo()
     # problem_subset = range(165, 360)
@@ -341,9 +341,9 @@ def batch_loop(solver, suite, observer, budget,
                if number_of_batches > 1 else "")), end="")
     if number_of_batches > 1:
         print("\n    MAKE SURE TO RUN ALL BATCHES", end="")
-    if train_or_test == "train":
-        print("\nDeleting folder: ", observer.result_folder)
-        shutil.rmtree(os.path.abspath(observer.result_folder), ignore_errors = True)
+    #if train_or_test == "train":
+        #print("\nDeleting folder: ", observer.result_folder)
+        #shutil.rmtree(os.path.abspath(observer.result_folder), ignore_errors = True)
     
     return addressed_problems
 
@@ -498,7 +498,7 @@ if __name__ == '__main__':
     parser.add_argument('--trace', help='file to store fevals fitness progress')
     parser.add_argument('--stats', help='file to store statistics about the evolution')
     parser.add_argument('--result_folder', default="", help='file to store statistics about the evolution')
-    parser.add_argument('--train_test', default="train", help = 'train or test option')
+    #parser.add_argument('--train_test', default="train", help = 'train or test option')
     
     class dump_irace_parameters(_StoreTrueAction):
         def __call__(self, parser, namespace, values, option_string=None):
@@ -545,7 +545,7 @@ if __name__ == '__main__':
     current_batch = args.current_batch
     number_of_batches = args.number_of_batches
     result_folder = args.result_folder
-    train_or_test = args.train_test
+    #train_or_test = args.train_test
     
     instance =  args.instance
     trace_filename = args.trace
