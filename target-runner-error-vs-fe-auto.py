@@ -60,7 +60,7 @@ err_file = prefix + ".stderr"
 outf = open(out_file, "w")
 errf = open(err_file, "w")
 #command = " ".join([exe, "-i", instance, "--seed", seed, "--trace", trace_file] + cand_params)
-command = " ".join([exe, "-i", instance, "--seed", seed] + cand_params)
+command = " ".join([exe, "-i", instance, "--seed", seed, "--result_folder", prefix] + cand_params)
 #print(command, file=errf)
 return_code = subprocess.call(command, shell=True, stdout = outf, stderr = errf)
 
@@ -78,7 +78,7 @@ if not os.path.isfile(out_file):
     target_runner_error("output file "+ out_file  +" not found!")
 
 func_file = int(int(instance)/15)+1
-lookup_file = "/local/data/data/ms1938/tf_env/Tune-AOS-bbob/arena/exdata/-EA_AOS_on_bbob_budget"+str(fevals)+"xD/data_f"+str(func_file)
+lookup_file = "/local/data/data/ms1938/tf_env/Tune-AOS-bbob/arena/exdata/"+prefix+"-EA_AOS_on_bbob_budget"+str(fevals)+"xD/data_f"+str(func_file)
 
 for file in os.listdir(lookup_file):
     if file.endswith(".dat"):
@@ -114,6 +114,6 @@ hv = hypervolume(points)
 cost = hv.compute(ref_point)
 # hypervolume is maximised but irace minimises
 trace_file.close()
-shutil.rmtree(lookup_file, ignore_errors = True)
+shutil.rmtree("/local/data/data/ms1938/tf_env/Tune-AOS-bbob/arena/exdata/"+prefix+"-EA_AOS_on_bbob_budget"+str(fevals)+"xD", ignore_errors = True)
 print(-cost)
 sys.exit(0)
