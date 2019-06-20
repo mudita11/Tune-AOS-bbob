@@ -114,6 +114,6 @@ hv = hypervolume(points)
 cost = hv.compute(ref_point)
 # hypervolume is maximised but irace minimises
 trace_file.close()
-shutil.rmtree("/local/data/data/ms1938/tf_env/Tune-AOS-bbob/arena/exdata/", ignore_errors = True)
+shutil.rmtree(lookup_file, ignore_errors = True)
 print(-cost)
 sys.exit(0)
