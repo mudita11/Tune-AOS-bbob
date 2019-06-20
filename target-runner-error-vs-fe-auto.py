@@ -78,7 +78,7 @@ if not os.path.isfile(out_file):
     target_runner_error("output file "+ out_file  +" not found!")
 
 func_file = int(int(instance)/15)+1
-lookup_file = "/local/data/data/ms1938/tf_env/Tune-AOS-bbob/arena/exdata/-EA_AOS_on_bbob_budget"+fevals+"xD/data_f"+str(func_file)
+lookup_file = "/local/data/data/ms1938/tf_env/Tune-AOS-bbob/arena/exdata/-EA_AOS_on_bbob_budget"+str(fevals)+"xD/data_f"+str(func_file)
 
 for file in os.listdir(lookup_file):
     if file.endswith(".dat"):
