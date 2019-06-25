@@ -25,7 +25,7 @@ import shutil
 
 dim = 20
 # fevals * dimension f-evaluations
-fevals = 5000 # This the value used by coco for the plots
+fevals = 10000 # This the value used by coco for the plots
 # Options are: suite_name fevals batch total_batches
 exe = "python3 ../bin/DE_AOS.py bbob {} 1 1".format(fevals)
 
