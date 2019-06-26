@@ -880,7 +880,7 @@ def AUC(operators, rank, op, decay, window_size, ndcg = True):
 
 def UCB(N, C, reward):
     '''Calculates Upper Confidence Bound as a quality'''
-    ucb = reward + C * np.sqrt( 2 * np.log(np.sum(N)) / N)
+    ucb = reward + C * np.sqrt(np.log(np.sum(N)) / N)
     ucb[np.isinf(ucb) | np.isnan(ucb)] = 0.0
     return ucb
 
@@ -1331,9 +1331,9 @@ def build_quality(choice, n_ops, qual_args, window):
     elif choice == 1:
         return Upper_confidence_bound(n_ops, window, qual_args["scaling_factor"])
     elif choice == 2:
-        return Identity(n_ops)
+        return Quality_Identity(n_ops)
     elif choice == 3:
-        return Weighted_normalised_sum(n_ops, qual_args["decay_rate"])
+        return Weighted_normalised_sum(n_ops, qual_args["decay_rate"], qual_args["q_min"])
     elif choice == 4:
         return Bellman_Equation(n_ops, qual_args["weight_reward"], qual_args["weight_old_reward"], qual_args["discount_rate"])
     else:
@@ -1347,14 +1347,16 @@ class QualityType(ABC):
     # MANUEL: We should add the default values here as well.
     # MUDITA: Added!
     params = [
-        "scaling_factor",    float, 0.5,    [0.0, 1.0],"Scaling Factor",
-        "decay_rate",        float, 0.6,    [0.0, 1.0],"Decay rate",
-        "weight_reward",     float, 1,      [0.0, 1.0],"Memory for current reward",
-        "weight_old_reward", float, 0.9,    [0.0, 1.0],"Memory for previous reward",
-        "discount_rate",     float, 0.0,    [0.01, 1.0],"Discount rate"
+        "scaling_factor",    float, 0.5,    [0.01, 100],    "Scaling Factor",
+        "decay_rate",        float, 0.6,    [0.0, 1.0],     "Decay rate",
+        "q_min",             float, 0.1,    [0.0, 1.0],     "Minimum quality attained by an operator"
+        "weight_reward",     float, 1,      [0.0, 1.0],     "Memory for current reward",
+        "weight_old_reward", float, 0.9,    [0.0, 1.0],     "Memory for previous reward",
+        "discount_rate",     float, 0.0,    [0.01, 1.0],    "Discount rate"
     ]
     params_conditions = {"scaling_factor" : [1],
                        "decay_rate": [0, 3],
+                       "q_min": [3],
                        "weight_reward": [4],
                        "weight_old_reward": [4],
                        "discount_rate": [4]}
@@ -1417,7 +1419,7 @@ Alvaro Fialho et al. “Extreme value based adaptive operator selection”.In:In
         quality = UCB(N, self.scaling_factor, reward)
         return super().check_quality(quality)
 
-class Identity(QualityType):
+class Quality_Identity(QualityType):
     def __init__(self, n_ops):
         super().__init__(n_ops)
     
@@ -1429,17 +1431,19 @@ class Weighted_normalised_sum(QualityType):
     """
 Christian  Igel  and  Martin  Kreutz.  “Operator  adaptation  in  evolution-ary  computation  and  its  application  to  structure  optimization  of  neu-ral  networks”.  In:Neurocomputing55.1-2  (2003).https : / / ac . els -cdn.com/S0925231202006288/1-s2.0-S0925231202006288-main.pdf?_tid=c6274e78-02dc-4bf6-8d92-573ce0bed4c4&acdnat=1540907096_d0cc1e2b4ca56a49587b4d55e1008a84, pp. 347–361
 """
-    def __init__(self, n_ops, decay_rate = 0.3):
+    def __init__(self, n_ops, decay_rate = 0.3, q_min = 0.1):
         super().__init__(n_ops)
         self.decay_rate = decay_rate
-        debug_print("{:>30}: decay_rate = {}".format(type(self).__name__, self.decay_rate))
+        debug_print("{:>30}: decay_rate = {}".format(type(self).__name__, self.decay_rate, self.q_min))
     
     def calc_quality(self, old_reward, reward, tran_matrix):
-        if np.sum(reward) > 0:
-            reward /= np.sum(reward)
-        else:
-            reward[:] = 1.0 / self.n_ops
-        quality = self.decay_rate * reward  + (1.0 - self.decay_rate) * self.old_quality
+        reward /= np.sum(reward)
+        quality = self.decay_rate * np.maximum(self.q_min, reward) + (1.0 - self.decay_rate) * self.old_quality
+        #if np.sum(reward) > 0:
+            #reward /= np.sum(reward)
+        #else:
+            #reward[:] = 1.0 / self.n_ops
+        #quality = self.decay_rate * reward  + (1.0 - self.decay_rate) * self.old_quality
         return super().check_quality(quality)
 
 class Bellman_Equation(QualityType):
@@ -1472,7 +1476,7 @@ def build_probability(choice, n_ops, prob_args):
     elif choice == 1:
         return Adaptive_Pursuit(n_ops, prob_args["p_min"], prob_args["p_max"], prob_args["learning_rate"])
     elif choice == 2:
-        return Adaptation_rule(n_ops, prob_args["p_min"], prob_args["learning_rate"])
+        return Probability_Identity(n_ops)
     else:
         raise ValueError("choice {} unknown".format(choice))
  
@@ -1488,7 +1492,7 @@ class ProbabilityType(ABC):
     ]
     # FIXME: We should use explicit class names or a function that converts from names to numbers
     params_conditions = {"p_min": [],
-                       "learning_rate": [1,2],
+                       "learning_rate": [1],
                        "error_prob": [0],
                        "p_max": [1]}
         
@@ -1564,23 +1568,30 @@ evolutionary computation. http://www.cs.bham.ac.uk/~wbl/biblio/gecco2005/docs/p1
         probability = self.learning_rate * delta + (1.0  - self.learning_rate) * self.old_probability
         return super().check_probability(probability)
 
-class Adaptation_rule(ProbabilityType):
-    """
-Christian Igel and Martin Kreutz. “Using fitness distributions to improvethe evolution of learning structures”. In:Evolutionary Computation, 1999.CEC 99. Proceedings of the 1999 Congress on. Vol. 3.http://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.43.2107&rep=rep1&type=pdf. IEEE. 1999, pp. 1902–1909
-"""
-    def __init__(self, n_ops, p_min = 0.025, learning_rate = 0.5):
-        super().__init__(n_ops, p_min = p_min, learning_rate = learning_rate)
-        debug_print("{:>30}: p_min = {}, learning_rate = {}".format(type(self).__name__, self.p_min, self.learning_rate))
+#class Adaptation_rule(ProbabilityType):
+#"""
+#Christian Igel and Martin Kreutz. “Using fitness distributions to improvethe evolution of learning structures”. In:Evolutionary Computation, 1999.CEC 99. Proceedings of the 1999 Congress on. Vol. 3.http://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.43.2107&rep=rep1&type=pdf. IEEE. 1999, pp. 1902–1909
+#"""
+    #def __init__(self, n_ops, p_min = 0.025, learning_rate = 0.5):
+        #super().__init__(n_ops, p_min = p_min, learning_rate = learning_rate)
+        #debug_print("{:>30}: p_min = {}, learning_rate = {}".format(type(self).__name__, self.p_min, self.learning_rate))
         
-    def calc_probability(self, quality):
+    #def calc_probability(self, quality):
         # Normalize
-        quality += self.eps
-        quality /= np.sum(quality)
+        #quality += self.eps
+        #quality /= np.sum(quality)
 
         # np.maximum is element-wise
-        probability = self.learning_rate * np.maximum(self.p_min, quality) + (1.0 - self.learning_rate) * self.old_probability
-        return super().check_probability(probability)
+        #probability = self.learning_rate * np.maximum(self.p_min, quality) + (1.0 - self.learning_rate) * self.old_probability
+        #return super().check_probability(probability)
 
+class Probability_Identity(ProbabilityType):
+    def __init__(self, n_ops):
+        super().__init__(n_ops)
+    
+    def calc_probability(self, quality):
+        probability = quality
+        return super().check_probability(probability)
 
 #############Selection definitions##############################################
 

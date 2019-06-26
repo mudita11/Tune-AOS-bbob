@@ -31,8 +31,9 @@ beta			"--beta "		c		(0, 1)						| rew_choice == 10
 intensity		"--intensity "		c		(1, 2, 3)					| rew_choice == 11
 
 # quality parameters
-scaling_factor		"--scaling_factor "	r		(0.0, 1.0)					| qual_choice == 1
+scaling_factor		"--scaling_factor "	r		(0.01, 100)					| qual_choice == 1
 decay_rate		"--decay_rate "		r		(0.0, 1.0)					| qual_choice %in% c(0, 3)
+q_min			"--q_min "		r		(0.0, 1.0)					| qual_choice == 3
 weight_reward		"--weight_reward "	r		(0.0, 1.0)					| qual_choice == 4
 weight_old_reward	"--weight_old_reward "	r		(0.0, 1.0)					| qual_choice == 4
 discount_rate		"--discount_rate "	r		(0.01, 1.0)					| qual_choice == 4

@@ -22,6 +22,8 @@ import subprocess
 import sys
 import numpy as np
 import shutil
+from inspect import currentframe, getframeinfo
+from pathlib import Path
 
 dim = 20
 # fevals * dimension f-evaluations
@@ -77,8 +79,15 @@ if not os.path.isfile(out_file):
     print(command)
     target_runner_error("output file "+ out_file  +" not found!")
 
+def get_path_to_script():
+    filename = getframeinfo(currentframe()).filename
+    parent = Path(filename).resolve().parent
+    return parent
+
 func_file = int(int(instance)/15)+1
-lookup_file = "/local/data/data/ms1938/tf_env/Tune-AOS-bbob/arena/exdata/"+prefix+"-EA_AOS_on_bbob_budget"+str(fevals)+"xD/data_f"+str(func_file)
+parent = get_path_to_script()
+lookup_folder = os.path.join(parent,"arena/exdata/")
+lookup_file = str(lookup_folder)+prefix+"-EA_AOS_on_bbob_budget"+str(fevals)+"xD/data_f"+str(func_file)
 
 for file in os.listdir(lookup_file):
     if file.endswith(".dat"):
@@ -114,6 +123,6 @@ hv = hypervolume(points)
 cost = hv.compute(ref_point)
 # hypervolume is maximised but irace minimises
 trace_file.close()
-shutil.rmtree("/local/data/data/ms1938/tf_env/Tune-AOS-bbob/arena/exdata/"+prefix+"-EA_AOS_on_bbob_budget"+str(fevals)+"xD", ignore_errors = True)
+shutil.rmtree(str(lookup_folder)+prefix+"-EA_AOS_on_bbob_budget"+str(fevals)+"xD/", ignore_errors = True)
 print(-cost)
 sys.exit(0)
