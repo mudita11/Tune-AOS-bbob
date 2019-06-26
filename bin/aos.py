@@ -1349,7 +1349,7 @@ class QualityType(ABC):
     params = [
         "scaling_factor",    float, 0.5,    [0.01, 100],    "Scaling Factor",
         "decay_rate",        float, 0.6,    [0.0, 1.0],     "Decay rate",
-        "q_min",             float, 0.1,    [0.0, 1.0],     "Minimum quality attained by an operator"
+        "q_min",             float, 0.1,    [0.0, 1.0],     "Minimum quality attained by an operator",
         "weight_reward",     float, 1,      [0.0, 1.0],     "Memory for current reward",
         "weight_old_reward", float, 0.9,    [0.0, 1.0],     "Memory for previous reward",
         "discount_rate",     float, 0.0,    [0.01, 1.0],    "Discount rate"
