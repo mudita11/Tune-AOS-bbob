@@ -982,7 +982,7 @@ class RewardType(ABC):
         # MUDITA: Relative_fitness_improv holds negtaive values which might lead to negative reward value.
         assert np.all(np.isfinite(reward))
         #self.old_reward[:] = reward[:]
-        debug_print("{:>30}:      reward={}".format(type(self).__name__, reward))
+        #debug_print("{:>30}:      reward={}".format(type(self).__name__, reward))
         return reward
 
     @abstractmethod
@@ -996,7 +996,7 @@ Jorge Maturana, Fr ́ed ́eric Lardeux, and Frederic Saubion. “Autonomousopera
 
     def __init__(self, n_ops, gen_window, fix_appl = 20):
         super().__init__(n_ops, gen_window = gen_window, fix_appl = fix_appl)
-        debug_print("{:>30}: fix_appl = {}".format(type(self).__name__, self.fix_appl))
+        #debug_print("{:>30}: fix_appl = {}".format(type(self).__name__, self.fix_appl))
     
     def calc_reward(self):
         # Pareto dominance returns the number of operators dominated by an
@@ -1032,7 +1032,7 @@ Jorge Maturana, Fr ́ed ́eric Lardeux, and Frederic Saubion. “Autonomous oper
 """
     def __init__(self, n_ops, gen_window, fix_appl = 20):
         super().__init__(n_ops, gen_window = gen_window, fix_appl = fix_appl)
-        debug_print("{:>30}: fix_appl = {}".format(type(self).__name__, self.fix_appl))
+        #debug_print("{:>30}: fix_appl = {}".format(type(self).__name__, self.fix_appl))
 
     def calc_reward(self):
         std_op = np.full(self.n_ops, np.nan)
@@ -1068,7 +1068,7 @@ class Compass_projection(RewardType):
     def __init__(self, n_ops, gen_window, fix_appl = 100, theta = 45):
         super().__init__(n_ops, gen_window = gen_window, fix_appl = fix_appl)
         self.theta = theta
-        debug_print("{:>30}: fix_appl = {}".format(type(self).__name__, self.fix_appl, self.theta))
+        #debug_print("{:>30}: fix_appl = {}".format(type(self).__name__, self.fix_appl, self.theta))
     
     def calc_reward(self):
         reward = np.zeros(self.n_ops)
@@ -1109,7 +1109,7 @@ Alvaro Fialho, Marc Schoenauer, and Mich`ele Sebag. “Toward comparison-based a
         super().__init__(n_ops, window_size = window_size, decay = decay)
         self.window = window
         self.window_size = window_size
-        debug_print("{:>30}: window_size = {}, decay = {}".format(type(self).__name__, self.window_size, self.decay))
+        #debug_print("{:>30}: window_size = {}, decay = {}".format(type(self).__name__, self.window_size, self.decay))
     
     def calc_reward(self):
         reward = np.zeros(self.n_ops)
@@ -1127,7 +1127,7 @@ Alvaro Fialho, Marc Schoenauer, and Mich`ele Sebag. “Toward comparison-based a
         super().__init__(n_ops, window_size = window_size, decay = decay)
         self.window = window
         self.window_size = window_size
-        debug_print("{:>30}: window_size = {}, decay = {}".format(type(self).__name__, self.window_size, self.decay))
+        #debug_print("{:>30}: window_size = {}, decay = {}".format(type(self).__name__, self.window_size, self.decay))
     
     def calc_reward(self):
         reward = np.zeros(self.n_ops)
@@ -1171,7 +1171,7 @@ acc=ACTIVE%20SERVICE&key=BF07A2EE685417C5%2E26BE4091F5AC6C0A%
         self.succ_lin_quad = succ_lin_quad
         self.frac = frac
         self.noise = noise
-        debug_print("{:>30}: max_gen = {}, succ_lin_quad = {}, frac = {}, noise = {}".format(type(self).__name__, self.gen_window.max_gen, self.succ_lin_quad, self.frac, self.noise))
+        #debug_print("{:>30}: max_gen = {}, succ_lin_quad = {}, frac = {}, noise = {}".format(type(self).__name__, self.gen_window.max_gen, self.succ_lin_quad, self.frac, self.noise))
     
     def calc_reward(self):
         gen_window_len = len(self.gen_window)
@@ -1206,7 +1206,7 @@ class Success_sum(RewardType):
  """
     def __init__(self, n_ops, gen_window, max_gen = 4):
         super().__init__(n_ops, gen_window = gen_window, max_gen = max_gen)
-        debug_print("{:>30}: max_gen = {}".format(type(self).__name__, self.gen_window.max_gen))
+        #debug_print("{:>30}: max_gen = {}".format(type(self).__name__, self.gen_window.max_gen))
     
     def calc_reward(self):
         gen_window_len = len(self.gen_window)
@@ -1231,8 +1231,7 @@ Alvaro Fialho, Marc Schoenauer, and Mich`ele Sebag. “Analysis of adaptive oper
         self.window = window
         self.window_size = window_size
         self.normal_factor = normal_factor
-        debug_print("{:>30}: window_size = {}, normal_factor = {}".
-                    format(type(self).__name__, self.window_size, self.normal_factor))
+        #debug_print("{:>30}: window_size = {}, normal_factor = {}".format(type(self).__name__, self.window_size, self.normal_factor))
     
     def calc_reward(self):
         reward = np.zeros(self.n_ops)
@@ -1251,7 +1250,7 @@ Christian Igel and Martin Kreutz. “Using fitness distributions to improvethe e
 """
     def __init__(self, n_ops, gen_window, max_gen = 4):
         super().__init__(n_ops, gen_window = gen_window, max_gen = max_gen)
-        debug_print("{:>30}: max_gen = {}".format(type(self).__name__, self.gen_window.max_gen))
+        #debug_print("{:>30}: max_gen = {}".format(type(self).__name__, self.gen_window.max_gen))
     
     def calc_reward(self):
         gen_window_len = len(self.gen_window)
@@ -1275,7 +1274,7 @@ Giorgos Karafotias, Agoston Endre Eiben, and Mark Hoogendoorn. “Genericparamet
         self.scaling_constant = scaling_constant
         self.alpha = alpha
         self.beta = beta
-        debug_print("{:>30}: scaling constant = {}, alpha = {}, beta = {}".format(type(self).__name__, self.scaling_constant, self.alpha, self.beta))
+        #debug_print("{:>30}: scaling constant = {}, alpha = {}, beta = {}".format(type(self).__name__, self.scaling_constant, self.alpha, self.beta))
     
     def calc_reward(self):
         # Involves calculation of best in previous two generations.
@@ -1308,8 +1307,7 @@ Alvaro Fialho, Marc Schoenauer, and Mich`ele Sebag. “Analysis of adaptiveopera
         super().__init__(n_ops, gen_window = gen_window, max_gen = max_gen)
         self.intensity = intensity
         self.alpha = alpha
-        debug_print("{:>30}: max_gen = {}, intensity = {}, alpha = {}".format(
-            type(self).__name__, self.gen_window.max_gen, self.intensity, self.alpha))
+        #debug_print("{:>30}: max_gen = {}, intensity = {}, alpha = {}".format(type(self).__name__, self.gen_window.max_gen, self.intensity, self.alpha))
     
     def calc_reward(self):
         # Normalised best sum
@@ -1384,7 +1382,7 @@ class QualityType(ABC):
             quality /= np.sum(quality)
         assert np.all(quality >= 0.0)
         self.old_quality[:] = quality[:]
-        debug_print("{:>30}:     quality={}".format(type(self).__name__, quality))
+        #debug_print("{:>30}:     quality={}".format(type(self).__name__, quality))
         return(quality)
     
     @abstractmethod
@@ -1398,7 +1396,7 @@ class Weighted_sum(QualityType):
     def __init__(self, n_ops, decay_rate = 0.6):
         super().__init__(n_ops)
         self.decay_rate = decay_rate
-        debug_print("{:>30}: decay_rate = {}".format(type(self).__name__, self.decay_rate))
+        #debug_print("{:>30}: decay_rate = {}".format(type(self).__name__, self.decay_rate))
     
     def calc_quality(self, old_reward, reward, tran_matrix):
         quality = self.decay_rate * reward + (1.0 - self.decay_rate) * self.old_quality
@@ -1412,7 +1410,7 @@ Alvaro Fialho et al. “Extreme value based adaptive operator selection”.In:In
         super().__init__(n_ops)
         self.window = window
         self.scaling_factor = scaling_factor
-        debug_print("{:>30}: scaling_factor = {}".format(type(self).__name__, self.scaling_factor))
+        #debug_print("{:>30}: scaling_factor = {}".format(type(self).__name__, self.scaling_factor))
     
     def calc_quality(self, old_reward, reward, tran_matrix):
         #window_op_sorted, N, rank = count_op(self.n_ops, self.window, self.off_met)
@@ -1436,7 +1434,7 @@ Christian  Igel  and  Martin  Kreutz.  “Operator  adaptation  in  evolution-ar
         super().__init__(n_ops)
         self.decay_rate = decay_rate
         self.q_min = q_min
-        debug_print("{:>30}: decay_rate = {}, q_min = {}".format(type(self).__name__, self.decay_rate, self.q_min))
+        #debug_print("{:>30}: decay_rate = {}, q_min = {}".format(type(self).__name__, self.decay_rate, self.q_min))
     
     def calc_quality(self, old_reward, reward, tran_matrix):
         reward += self.eps
@@ -1458,7 +1456,7 @@ Mudita Sharma,  Manuel Lopez-Ibanez, and  Dimitar  Kazakov. “Performance Asses
         self.weight_reward = weight_reward
         self.weight_old_reward = weight_old_reward
         self.discount_rate = discount_rate
-        debug_print("{:>30}: weight_reward = {}, weight_old_reward = {}, discount_rate = {}".format(type(self).__name__, self.weight_reward, self.weight_old_reward, self.discount_rate))
+        #debug_print("{:>30}: weight_reward = {}, weight_old_reward = {}, discount_rate = {}".format(type(self).__name__, self.weight_reward, self.weight_old_reward, self.discount_rate))
     
     def calc_quality(self, old_reward, reward, tran_matrix):
         # This was called P in the original RecPM paper.
@@ -1526,7 +1524,7 @@ class ProbabilityType(ABC):
         assert np.all(probability >= 0.0)
         # Just copy the values.
         self.old_probability[:] = probability[:]
-        debug_print("{:>30}: probability={}".format(type(self).__name__, probability))
+        #debug_print("{:>30}: probability={}".format(type(self).__name__, probability))
         return(probability)
 
     @abstractmethod
@@ -1544,7 +1542,7 @@ class Probability_Matching(ProbabilityType):
         super().__init__(n_ops, p_min = p_min)
         # np.finfo(np.float32).eps adds a small epsilon number that doesn't make any difference but avoids 0.
         self.error_prob = error_prob + self.eps
-        debug_print("{:>30}: p_min = {}, error_prob = {}".format(type(self).__name__, self.p_min, self.error_prob))
+        #debug_print("{:>30}: p_min = {}, error_prob = {}".format(type(self).__name__, self.p_min, self.error_prob))
         
     def calc_probability(self, quality):
         quality += self.error_prob
@@ -1563,7 +1561,7 @@ evolutionary computation. http://www.cs.bham.ac.uk/~wbl/biblio/gecco2005/docs/p1
     def __init__(self, n_ops, p_min = 0.1, p_max = 0.9, learning_rate = 0.1):
         super().__init__(n_ops, p_min = p_min, learning_rate = learning_rate)
         self.p_max = p_max
-        debug_print("{:>30}: p_min = {}, p_max = {}, learning_rate = {}".format(type(self).__name__, self.p_min, self.p_max, self.learning_rate))
+        #debug_print("{:>30}: p_min = {}, p_max = {}, learning_rate = {}".format(type(self).__name__, self.p_min, self.p_max, self.learning_rate))
 
     def calc_probability(self, quality):
         delta = np.full(quality.shape[0], self.p_min)
@@ -1681,7 +1679,7 @@ class Epsilon_Greedy_Selection(SelectionType):
     def __init__(self, n_ops, sel_eps = 0.1):
         super().__init__(n_ops)
         self.sel_eps = sel_eps
-        debug_print("{:>30}: sel_eps = {}".format(type(self).__name__, self.sel_eps))
+        #debug_print("{:>30}: sel_eps = {}".format(type(self).__name__, self.sel_eps))
     
     def perform_selection(self, probability, select_counter):
         if self.op_init_list:
@@ -1700,7 +1698,7 @@ class Proportional_Greedy_Selection(SelectionType):
     def __init__(self, n_ops, sel_eps = 0.1):
         super().__init__(n_ops)
         self.sel_eps = sel_eps
-        debug_print("{:>30}: sel_eps = {}".format(type(self).__name__, self.sel_eps))
+        #debug_print("{:>30}: sel_eps = {}".format(type(self).__name__, self.sel_eps))
 
     def perform_selection(self, probability, select_counter):
         if self.op_init_list:
