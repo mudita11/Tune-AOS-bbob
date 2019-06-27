@@ -93,11 +93,12 @@ def irace_condition(what, values, override = {}):
 class GenWindow(object):
     """FIXME (needs updating): gen_window stores the offspring metric data for each offspring when offspring is better than parent. Otherwise it stores np.nan for that offspring. Its a list. Its structre is as follows: [[[second_dim], [second_dim], [second_dim]], [[],[],[]], ...]. Second_dim represnts Offspring metric data for an offspring. The number of second dims will be equal to the population size, contained in third_dim. Third_dim represents a generation. Thus, [[],[],[]] has data of all offsprings in a generation."""
     
-    def __init__(self, n_ops, metric, max_gen = None):
+    def __init__(self, n_ops, metric, max_gen = None, fix_appl = None):
         # Private
         self.n_ops = n_ops
         self.metric = metric
         self.max_gen = max_gen
+        self.fix_appl = fix_appl
         self._gen_window_op = None
         self._gen_window_met = None
 
@@ -107,6 +108,19 @@ class GenWindow(object):
     def get_max_gen(self):
         return np.minimum(self.max_gen, len(self))
 
+    def gen_count_op(self):
+        print(self._gen_window_op)
+        N = np.zeros(self.n_ops)
+        op, count = np.unique(self._gen_window_op[(self.max_gen-1):], return_counts = True)
+        N[op] = count
+        return N
+    
+    def assign_fixappl_op(self):
+        print(self._gen_window_op)
+        N = np.ones(self.n_ops)
+        N = N * self.fix_appl
+        return N
+    
     def append(self, window_op, window_met):
         if self._gen_window_op is None:
             self._gen_window_op = np.array([window_op])
@@ -706,7 +720,7 @@ class Unknown_AOS(object):
         rew_args["popsize"] = popsize
         select_args["popsize"] = popsize
         self.reward_type = build_reward(rew_choice, n_ops, rew_args, self.gen_window, self.window)
-        self.quality_type = build_quality(qual_choice, n_ops, qual_args, self.window)
+        self.quality_type = build_quality(qual_choice, rew_choice, n_ops, qual_args, self.window, self.gen_window)
         self.probability_type = build_probability(prob_choice, n_ops, prob_args)
         self.selection_type = build_selection(select_choice, n_ops, select_args, budget)
         self.select_counter = 0
@@ -1167,6 +1181,7 @@ acc=ACTIVE%20SERVICE&key=BF07A2EE685417C5%2E26BE4091F5AC6C0A%
 """
     
     def __init__(self, n_ops, gen_window, max_gen = 10, succ_lin_quad = 1, frac = 0.01, noise = 0.0):
+        # Hyper-parameter values are first assigned here, before this point its none.
         super().__init__(n_ops, gen_window = gen_window, max_gen = max_gen)
         self.succ_lin_quad = succ_lin_quad
         self.frac = frac
@@ -1323,11 +1338,11 @@ Alvaro Fialho, Marc Schoenauer, and Mich`ele Sebag. “Analysis of adaptiveopera
 
 ##################################################Quality definitions######################################################################
 
-def build_quality(choice, n_ops, qual_args, window):
+def build_quality(choice, r_choice, n_ops, qual_args, window, gen_window):
     if choice == 0:
         return Weighted_sum(n_ops, qual_args["decay_rate"])
     elif choice == 1:
-        return Upper_confidence_bound(n_ops, window, qual_args["scaling_factor"])
+        return Upper_confidence_bound(n_ops, window, gen_window, r_choice, qual_args["scaling_factor"])
     elif choice == 2:
         return Quality_Identity(n_ops)
     elif choice == 3:
@@ -1406,15 +1421,22 @@ class Upper_confidence_bound(QualityType):
     """
 Alvaro Fialho et al. “Extreme value based adaptive operator selection”.In:International Conference on Parallel Problem Solving from Nature.https : / / hal . inria . fr / file / index / docid / 287355 / filename /rewardPPSN.pdf. Springer. 2008, pp. 175–184
 """
-    def __init__(self, n_ops, window, scaling_factor = 0.5):
+    def __init__(self, n_ops, window, gen_window, r_choice, scaling_factor = 0.5):
         super().__init__(n_ops)
         self.window = window
+        self.gen_window = gen_window
+        self.r_choice = r_choice
         self.scaling_factor = scaling_factor
         #debug_print("{:>30}: scaling_factor = {}".format(type(self).__name__, self.scaling_factor))
     
     def calc_quality(self, old_reward, reward, tran_matrix):
         #window_op_sorted, N, rank = count_op(self.n_ops, self.window, self.off_met)
-        N = self.window.count_ops()
+        if self.r_choice == 5 or self.r_choice == 6 or self.r_choice == 7 or self.r_choice == 9 or self.r_choice == 10 or self.r_choice == 11:
+            N = self.gen_window.gen_count_op()
+        elif self.r_choice == 3 or self.r_choice == 4 or self.r_choice == 8:
+            N = self.window.window.count_ops()
+        else:
+            N = self.gen_window.assign_fixappl_op()
         quality = UCB(N, self.scaling_factor, reward)
         return super().check_quality(quality)
 
@@ -1439,7 +1461,7 @@ Christian  Igel  and  Martin  Kreutz.  “Operator  adaptation  in  evolution-ar
     def calc_quality(self, old_reward, reward, tran_matrix):
         reward += self.eps
         reward /= np.sum(reward)
-        quality = self.decay_rate * np.maximum(self.q_min, reward) + (1.0 - self.decay_rate) * self.old_quality; print("quality", quality)
+        quality = self.decay_rate * np.maximum(self.q_min, reward) + (1.0 - self.decay_rate) * self.old_quality
         #if np.sum(reward) > 0:
             #reward /= np.sum(reward)
         #else:
