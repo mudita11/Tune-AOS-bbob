@@ -1367,6 +1367,7 @@ class QualityType(ABC):
     def __init__(self, n_ops):
         self.n_ops = n_ops
         self.old_quality = np.zeros(n_ops)
+        self.eps = np.finfo(self.old_quality.dtype).eps
         
     @classmethod
     def add_argument(cls, parser):
@@ -1434,11 +1435,13 @@ Christian  Igel  and  Martin  Kreutz.  “Operator  adaptation  in  evolution-ar
     def __init__(self, n_ops, decay_rate = 0.3, q_min = 0.1):
         super().__init__(n_ops)
         self.decay_rate = decay_rate
-        debug_print("{:>30}: decay_rate = {}".format(type(self).__name__, self.decay_rate, self.q_min))
+        self.q_min = q_min
+        debug_print("{:>30}: decay_rate = {}, q_min = {}".format(type(self).__name__, self.decay_rate, self.q_min))
     
     def calc_quality(self, old_reward, reward, tran_matrix):
-        reward /= np.sum(reward)
-        quality = self.decay_rate * np.maximum(self.q_min, reward) + (1.0 - self.decay_rate) * self.old_quality
+        reward += self.eps
+        reward /= np.sum(reward); print("reward", reward)
+        quality = self.decay_rate * np.maximum(self.q_min, reward) + (1.0 - self.decay_rate) * self.old_quality; print("quality", quality)
         #if np.sum(reward) > 0:
             #reward /= np.sum(reward)
         #else:
