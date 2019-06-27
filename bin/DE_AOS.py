@@ -280,7 +280,7 @@ def EA_AOS(fun, x0, lbounds, ubounds, budget, instance):
     if instance in opt:
         instance_best_value = opt[instance]
     
-    cost = R_de.DE(fun, x0, lbounds, ubounds, budget, instance, instance_best_value,
+    cost = de.DE(fun, x0, lbounds, ubounds, budget, instance, instance_best_value,
                  trace_filename, stats_filename,
                  # DE parameters
                  FF, CR, NP, top_NP, mutation = mutation,

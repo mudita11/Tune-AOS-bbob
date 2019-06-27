@@ -1440,7 +1440,7 @@ Christian  Igel  and  Martin  Kreutz.  “Operator  adaptation  in  evolution-ar
     
     def calc_quality(self, old_reward, reward, tran_matrix):
         reward += self.eps
-        reward /= np.sum(reward); print("reward", reward)
+        reward /= np.sum(reward)
         quality = self.decay_rate * np.maximum(self.q_min, reward) + (1.0 - self.decay_rate) * self.old_quality; print("quality", quality)
         #if np.sum(reward) > 0:
             #reward /= np.sum(reward)
