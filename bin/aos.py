@@ -107,19 +107,6 @@ class GenWindow(object):
 
     def get_max_gen(self):
         return np.minimum(self.max_gen, len(self))
-
-    def gen_count_op(self):
-        print(self._gen_window_op)
-        N = np.zeros(self.n_ops)
-        op, count = np.unique(self._gen_window_op[(self.max_gen-1):], return_counts = True)
-        N[op] = count
-        return N
-    
-    def assign_fixappl_op(self):
-        print(self._gen_window_op)
-        N = np.ones(self.n_ops)
-        N = N * self.fix_appl
-        return N
     
     def append(self, window_op, window_met):
         if self._gen_window_op is None:
@@ -176,6 +163,7 @@ class GenWindow(object):
     def metric_for_fix_appl_of_op(self, op, fix_appl):
         """Return a vector of metric values for last fix_appl applications of operator op"""
         # Stop at fix_appl starting from the end of the window (latest fix_applications of operators)
+        # MUDITA_check: Whats the use of gen_window_len here?
         gen_window_len = len(self)
         window_met = self._gen_window_met[:, :, self.metric]
         window_op = self._gen_window_op[:, :]
@@ -720,7 +708,7 @@ class Unknown_AOS(object):
         rew_args["popsize"] = popsize
         select_args["popsize"] = popsize
         self.reward_type = build_reward(rew_choice, n_ops, rew_args, self.gen_window, self.window)
-        self.quality_type = build_quality(qual_choice, rew_choice, n_ops, qual_args, self.window, self.gen_window)
+        self.quality_type = build_quality(qual_choice, n_ops, qual_args, self.window, self.gen_window)
         self.probability_type = build_probability(prob_choice, n_ops, prob_args)
         self.selection_type = build_selection(select_choice, n_ops, select_args, budget)
         self.select_counter = 0
@@ -830,10 +818,10 @@ class Unknown_AOS(object):
         
         self.gen_window.append(window_op, window_met)
 
-        reward = self.reward_type.calc_reward()
+        reward, num_op = self.reward_type.calc_reward()
         #old_reward = self.reward_type.old_reward
         #old_prob = self.probability_type.old_probability
-        quality = self.quality_type.calc_quality(self.old_reward, reward, self.tran_matrix)
+        quality = self.quality_type.calc_quality(self.old_reward, reward, num_op, self.tran_matrix)
         self.probability = self.probability_type.calc_probability(quality)
         self.tran_matrix = transitive_matrix(self.probability)
         self.old_reward = np.copy(reward)
@@ -904,7 +892,6 @@ def UCB(N, C, reward):
 ## MANUEL: Why not use the names instead of numbers to choose?
 ## MUDITA: Then I will have to change parameter files as well. Can we stick to numbers for now, please?
 def build_reward(choice, n_ops, rew_args, gen_window, window):
-    
     if choice == 0:
         return Pareto_Dominance(n_ops, gen_window, rew_args["fix_appl"])
     elif choice == 1:
@@ -991,13 +978,13 @@ class RewardType(ABC):
     def irace_parameters(cls, override = {}):
         return aos_irace_parameters(cls, override = override)
 
-    def check_reward(self, reward):
+    def check_reward(self, reward, num_op):
         # MANUEL: Can reward be negative?
         # MUDITA: Relative_fitness_improv holds negtaive values which might lead to negative reward value.
         assert np.all(np.isfinite(reward))
         #self.old_reward[:] = reward[:]
         #debug_print("{:>30}:      reward={}".format(type(self).__name__, reward))
-        return reward
+        return reward, num_op
 
     @abstractmethod
     def calc_reward(self):
@@ -1016,11 +1003,13 @@ Jorge Maturana, Fr ́ed ́eric Lardeux, and Frederic Saubion. “Autonomousopera
         # Pareto dominance returns the number of operators dominated by an
         # operator whereas Pareto rank gives the number of operators an
         # operator is dominated by.
+        N = np.zeros(self.n_ops)
         std_op = np.full(self.n_ops, np.nan)
         mean_op = np.full(self.n_ops, np.nan)
         for i in range(self.n_ops):
             b = self.gen_window.metric_for_fix_appl_of_op(i, self.fix_appl)
-            if len(b) > 0:
+            N[i] = len(b)
+            if N[i] > 0:
                 std_op[i] = np.std(b)
                 mean_op[i] = np.mean(b)
 
@@ -1037,7 +1026,7 @@ Jorge Maturana, Fr ́ed ́eric Lardeux, and Frederic Saubion. “Autonomousopera
                     reward[i] += 1
         if np.sum(reward) != 0:
             reward /= np.sum(reward)
-        return super().check_reward(reward)
+        return super().check_reward(reward, N)
 
 
 class Pareto_Rank(RewardType):
@@ -1049,11 +1038,13 @@ Jorge Maturana, Fr ́ed ́eric Lardeux, and Frederic Saubion. “Autonomous oper
         #debug_print("{:>30}: fix_appl = {}".format(type(self).__name__, self.fix_appl))
 
     def calc_reward(self):
+        N = np.zeros(self.n_ops)
         std_op = np.full(self.n_ops, np.nan)
         mean_op = np.full(self.n_ops, np.nan)
         for i in range(self.n_ops):
             b = self.gen_window.metric_for_fix_appl_of_op(i, self.fix_appl)
-            if len(b) > 0:
+            N[i] = len(b)
+            if N[i] > 0:
                 std_op[i] = np.std(b)
                 mean_op[i] = np.mean(b)
 
@@ -1072,7 +1063,7 @@ Jorge Maturana, Fr ́ed ́eric Lardeux, and Frederic Saubion. “Autonomous oper
         if np.sum(reward) != 0:
             reward /= np.sum(reward)
         reward = 1. - reward
-        return super().check_reward(reward)
+        return super().check_reward(reward, N)
 
 
 class Compass_projection(RewardType):
@@ -1085,6 +1076,7 @@ class Compass_projection(RewardType):
         #debug_print("{:>30}: fix_appl = {}".format(type(self).__name__, self.fix_appl, self.theta))
     
     def calc_reward(self):
+        N = np.zeros(self.n_ops)
         reward = np.zeros(self.n_ops)
         std = np.zeros(self.n_ops)
         avg = np.zeros(self.n_ops)
@@ -1093,7 +1085,8 @@ class Compass_projection(RewardType):
         #        B = [1, 1]
         for i in range(self.n_ops):
             b = self.gen_window.metric_for_fix_appl_of_op(i, self.fix_appl)
-            if len(b) > 0:
+            N[i] = len(b)
+            if N[i] > 0:
                 # Diversity
                 std[i] = np.std(b)
                 # Quality 
@@ -1113,7 +1106,7 @@ class Compass_projection(RewardType):
         # execution time of operator i over its last t applications.
         # We do not divide
         reward = reward - np.min(reward)
-        return super().check_reward(reward)
+        return super().check_reward(reward, N)
 
 class Area_Under_The_Curve(RewardType):
     """
@@ -1131,7 +1124,8 @@ Alvaro Fialho, Marc Schoenauer, and Mich`ele Sebag. “Toward comparison-based a
         window_op_sorted, rank = window.get_ops_sorted_and_rank()
         for op in range(self.n_ops):
             reward[op] = AUC(window_op_sorted, rank, op, self.window_size, self.decay)
-        return super().check_reward(reward)
+        N = window.count_ops()
+        return super().check_reward(reward, N)
 
 class Sum_of_Rank(RewardType):
     """
@@ -1153,7 +1147,8 @@ Alvaro Fialho, Marc Schoenauer, and Mich`ele Sebag. “Toward comparison-based a
             reward[i] = value[window_op_sorted == i].sum()
         if np.sum(reward) != 0:
             reward /= np.sum(reward)
-        return super().check_reward(reward)
+        N = window.count_ops()
+        return super().check_reward(reward, N)
 
 
 
@@ -1189,17 +1184,19 @@ acc=ACTIVE%20SERVICE&key=BF07A2EE685417C5%2E26BE4091F5AC6C0A%
         #debug_print("{:>30}: max_gen = {}, succ_lin_quad = {}, frac = {}, noise = {}".format(type(self).__name__, self.gen_window.max_gen, self.succ_lin_quad, self.frac, self.noise))
     
     def calc_reward(self):
+        N = np.zeros(self.n_ops)
         gen_window_len = len(self.gen_window)
         max_gen = self.gen_window.get_max_gen()
         reward = np.zeros(self.n_ops)
         for j in range(gen_window_len - max_gen, gen_window_len):
             total_success, total_unsuccess = self.gen_window.count_total_succ_unsucc(j)
+            N += total_success
             napplications = total_success + total_unsuccess
             # Avoid division by zero. If total == 0, then total_success is zero.
             napplications[napplications == 0] = 1
             reward += (total_success ** self.succ_lin_quad + self.frac * np.sum(total_success)) / napplications
         reward += self.noise
-        return super().check_reward(reward)
+        return super().check_reward(reward, N)
 
 class Immediate_Success(RewardType):
     """
@@ -1213,7 +1210,7 @@ y """
         gen_window_len = len(self.gen_window)
         total_success, total_unsuccess = self.gen_window.count_total_succ_unsucc(gen_window_len - 1)
         reward = total_success / self.popsize
-        return super().check_reward(reward)
+        return super().check_reward(reward, total_success)
 
 class Success_sum(RewardType):
     """
@@ -1224,18 +1221,20 @@ class Success_sum(RewardType):
         #debug_print("{:>30}: max_gen = {}".format(type(self).__name__, self.gen_window.max_gen))
     
     def calc_reward(self):
+        N = np.zeros(self.n_ops)
         gen_window_len = len(self.gen_window)
         max_gen = self.gen_window.get_max_gen()
         napplications = np.zeros(self.n_ops)
         reward = np.zeros(self.n_ops)
         for j in range(gen_window_len - max_gen, gen_window_len):
             total_success, total_unsuccess = self.gen_window.count_total_succ_unsucc(j)
+            N += total_success
             napplications += total_success + total_unsuccess
             value = self.gen_window.sum_at_generation(j)
             reward += value
         napplications[napplications == 0] = 1
         reward /= napplications
-        return super().check_reward(reward)
+        return super().check_reward(reward, N)
 
 class Normalised_success_sum_window(RewardType):
     """
@@ -1253,11 +1252,12 @@ Alvaro Fialho, Marc Schoenauer, and Mich`ele Sebag. “Analysis of adaptive oper
         # Create a local truncated window.
         window = self.window.truncate(self.window_size)
         N = window.count_ops()
+        N_copy = np.copy(N)
         N[N == 0] = 1
         reward = window.sum_per_op() / N
         if np.max(reward) != 0:
             reward /= np.max(reward)**self.normal_factor
-        return super().check_reward(reward)
+        return super().check_reward(reward, N_copy)
 
 class Normalised_success_sum_gen(RewardType):
     """
@@ -1268,17 +1268,18 @@ Christian Igel and Martin Kreutz. “Using fitness distributions to improvethe e
         #debug_print("{:>30}: max_gen = {}".format(type(self).__name__, self.gen_window.max_gen))
     
     def calc_reward(self):
+        N = np.zeros(self.n_ops)
         gen_window_len = len(self.gen_window)
         max_gen = self.gen_window.get_max_gen()
         reward = np.zeros(self.n_ops)
         for j in range(gen_window_len - max_gen, gen_window_len):
             total_success, total_unsuccess = self.gen_window.count_total_succ_unsucc(j)
+            N += total_success
             napplications = total_success + total_unsuccess
             napplications[napplications == 0] = 1
             value = self.gen_window.sum_at_generation(j)
             reward += value / napplications
-            
-        return super().check_reward(reward)
+        return super().check_reward(reward, N)
 
 class Best2gen(RewardType):
     """
@@ -1293,6 +1294,7 @@ Giorgos Karafotias, Agoston Endre Eiben, and Mark Hoogendoorn. “Genericparamet
     
     def calc_reward(self):
         # Involves calculation of best in previous two generations.
+        N = np.zeros(self.n_ops)
         gen_window_len = len(self.gen_window)
         total_success_t, total_unsuccess_t = self.gen_window.count_total_succ_unsucc(gen_window_len - 1)
         if gen_window_len >= 2:
@@ -1300,6 +1302,7 @@ Giorgos Karafotias, Agoston Endre Eiben, and Mark Hoogendoorn. “Genericparamet
         else:
             total_success_t_1 = 0
             total_unsuccess_t_1 = 0
+        N = total_success_t + total_success_t_1
         n_applications = (total_success_t + total_unsuccess_t) - (total_success_t_1 + total_unsuccess_t_1)
         n_applications[n_applications == 0] = 1
         
@@ -1312,7 +1315,7 @@ Giorgos Karafotias, Agoston Endre Eiben, and Mark Hoogendoorn. “Genericparamet
         else:
             best_t_1 = np.ones(self.n_ops)
         reward = self.scaling_constant * np.fabs(best_t - best_t_1) / ((best_t_1**self.alpha) * (np.fabs(n_applications)**self.beta))
-        return super().check_reward(reward)
+        return super().check_reward(reward, N)
 
 class Normalised_best_sum(RewardType):
     """
@@ -1333,16 +1336,22 @@ Alvaro Fialho, Marc Schoenauer, and Mich`ele Sebag. “Analysis of adaptiveopera
         reward = (1.0 / max_gen) * (reward**self.intensity)
         reward[reward == 0.0] = 1.0
         reward = reward / np.max(reward)**self.alpha
-        return super().check_reward(reward)
+        
+        gen_window_len = len(self.gen_window)
+        max_gen = self.gen_window.get_max_gen()
+        for j in range(gen_window_len - max_gen, gen_window_len):
+            total_success, total_unsuccess = self.gen_window.count_total_succ_unsucc(j)
+            N += total_success
+        return super().check_reward(reward, N)
 
 
 ##################################################Quality definitions######################################################################
 
-def build_quality(choice, r_choice, n_ops, qual_args, window, gen_window):
+def build_quality(choice, n_ops, qual_args, window, gen_window):
     if choice == 0:
         return Weighted_sum(n_ops, qual_args["decay_rate"])
     elif choice == 1:
-        return Upper_confidence_bound(n_ops, window, gen_window, r_choice, qual_args["scaling_factor"])
+        return Upper_confidence_bound(n_ops, window, gen_window, qual_args["scaling_factor"])
     elif choice == 2:
         return Quality_Identity(n_ops)
     elif choice == 3:
@@ -1401,7 +1410,7 @@ class QualityType(ABC):
         return(quality)
     
     @abstractmethod
-    def calc_quality(self, old_reward, reward, tran_matrix):
+    def calc_quality(self, old_reward, reward, len_var, tran_matrix):
         pass
 
 class Weighted_sum(QualityType):
@@ -1413,7 +1422,7 @@ class Weighted_sum(QualityType):
         self.decay_rate = decay_rate
         #debug_print("{:>30}: decay_rate = {}".format(type(self).__name__, self.decay_rate))
     
-    def calc_quality(self, old_reward, reward, tran_matrix):
+    def calc_quality(self, old_reward, reward, len_var, tran_matrix):
         quality = self.decay_rate * reward + (1.0 - self.decay_rate) * self.old_quality
         return super().check_quality(quality)
 
@@ -1421,30 +1430,23 @@ class Upper_confidence_bound(QualityType):
     """
 Alvaro Fialho et al. “Extreme value based adaptive operator selection”.In:International Conference on Parallel Problem Solving from Nature.https : / / hal . inria . fr / file / index / docid / 287355 / filename /rewardPPSN.pdf. Springer. 2008, pp. 175–184
 """
-    def __init__(self, n_ops, window, gen_window, r_choice, scaling_factor = 0.5):
+    def __init__(self, n_ops, window, gen_window, scaling_factor = 0.5):
         super().__init__(n_ops)
         self.window = window
         self.gen_window = gen_window
-        self.r_choice = r_choice
         self.scaling_factor = scaling_factor
         #debug_print("{:>30}: scaling_factor = {}".format(type(self).__name__, self.scaling_factor))
     
-    def calc_quality(self, old_reward, reward, tran_matrix):
-        #window_op_sorted, N, rank = count_op(self.n_ops, self.window, self.off_met)
-        if self.r_choice == 5 or self.r_choice == 6 or self.r_choice == 7 or self.r_choice == 9 or self.r_choice == 10 or self.r_choice == 11:
-            N = self.gen_window.gen_count_op()
-        elif self.r_choice == 3 or self.r_choice == 4 or self.r_choice == 8:
-            N = self.window.window.count_ops()
-        else:
-            N = self.gen_window.assign_fixappl_op()
-        quality = UCB(N, self.scaling_factor, reward)
+    def calc_quality(self, old_reward, reward, num_op, tran_matrix):
+        num_op[num_op == 0] = 1
+        quality = UCB(num_op, self.scaling_factor, reward)
         return super().check_quality(quality)
 
 class Quality_Identity(QualityType):
     def __init__(self, n_ops):
         super().__init__(n_ops)
     
-    def calc_quality(self, old_reward, reward, tran_matrix):
+    def calc_quality(self, old_reward, reward, len_var, tran_matrix):
         quality = reward
         return super().check_quality(quality)
 
@@ -1458,7 +1460,7 @@ Christian  Igel  and  Martin  Kreutz.  “Operator  adaptation  in  evolution-ar
         self.q_min = q_min
         #debug_print("{:>30}: decay_rate = {}, q_min = {}".format(type(self).__name__, self.decay_rate, self.q_min))
     
-    def calc_quality(self, old_reward, reward, tran_matrix):
+    def calc_quality(self, old_reward, reward, len_var, tran_matrix):
         reward += self.eps
         reward /= np.sum(reward)
         quality = self.decay_rate * np.maximum(self.q_min, reward) + (1.0 - self.decay_rate) * self.old_quality
@@ -1480,7 +1482,7 @@ Mudita Sharma,  Manuel Lopez-Ibanez, and  Dimitar  Kazakov. “Performance Asses
         self.discount_rate = discount_rate
         #debug_print("{:>30}: weight_reward = {}, weight_old_reward = {}, discount_rate = {}".format(type(self).__name__, self.weight_reward, self.weight_old_reward, self.discount_rate))
     
-    def calc_quality(self, old_reward, reward, tran_matrix):
+    def calc_quality(self, old_reward, reward, len_var, tran_matrix):
         # This was called P in the original RecPM paper.
         #tran_matrix = transitive_matrix(old_probability)
         quality = self.weight_reward * reward + self.weight_old_reward * old_reward
