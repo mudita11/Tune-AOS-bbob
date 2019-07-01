@@ -93,12 +93,11 @@ def irace_condition(what, values, override = {}):
 class GenWindow(object):
     """FIXME (needs updating): gen_window stores the offspring metric data for each offspring when offspring is better than parent. Otherwise it stores np.nan for that offspring. Its a list. Its structre is as follows: [[[second_dim], [second_dim], [second_dim]], [[],[],[]], ...]. Second_dim represnts Offspring metric data for an offspring. The number of second dims will be equal to the population size, contained in third_dim. Third_dim represents a generation. Thus, [[],[],[]] has data of all offsprings in a generation."""
     
-    def __init__(self, n_ops, metric, max_gen = None, fix_appl = None):
+    def __init__(self, n_ops, metric, max_gen = None):
         # Private
         self.n_ops = n_ops
         self.metric = metric
         self.max_gen = max_gen
-        self.fix_appl = fix_appl
         self._gen_window_op = None
         self._gen_window_met = None
 
@@ -708,7 +707,7 @@ class Unknown_AOS(object):
         rew_args["popsize"] = popsize
         select_args["popsize"] = popsize
         self.reward_type = build_reward(rew_choice, n_ops, rew_args, self.gen_window, self.window)
-        self.quality_type = build_quality(qual_choice, n_ops, qual_args, self.window, self.gen_window)
+        self.quality_type = build_quality(qual_choice, n_ops, qual_args)
         self.probability_type = build_probability(prob_choice, n_ops, prob_args)
         self.selection_type = build_selection(select_choice, n_ops, select_args, budget)
         self.select_counter = 0
@@ -1347,11 +1346,11 @@ Alvaro Fialho, Marc Schoenauer, and Mich`ele Sebag. “Analysis of adaptiveopera
 
 ##################################################Quality definitions######################################################################
 
-def build_quality(choice, n_ops, qual_args, window, gen_window):
+def build_quality(choice, n_ops, qual_args):
     if choice == 0:
         return Weighted_sum(n_ops, qual_args["decay_rate"])
     elif choice == 1:
-        return Upper_confidence_bound(n_ops, window, gen_window, qual_args["scaling_factor"])
+        return Upper_confidence_bound(n_ops, qual_args["scaling_factor"])
     elif choice == 2:
         return Quality_Identity(n_ops)
     elif choice == 3:
@@ -1430,10 +1429,8 @@ class Upper_confidence_bound(QualityType):
     """
 Alvaro Fialho et al. “Extreme value based adaptive operator selection”.In:International Conference on Parallel Problem Solving from Nature.https : / / hal . inria . fr / file / index / docid / 287355 / filename /rewardPPSN.pdf. Springer. 2008, pp. 175–184
 """
-    def __init__(self, n_ops, window, gen_window, scaling_factor = 0.5):
+    def __init__(self, n_ops, scaling_factor = 0.5):
         super().__init__(n_ops)
-        self.window = window
-        self.gen_window = gen_window
         self.scaling_factor = scaling_factor
         #debug_print("{:>30}: scaling_factor = {}".format(type(self).__name__, self.scaling_factor))
     
