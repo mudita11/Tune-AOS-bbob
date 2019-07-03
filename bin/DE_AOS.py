@@ -239,48 +239,8 @@ def EA_AOS(fun, x0, lbounds, ubounds, budget, instance):
     # FIXME: This should be read by the target-runner from coco or moved to a
     # text file that the target-runner can read.
     assert suite_options == "dimensions: 20" and suite_name == "bbob"
-    opt = {4:-2.525000000000e+01,
-           15: -2.098800000000e+02,
-           27: -5.688800000000e+02,
-           30: -4.620900000000e+02,
-           44: 4.066000000000e+01,
-           50: -3.930000000000e+01,
-           65: -6.639000000000e+01,
-           70: 9.953000000000e+01,
-           81: 3.085000000000e+01,
-           90: 9.294000000000e+01,
-           92: 3.820000000000e+00,
-           111: -1.897900000000e+02,
-           120: 1.238300000000e+02,
-           130: -4.840000000000e+00,
-           140: -5.191000000000e+01,
-           158: -2.033000000000e+01,
-           179: 7.789000000000e+01,
-           188: -2.229800000000e+02,
-           200: 3.270000000000e+01,
-           201: -3.943000000000e+01,
-           203: 7.640000000000e+00,
-           209: -9.925000000000e+01,
-           217: -3.475000000000e+01,
-           219: -9.247000000000e+01,
-           244: -1.479000000000e+02,
-           250: 4.739000000000e+01,
-           255: -1.694000000000e+01,
-           257: 2.731500000000e+02,
-           277: -2.602000000000e+01,
-           281: -1.035000000000e+01,
-           290: -1.367600000000e+02,
-           299: -1.455800000000e+02,
-           311: -4.860000000000e+01,
-           321: 9.980000000000e+01,
-           333: -2.231200000000e+02,
-           349: -1.335900000000e+02}
-
-    instance_best_value = 0
-    if instance in opt:
-        instance_best_value = opt[instance]
     
-    cost = de.DE(fun, x0, lbounds, ubounds, budget, instance, instance_best_value,
+    cost = de.DE(fun, x0, lbounds, ubounds, budget, instance,
                  trace_filename, stats_filename,
                  # DE parameters
                  FF, CR, NP, top_NP, mutation = mutation,

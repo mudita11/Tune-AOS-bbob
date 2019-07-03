@@ -71,7 +71,7 @@ def DE_irace_parameters(override = {}):
 # f_min = fitness minimum
 # x_min = position minimum
     
-def DE(fun, x0, lbounds, ubounds, budget, instance, instance_best_value,
+def DE(fun, x0, lbounds, ubounds, budget, instance,
        trace_filename, stats_filename,
        FF, CR, NP, top_NP, mutation,
        OM_choice, rew_choice, rew_args, qual_choice, qual_args, prob_choice, prob_args, select_choice, select_args):
