@@ -766,17 +766,15 @@ class Unknown_AOS(object):
         F_best = np.min(F)
         F_median = np.median(F)
         eps = np.finfo(np.float32).eps
-        verylarge = 10e30
+        verylarge = 1e32
         
         # See OpWindow metrics
         # Fitness is minimised but metric is maximised
         ## MANUEL: we need to think if this is the best solution to convert to maximization
         ## MUDITA: can't think of anything better than following.
-        offsp_fitness = verylarge - F1
-        if np.any(offsp_fitness < 0):
-            print("-----------------------------offspring fitness= ",offsp_fitness)
-        assert np.all(offsp_fitness >= 0)
-        
+        #offsp_fitness = verylarge - F1
+        #assert np.all(offsp_fitness >= 0)
+        offsp_fitness = -F1
         exp_offsp_fitness = np.exp(-F1)
         improv_wrt_parent = F - F1
         improv_wrt_pop = F_best - F1
@@ -980,6 +978,8 @@ class RewardType(ABC):
     def check_reward(self, reward, num_op):
         # MANUEL: Can reward be negative?
         # MUDITA: Relative_fitness_improv holds negtaive values which might lead to negative reward value.
+        if any(x != reward[0] for x in reward):
+            reward = (reward - np.min(reward)) / (np.max(reward) - np.min(reward))
         assert np.all(np.isfinite(reward))
         #self.old_reward[:] = reward[:]
         #debug_print("{:>30}:      reward={}".format(type(self).__name__, reward))
