@@ -766,7 +766,7 @@ class Unknown_AOS(object):
         F_best = np.min(F)
         F_median = np.median(F)
         eps = np.finfo(np.float32).eps
-        verylarge = 1e32
+        #verylarge = 1e32
         
         # See OpWindow metrics
         # Fitness is minimised but metric is maximised
@@ -775,14 +775,14 @@ class Unknown_AOS(object):
         #offsp_fitness = verylarge - F1
         #assert np.all(offsp_fitness >= 0)
         offsp_fitness = -F1
-        exp_offsp_fitness = np.exp(-F1)
+        exp_offsp_fitness = softmax(-F1)#np.exp(-F1)
         improv_wrt_parent = F - F1
         improv_wrt_pop = F_best - F1
         improv_wrt_bsf = F_bsf - F1
         improv_wrt_median = F_median - F1
         # MUDITA: if F_bsf = 1 and F1 = 0, then F_bsf / (F1 + eps) becomes 8388608.0 which is wrong.
-        #relative_fitness_improv = (F_bsf / (F1 + eps)) * improv_wrt_parent
-        relative_fitness_improv = (verylarge - (F_bsf / (F1 + eps))) * improv_wrt_parent
+        relative_fitness_improv = (F_bsf / (F1 + eps)) * improv_wrt_parent
+        #relative_fitness_improv = (verylarge - (F_bsf / (F1 + eps))) * improv_wrt_parent
         
         popsize = len(F)
 
@@ -810,7 +810,7 @@ class Unknown_AOS(object):
                 window_met[i, 5] = improv_wrt_median[i]
             window_met[i, 6] = relative_fitness_improv[i]
             assert window_met[i, 2] >= 0
-            assert window_met[i,6] >= 0
+            #assert window_met[i,6] >= 0
             self.window.append(window_op[i], window_met[i, :])
         
         self.gen_window.append(window_op, window_met)
@@ -980,7 +980,10 @@ class RewardType(ABC):
         # MUDITA: Relative_fitness_improv holds negtaive values which might lead to negative reward value.
         if any(x != reward[0] for x in reward):
             reward = (reward - np.min(reward)) / (np.max(reward) - np.min(reward))
-        assert np.all(np.isfinite(reward))
+        else:
+            reward = np.zeros(self.n_ops)
+        assert np.all(reward >= 0), str(reward)
+        assert np.all(np.isfinite(reward)), str(reward)
         #self.old_reward[:] = reward[:]
         #debug_print("{:>30}:      reward={}".format(type(self).__name__, reward))
         return reward, num_op
