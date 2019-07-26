@@ -71,7 +71,7 @@ def DE_irace_parameters(override = {}):
 # f_min = fitness minimum
 # x_min = position minimum
     
-def DE(fun, x0, lbounds, ubounds, budget, instance,
+def DE(fun, x0, lbounds, ubounds, budget, instance, instance_best_value,
        trace_filename, stats_filename,
        FF, CR, NP, top_NP, mutation,
        OM_choice, rew_choice, rew_args, qual_choice, qual_args, prob_choice, prob_args, select_choice, select_args):
@@ -230,8 +230,8 @@ def DE(fun, x0, lbounds, ubounds, budget, instance,
 
         generation += 1
 
-    if mutation == "aos":
-        aos_method.gen_window.write_to(sys.stderr)
+    #if mutation == "aos":
+        #aos_method.gen_window.write_to(sys.stderr)
     #statistics_file.close()
 
     return f_min
