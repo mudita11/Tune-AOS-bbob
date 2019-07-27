@@ -29,7 +29,7 @@ dim = 20
 # fevals * dimension f-evaluations
 fevals = 10000 # This the value used by coco for the plots
 # Options are: suite_name fevals batch total_batches
-exe = "python3 ../bin/DE_AOS.py bbob {} 1 1".format(fevals)
+exe = "python3 ../bin/DE_AOS.py bbob {} 1 1 --cost_best no".format(fevals)
 
 if len(sys.argv) < 5:
     print ("\nUsage: ./target-runner.py <candidate_id> <instance_id> <seed> <instance_path_name> <list of parameters>\n")
