@@ -1,0 +1,12 @@
+FF	CR	NP	top_NP	mutation	OM_choice	rew_choice	qual_choice	prob_choice	select_choice	weight_reward	weight_old_reward	discount_rate	p_min	error_prob	fix_appl	max_gen		theta		window_size	decay		succ_lin_quad		frac		noise		normal_factor		scaling_constant	alpha	beta	intensity	scaling_factor	decay_rate	q_min		learning_rate	p_max			sel_eps	 
+#Rec-PM
+0.5	0.5	100	0.05	aos	 	2		6		4		0		0		0.7		0.3			0.05		0.05	0.0		NA		NA		NA		NA		NA		NA			NA		NA		NA			NA			NA	NA	NA		NA		NA		NA		NA		NA			NA
+#AUC_MAB
+0.5	0.5	100	0.05	aos	 	2		3		1		0		1		NA		NA			NA		0.05	0.1		NA		NA		NA		50		0.4		NA			NA		NA		NA			NA			NA	NA	NA		0.1		NA		NA		NA		NA			NA
+#Compass
+0.5	0.5	100	0.05	aos	 	2		2		2		0		0		NA		NA			NA		0.05	0.1		50		NA		45		NA		NA		NA			NA		NA		NA			NA			NA	NA	NA		NA		NA		NA		NA		NA			NA
+#PR_PM
+0.5	0.5	100	0.05	aos	 	2		1		0		0		0		NA		NA			NA		0.05	0.1		50		NA		NA		NA		NA		NA			NA		NA		NA			NA			NA	NA	NA		NA		0.2		NA		NA		NA			NA
+#PMAdapSS/RFI_AA_PM
+0.5	0.5	100	0.05	aos	 	6		8		0		0		0		NA		NA			NA		0.05	0.1		NA		NA		NA		50		NA		NA			NA		NA		0			NA			NA	NA	NA		NA		0.4		NA		NA		NA			NA
+ 
