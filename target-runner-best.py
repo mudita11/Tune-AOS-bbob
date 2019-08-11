@@ -44,7 +44,7 @@ instance = sys.argv[4]
 cand_params = sys.argv[5:]
 
 # Define the stdout and stderr files.
-prefix = "c{}-{}-{}".format(candidate_id, instance_id, seed)
+prefix = "c{}-{}-{}-{}".format(candidate_id, instance_id, seed, instance)
 out_file = prefix + ".stdout"
 err_file = prefix + ".stderr"
 trace_file = prefix + "_trace.txt"
