@@ -75,6 +75,6 @@ if not os.path.isfile(out_file):
     print(command)
     target_runner_error("output file "+ out_file  +" not found!")
     
-cost=[line.rstrip('\n') for line in open(out_file)][-8]
+cost=[line.rstrip('\n') for line in open(out_file)][-10]
 print(cost)
 sys.exit(0)
