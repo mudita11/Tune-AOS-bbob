@@ -297,23 +297,24 @@ class Unknown_AOS(object):
     param_choice_help = "Offspring metric selected"
 
     known_AOS = {
-        "AP" : {
-            "OM_choice" : [6],
-            "rew_choice" : [8],
-            "qual_choice": [0],
-            "prob_choice": [0],
-            "select_choice" : [1],
-            "window_size": [20, 150],
-            "normal_factor" : [0, 1],
-            "decay_rate" : [0.0, 1.0],
-            "p_min" : [0.0, 1.0],
-            "error_prob" : [0.0, 1.0],
-        },
+        #"AP" : {
+            #"OM_choice" : [6],
+            #"rew_choice" : [8],
+            #"qual_choice": [0],
+            #"prob_choice": [0],
+            #"select_choice" : [1],
+            #"window_size": [20, 150],
+            #"normal_factor" : [0, 1],
+            #"decay_rate" : [0.0, 1.0],
+            #"p_min" : [0.0, 1.0],
+            #"error_prob" : [0.0, 1.0],
+        #},
         
+        #ADOPP and ADOPP_ext have same component choices with difference in only one hyper-parameter.
         "ADOPP" : {
             "OM_choice" : [5],
             "rew_choice" : [5],
-            "qual_choice": [3],
+            "qual_choice": [2],
             "prob_choice": [0],
             "select_choice" : [0],
             "max_gen" : [1, 50],
@@ -328,7 +329,7 @@ class Unknown_AOS(object):
         "ADOPP_ext" : {
             "OM_choice" : [5],
             "rew_choice" : [5],
-            "qual_choice": [3],
+            "qual_choice": [2],
             "prob_choice": [0],
             "select_choice":[0],
             "max_gen" : [1, 50],
@@ -541,7 +542,7 @@ class Unknown_AOS(object):
         "Op_adapt" : {
             "OM_choice" : [3],
             "rew_choice" : [9],
-            "qual_choice": [2],
+            "qual_choice": [3],
             "prob_choice": [2],
             "select_choice": [0],
             "max_gen" : [1, 50],
