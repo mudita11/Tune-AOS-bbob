@@ -507,7 +507,7 @@ if __name__ == '__main__':
         def __call__(self, parser, namespace, values, option_string=None):
             if values != None:
                 print("##### AOS:  " + values + ".txt\n")
-                print(de.DE_irace_parameters(override = dict(mutation=["known_aos"])))
+                print(de.DE_irace_parameters(override = dict(mutation=["aos"])))
                 print(aos.Unknown_AOS.irace_dump_knownAOS(values))
                 parser.exit(0)
             print(de.DE_irace_parameters())
@@ -525,7 +525,7 @@ if __name__ == '__main__':
                 with open(filename, "w") as f:
                     debug_print("Creating", filename)
                     output = "##### AOS:  " + key + ".txt\n"
-                    f.write(de.DE_irace_parameters(override = dict(mutation=["known_aos"])))
+                    f.write(de.DE_irace_parameters(override = dict(mutation=["aos"])))
                     f.write(aos.Unknown_AOS.irace_dump_knownAOS(key))
 
             parser.exit(0)

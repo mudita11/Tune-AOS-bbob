@@ -4,7 +4,7 @@ FF                   "--FF "                   r (0.1, 2.0)                     
 CR                   "--CR "                   r (0.1, 1.0)                                          # Crossover rate
 NP                   "--NP "                   i (50, 400)                                           # Population size
 top_NP               "--top_NP "               r (0.02, 1.0)                                         # Top candidates
-mutation             "--mutation "             c (known_aos)                                         # Mutation strategy
+mutation             "--mutation "             c (aos)                                               # Mutation strategy
 ##### AOS:  RFI_AA_PM.txt
 # Unknown_AOS
 OM_choice            "--OM_choice "            c (6)                                                 # Offspring metric selected (6:relative_fitness_improv)
