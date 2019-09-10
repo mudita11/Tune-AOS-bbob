@@ -530,7 +530,8 @@ if __name__ == '__main__':
 
             parser.exit(0)
         
-    parser.add_argument('--irace', nargs='?', action=dump_irace_parameters, help='dump parameters.txt for irace')
+    parser.add_argument('--irace', nargs='?', action=dump_irace_parameters, help='dump parameters.txt for irace',
+                        choices = aos.Unknown_AOS.known_AOS.keys())
 
     # DE parameters
     de.DE_add_arguments(parser)
