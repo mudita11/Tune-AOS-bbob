@@ -1554,7 +1554,6 @@ class ProbabilityType(ABC):
         assert np.all(probability >= 0.0)
         # Just copy the values.
         self.old_probability[:] = probability[:]
-        print(probability)
         #debug_print("{:>30}: probability={}".format(type(self).__name__, probability))
         return(probability)
 

@@ -1,0 +1,23 @@
+
+# DE parameters
+FF                   "--FF "                   r (0.1, 2.0)                                          # Scaling factor
+CR                   "--CR "                   r (0.1, 1.0)                                          # Crossover rate
+NP                   "--NP "                   i (50, 400)                                           # Population size
+top_NP               "--top_NP "               r (0.02, 1.0)                                         # Top candidates
+mutation             "--mutation "             c (known_aos)                                         # Mutation strategy
+##### AOS:  AUC_PM.txt
+# Unknown_AOS
+OM_choice            "--OM_choice "            c (2)                                                 # Offspring metric selected (2:improv_wrt_parent)
+# ProbabilityType
+prob_choice          "--prob_choice "          c (0)                                                 # 0:Probability_Matching
+p_min                "--p_min "                r (0.0, 1.0)                                          # Minimum probability of selection of an operator
+error_prob           "--error_prob "           r (0.0, 1.0)           | prob_choice == 0             # Probability noise
+# RewardType
+rew_choice           "--rew_choice "           c (3)                                                 # 3:Area_Under_The_Curve
+window_size          "--window_size "          i (20, 150)            | rew_choice == 3              # Size of window
+decay                "--decay "                r (0.0, 1.0)           | rew_choice == 3              # Decay value to emphasise the choice of better operator
+# QualityType
+qual_choice          "--qual_choice "          c (0)                                                 # 0:Weighted_sum
+decay_rate           "--decay_rate "           r (0.0, 1.0)           | qual_choice == 0             # Decay rate
+# SelectionType
+select_choice        "--select_choice "        c (0)                                                 # 0:Proportional_Selection

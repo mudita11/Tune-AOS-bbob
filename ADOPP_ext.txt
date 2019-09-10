@@ -1,0 +1,24 @@
+
+# DE parameters
+FF                   "--FF "                   r (0.1, 2.0)                                          # Scaling factor
+CR                   "--CR "                   r (0.1, 1.0)                                          # Crossover rate
+NP                   "--NP "                   i (50, 400)                                           # Population size
+top_NP               "--top_NP "               r (0.02, 1.0)                                         # Top candidates
+mutation             "--mutation "             c (known_aos)                                         # Mutation strategy
+##### AOS:  ADOPP_ext.txt
+# Unknown_AOS
+OM_choice            "--OM_choice "            c (5)                                                 # Offspring metric selected (5:improv_wrt_median)
+# ProbabilityType
+prob_choice          "--prob_choice "          c (0)                                                 # 0:Probability_Matching
+p_min                "--p_min "                r (0.0, 1.0)                                          # Minimum probability of selection of an operator
+error_prob           "--error_prob "           r (0.0, 1.0)           | prob_choice == 0             # Probability noise
+# RewardType
+rew_choice           "--rew_choice "           c (5)                                                 # 5:Success_Rate
+max_gen              "--max_gen "              i (1, 50)              | rew_choice == 5              # Maximum number of generations for generational window
+succ_lin_quad        "--succ_lin_quad "        c (1, 2)               | rew_choice == 5              # Operator success as linear or quadratic
+frac                 "--frac "                 r (0.0, 1.0)           | rew_choice == 5              # Fraction of sum of successes of all operators
+noise                "--noise "                r (0.0, 1.0)           | rew_choice == 5              # Small noise for randomness
+# QualityType
+qual_choice          "--qual_choice "          c (2)                                                 # 2:Quality_Identity
+# SelectionType
+select_choice        "--select_choice "        c (0)                                                 # 0:Proportional_Selection
