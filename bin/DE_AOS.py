@@ -503,6 +503,8 @@ if __name__ == '__main__':
     
     class dump_irace_parameters(_StoreTrueAction):
         def __call__(self, parser, namespace, values, option_string=None):
+            #print(values)
+            #print(option_string)
             print(de.DE_irace_parameters())
             print(aos.Unknown_AOS.irace_parameters())
             print(aos.ProbabilityType.irace_parameters())

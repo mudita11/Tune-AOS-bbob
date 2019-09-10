@@ -37,6 +37,8 @@ def parser_add_arguments(cls, parser):
 
     for i in range(0, len(cls.params), 5):
         arg, type, default, domain, help = cls.params[i:i+5]
+        if type == object:
+            type = str
         group.add_argument('--' + arg, type=type, default=default, help=help)
     # Return the names
     return cls.params[0::5]
@@ -80,9 +82,10 @@ def irace_parameter(name, type, domain, condition="", help="", override = {}):
 
 def irace_condition(what, values, override = {}):
     """Return a string representation of the condition of an irace parameter"""
+    #print("before:", values)
     if what in override:
         values = [value for value in override[what] if value in values]
-    
+    #print("after:", values)    
     if not values:
         return ""
     if len(values) == 1:

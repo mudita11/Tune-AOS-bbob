@@ -121,6 +121,7 @@ def DE(fun, x0, lbounds, ubounds, budget, instance, instance_best_value,
         return (population[i] +scale * (population[best] - population[i] + population[r0] - population[r1]))
     
     def best2(population, samples, best, scale, NP, F, union):
+        '''DE/best/2'''
         r0, r1, r2, r3 = samples[:4]
         return (population[best] + scale * (population[r0] - population[r1] + population[r2] - population[r3]))
     
