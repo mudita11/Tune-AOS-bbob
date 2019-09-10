@@ -1078,7 +1078,7 @@ class Compass_projection(RewardType):
         """
     def __init__(self, n_ops, gen_window, fix_appl = 100, theta = 45):
         super().__init__(n_ops, gen_window = gen_window, fix_appl = fix_appl)
-        self.theta = theta
+        self.theta = int(theta)
         #debug_print("{:>30}: fix_appl = {}".format(type(self).__name__, self.fix_appl, self.theta))
     
     def calc_reward(self):
@@ -1184,7 +1184,7 @@ acc=ACTIVE%20SERVICE&key=BF07A2EE685417C5%2E26BE4091F5AC6C0A%
     def __init__(self, n_ops, gen_window, max_gen = 10, succ_lin_quad = 1, frac = 0.01, noise = 0.0):
         # Hyper-parameter values are first assigned here, before this point its none.
         super().__init__(n_ops, gen_window = gen_window, max_gen = max_gen)
-        self.succ_lin_quad = succ_lin_quad
+        self.succ_lin_quad = int(succ_lin_quad)
         self.frac = frac
         self.noise = noise
         #debug_print("{:>30}: max_gen = {}, succ_lin_quad = {}, frac = {}, noise = {}".format(type(self).__name__, self.gen_window.max_gen, self.succ_lin_quad, self.frac, self.noise))
@@ -1250,7 +1250,7 @@ Alvaro Fialho, Marc Schoenauer, and Mich`ele Sebag. “Analysis of adaptive oper
         super().__init__(n_ops, window_size = window_size)
         self.window = window
         self.window_size = window_size
-        self.normal_factor = normal_factor
+        self.normal_factor = int(normal_factor)
         #debug_print("{:>30}: window_size = {}, normal_factor = {}".format(type(self).__name__, self.window_size, self.normal_factor))
     
     def calc_reward(self):
@@ -1293,9 +1293,9 @@ Giorgos Karafotias, Agoston Endre Eiben, and Mark Hoogendoorn. “Genericparamet
  """
     def __init__(self, n_ops, gen_window, scaling_constant = 1, alpha = 0, beta = 1):
         super().__init__(n_ops, gen_window)
-        self.scaling_constant = scaling_constant
-        self.alpha = alpha
-        self.beta = beta
+        self.scaling_constant = int(scaling_constant)
+        self.alpha = int(alpha)
+        self.beta = int(beta)
         #debug_print("{:>30}: scaling constant = {}, alpha = {}, beta = {}".format(type(self).__name__, self.scaling_constant, self.alpha, self.beta))
     
     def calc_reward(self):
@@ -1329,8 +1329,8 @@ Alvaro Fialho, Marc Schoenauer, and Mich`ele Sebag. “Analysis of adaptiveopera
 """
     def __init__(self, n_ops, gen_window, max_gen = 10, intensity = 1, alpha = 1):
         super().__init__(n_ops, gen_window = gen_window, max_gen = max_gen)
-        self.intensity = intensity
-        self.alpha = alpha
+        self.intensity = int(intensity)
+        self.alpha = int(alpha)
         #debug_print("{:>30}: max_gen = {}, intensity = {}, alpha = {}".format(type(self).__name__, self.gen_window.max_gen, self.intensity, self.alpha))
     
     def calc_reward(self):
@@ -1553,6 +1553,7 @@ class ProbabilityType(ABC):
         assert np.all(probability >= 0.0)
         # Just copy the values.
         self.old_probability[:] = probability[:]
+        print(probability)
         #debug_print("{:>30}: probability={}".format(type(self).__name__, probability))
         return(probability)
 
