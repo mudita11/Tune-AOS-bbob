@@ -934,14 +934,14 @@ class RewardType(ABC):
         "theta",            object,        45,     [36, 45, 54, 90],               "Search direction",
         "window_size",      int,        50,     [20, 150],                      "Size of window",
         "decay",            float,      0.4,    [0.0, 1.0],                     "Decay value to emphasise the choice of better operator",
-        "succ_lin_quad",    int,        1,      [1, 2],                         "Operator success as linear or quadratic",
+        "succ_lin_quad",    object,        1,      [1, 2],                         "Operator success as linear or quadratic",
         "frac",             float,      0.01,   [0.0, 1.0],                     "Fraction of sum of successes of all operators",
         "noise",            float,      0.0,    [0.0, 1.0],                     "Small noise for randomness",
-        "normal_factor",    int,        1,      [0, 1],                         "Choice to normalise",# MANUEL: You say that it is int but you initialise it with 0.1 # MUDITA: Its interger. Fixed.
+        "normal_factor",    object,        1,      [0, 1],                         "Choice to normalise",# MANUEL: You say that it is int but you initialise it with 0.1 # MUDITA: Its interger. Fixed.
         "scaling_constant", float,      1,      [0.001, 1.0],                   "Scaling constant",
-        "alpha",            int,        0,      [0, 1],                         "Choice to normalise by best produced by any operator",
-        "beta",             int,        1,      [0, 1],                         "Choice to include the difference between budget used by an operator in previous two generations",
-        "intensity",        int,        1,      [1, 2, 3],                      "Intensify the changes of best fitness value"
+        "alpha",            object,        0,      [0, 1],                         "Choice to normalise by best produced by any operator",
+        "beta",             object,        1,      [0, 1],                         "Choice to include the difference between budget used by an operator in previous two generations",
+        "intensity",        object,        1,      [1, 2, 3],                      "Intensify the changes of best fitness value"
     ]
     params_conditions = {"max_gen": [5, 7, 9, 11],
                        "fix_appl": [0, 1, 2],
@@ -1079,7 +1079,7 @@ class Compass_projection(RewardType):
         """
     def __init__(self, n_ops, gen_window, fix_appl = 100, theta = 45):
         super().__init__(n_ops, gen_window = gen_window, fix_appl = fix_appl)
-        self.theta = theta
+        self.theta = int(theta)
         #debug_print("{:>30}: fix_appl = {}".format(type(self).__name__, self.fix_appl, self.theta))
     
     def calc_reward(self):
@@ -1185,7 +1185,7 @@ acc=ACTIVE%20SERVICE&key=BF07A2EE685417C5%2E26BE4091F5AC6C0A%
     def __init__(self, n_ops, gen_window, max_gen = 10, succ_lin_quad = 1, frac = 0.01, noise = 0.0):
         # Hyper-parameter values are first assigned here, before this point its none.
         super().__init__(n_ops, gen_window = gen_window, max_gen = max_gen)
-        self.succ_lin_quad = succ_lin_quad
+        self.succ_lin_quad = int(succ_lin_quad)
         self.frac = frac
         self.noise = noise
         #debug_print("{:>30}: max_gen = {}, succ_lin_quad = {}, frac = {}, noise = {}".format(type(self).__name__, self.gen_window.max_gen, self.succ_lin_quad, self.frac, self.noise))
@@ -1251,7 +1251,7 @@ Alvaro Fialho, Marc Schoenauer, and Mich`ele Sebag. “Analysis of adaptive oper
         super().__init__(n_ops, window_size = window_size)
         self.window = window
         self.window_size = window_size
-        self.normal_factor = normal_factor
+        self.normal_factor = int(normal_factor)
         #debug_print("{:>30}: window_size = {}, normal_factor = {}".format(type(self).__name__, self.window_size, self.normal_factor))
     
     def calc_reward(self):
@@ -1294,9 +1294,9 @@ Giorgos Karafotias, Agoston Endre Eiben, and Mark Hoogendoorn. “Genericparamet
  """
     def __init__(self, n_ops, gen_window, scaling_constant = 1, alpha = 0, beta = 1):
         super().__init__(n_ops, gen_window)
-        self.scaling_constant = scaling_constant
-        self.alpha = alpha
-        self.beta = beta
+        self.scaling_constant = int(scaling_constant)
+        self.alpha = int(alpha)
+        self.beta = int(beta)
         #debug_print("{:>30}: scaling constant = {}, alpha = {}, beta = {}".format(type(self).__name__, self.scaling_constant, self.alpha, self.beta))
     
     def calc_reward(self):
@@ -1330,8 +1330,8 @@ Alvaro Fialho, Marc Schoenauer, and Mich`ele Sebag. “Analysis of adaptiveopera
 """
     def __init__(self, n_ops, gen_window, max_gen = 10, intensity = 1, alpha = 1):
         super().__init__(n_ops, gen_window = gen_window, max_gen = max_gen)
-        self.intensity = intensity
-        self.alpha = alpha
+        self.intensity = int(intensity)
+        self.alpha = int(alpha)
         #debug_print("{:>30}: max_gen = {}, intensity = {}, alpha = {}".format(type(self).__name__, self.gen_window.max_gen, self.intensity, self.alpha))
     
     def calc_reward(self):
@@ -1554,6 +1554,7 @@ class ProbabilityType(ABC):
         assert np.all(probability >= 0.0)
         # Just copy the values.
         self.old_probability[:] = probability[:]
+        print(probability)
         #debug_print("{:>30}: probability={}".format(type(self).__name__, probability))
         return(probability)
 
