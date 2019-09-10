@@ -280,7 +280,7 @@ def EA_AOS(fun, x0, lbounds, ubounds, budget, instance):
     if instance in opt:
         instance_best_value = opt[instance]
     
-    cost = R_de.DE(fun, x0, lbounds, ubounds, budget, instance, instance_best_value,
+    cost = de.DE(fun, x0, lbounds, ubounds, budget, instance, instance_best_value,
                  trace_filename, stats_filename,
                  # DE parameters
                  FF, CR, NP, top_NP, mutation = mutation,
@@ -315,7 +315,7 @@ def batch_loop(solver, suite, observer, budget,
 
     problem_subset is a list of problem_index(es). If empty, run all problems.
     """
-    global train_or_test
+    global train_or_test, cost_best
     addressed_problems = []
     short_info = ShortInfo()
     # problem_subset = range(165, 360)
@@ -341,7 +341,7 @@ def batch_loop(solver, suite, observer, budget,
                if number_of_batches > 1 else "")), end="")
     if number_of_batches > 1:
         print("\n    MAKE SURE TO RUN ALL BATCHES", end="")
-    if train_or_test == "train":
+    if train_or_test == "train" and cost_best == "yes":
         print("\nDeleting folder: ", observer.result_folder)
         shutil.rmtree(os.path.abspath(observer.result_folder), ignore_errors = True)
     
@@ -499,6 +499,7 @@ if __name__ == '__main__':
     parser.add_argument('--stats', help='file to store statistics about the evolution')
     parser.add_argument('--result_folder', default="", help='file to store statistics about the evolution')
     parser.add_argument('--train_test', default="train", help = 'train or test option')
+    parser.add_argument('--cost_best', default="yes", help = 'cost is minimising best or not')
     
     class dump_irace_parameters(_StoreTrueAction):
         def __call__(self, parser, namespace, values, option_string=None):
@@ -546,6 +547,7 @@ if __name__ == '__main__':
     number_of_batches = args.number_of_batches
     result_folder = args.result_folder
     train_or_test = args.train_test
+    cost_best = args.cost_best
     
     instance =  args.instance
     trace_filename = args.trace

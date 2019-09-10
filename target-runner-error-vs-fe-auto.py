@@ -21,12 +21,15 @@ import os.path
 import subprocess
 import sys
 import numpy as np
+import shutil
+from inspect import currentframe, getframeinfo
+from pathlib import Path
 
 dim = 20
 # fevals * dimension f-evaluations
 fevals = 10000 # This the value used by coco for the plots
 # Options are: suite_name fevals batch total_batches
-exe = "python3 ../bin/DE_AOS.py bbob {} 1 1 --cost_best yes".format(fevals)
+exe = "python3 ../bin/DE_AOS.py bbob {} 1 1 --cost_best no".format(fevals)
 
 if len(sys.argv) < 5:
     print ("\nUsage: ./target-runner.py <candidate_id> <instance_id> <seed> <instance_path_name> <list of parameters>\n")
@@ -47,7 +50,7 @@ cand_params = sys.argv[5:]
 prefix = "c{}-{}-{}-{}".format(candidate_id, instance_id, seed, instance)
 out_file = prefix + ".stdout"
 err_file = prefix + ".stderr"
-trace_file = prefix + "_trace.txt"
+#trace_file = prefix + "_trace.txt"
 
 # Build the command, run it and save the output to a file,
 # to parse the result from it.
@@ -58,7 +61,8 @@ trace_file = prefix + "_trace.txt"
 
 outf = open(out_file, "w")
 errf = open(err_file, "w")
-command = " ".join([exe, "-i", instance, "--seed", seed, "--trace", trace_file] + cand_params)
+#command = " ".join([exe, "-i", instance, "--seed", seed, "--trace", trace_file] + cand_params)
+command = " ".join([exe, "-i", instance, "--seed", seed, "--result_folder", prefix] + cand_params)
 #print(command, file=errf)
 return_code = subprocess.call(command, shell=True, stdout = outf, stderr = errf)
 
@@ -74,7 +78,51 @@ if return_code != 0:
 if not os.path.isfile(out_file):
     print(command)
     target_runner_error("output file "+ out_file  +" not found!")
-    
-cost=[line.rstrip('\n') for line in open(out_file)][-10]
-print(cost)
+
+def get_path_to_script():
+    filename = getframeinfo(currentframe()).filename
+    parent = Path(filename).resolve().parent
+    return parent
+
+func_file = int(int(instance)/15)+1
+parent = get_path_to_script()
+lookup_folder = os.path.join(parent,"arena/exdata/")
+lookup_file = str(lookup_folder)+prefix+"-EA_AOS_on_bbob_budget"+str(fevals)+"xD/data_f"+str(func_file)
+
+for file in os.listdir(lookup_file):
+    if file.endswith(".dat"):
+        #print(os.path.join(lookup_file,file))
+        fill = os.path.join(lookup_file,file)
+
+trace_file = open(fill, "r")
+
+# ndmin = 2, so that we get a matrix even if there is one line.
+points = np.loadtxt(trace_file, comments = "%", usecols = (0,2), ndmin = 2)
+# 0: fevals/dim, 2: error
+# We limit the minimum fevals/dim to 1.0
+points[:, 0] = np.maximum(points[:, 0], 1.0)
+points[:, 0] = np.log10(points[:, 0])
+points[:, 0] /= np.log10(fevals*dim) # Normalize
+# This check is for log10(fevals/dim)
+assert np.min(points[:,0]) >= 0.0 and np.max(points[:,0]) <= 1.0
+# We want to minimise the error values
+min_error = 10**-8
+# WARNING: if errors are typically much larger than this, we are
+# mischaracterising the actual output.
+max_error = 10**10
+points[:, 1] = np.clip(points[:, 1], min_error, max_error)
+points[:,1] = (points[:,1] - min_error) / (max_error - min_error)
+# This check is for error
+assert np.min(points[:,1]) >= 0.0 and np.max(points[:,1]) <= 1.0
+
+# See README.txt to install this
+from pygmo import hypervolume
+
+ref_point = [1.1, 1.1]
+hv = hypervolume(points)
+cost = hv.compute(ref_point)
+# hypervolume is maximised but irace minimises
+trace_file.close()
+shutil.rmtree(str(lookup_folder)+prefix+"-EA_AOS_on_bbob_budget"+str(fevals)+"xD/", ignore_errors = True)
+print(-cost)
 sys.exit(0)

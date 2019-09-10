@@ -106,7 +106,7 @@ class GenWindow(object):
 
     def get_max_gen(self):
         return np.minimum(self.max_gen, len(self))
-
+    
     def append(self, window_op, window_met):
         if self._gen_window_op is None:
             self._gen_window_op = np.array([window_op])
@@ -162,6 +162,7 @@ class GenWindow(object):
     def metric_for_fix_appl_of_op(self, op, fix_appl):
         """Return a vector of metric values for last fix_appl applications of operator op"""
         # Stop at fix_appl starting from the end of the window (latest fix_applications of operators)
+        # MUDITA_check: Whats the use of gen_window_len here?
         gen_window_len = len(self)
         window_met = self._gen_window_met[:, :, self.metric]
         window_op = self._gen_window_op[:, :]
@@ -296,23 +297,24 @@ class Unknown_AOS(object):
     param_choice_help = "Offspring metric selected"
 
     known_AOS = {
-        "AP" : {
-            "OM_choice" : [6],
-            "rew_choice" : [8],
-            "qual_choice": [0],
-            "prob_choice": [0],
-            "select_choice" : [1],
-            "window_size": [20, 150],
-            "normal_factor" : [0, 1],
-            "decay_rate" : [0.0, 1.0],
-            "p_min" : [0.0, 1.0],
-            "error_prob" : [0.0, 1.0],
-        },
+        #"AP" : {
+            #"OM_choice" : [6],
+            #"rew_choice" : [8],
+            #"qual_choice": [0],
+            #"prob_choice": [0],
+            #"select_choice" : [1],
+            #"window_size": [20, 150],
+            #"normal_factor" : [0, 1],
+            #"decay_rate" : [0.0, 1.0],
+            #"p_min" : [0.0, 1.0],
+            #"error_prob" : [0.0, 1.0],
+        #},
         
+        #ADOPP and ADOPP_ext have same component choices with difference in only one hyper-parameter.
         "ADOPP" : {
             "OM_choice" : [5],
             "rew_choice" : [5],
-            "qual_choice": [3],
+            "qual_choice": [2],
             "prob_choice": [0],
             "select_choice" : [0],
             "max_gen" : [1, 50],
@@ -327,7 +329,7 @@ class Unknown_AOS(object):
         "ADOPP_ext" : {
             "OM_choice" : [5],
             "rew_choice" : [5],
-            "qual_choice": [3],
+            "qual_choice": [2],
             "prob_choice": [0],
             "select_choice":[0],
             "max_gen" : [1, 50],
@@ -540,7 +542,7 @@ class Unknown_AOS(object):
         "Op_adapt" : {
             "OM_choice" : [3],
             "rew_choice" : [9],
-            "qual_choice": [2],
+            "qual_choice": [3],
             "prob_choice": [2],
             "select_choice": [0],
             "max_gen" : [1, 50],
@@ -706,7 +708,7 @@ class Unknown_AOS(object):
         rew_args["popsize"] = popsize
         select_args["popsize"] = popsize
         self.reward_type = build_reward(rew_choice, n_ops, rew_args, self.gen_window, self.window)
-        self.quality_type = build_quality(qual_choice, n_ops, qual_args, self.window)
+        self.quality_type = build_quality(qual_choice, n_ops, qual_args)
         self.probability_type = build_probability(prob_choice, n_ops, prob_args)
         self.selection_type = build_selection(select_choice, n_ops, select_args, budget)
         self.select_counter = 0
@@ -765,25 +767,23 @@ class Unknown_AOS(object):
         F_best = np.min(F)
         F_median = np.median(F)
         eps = np.finfo(np.float32).eps
-        verylarge = 10e30
+        #verylarge = 1e32
         
         # See OpWindow metrics
         # Fitness is minimised but metric is maximised
         ## MANUEL: we need to think if this is the best solution to convert to maximization
         ## MUDITA: can't think of anything better than following.
-        offsp_fitness = verylarge - F1
-        if np.any(offsp_fitness < 0):
-            print("-----------------------------offspring fitness= ",offsp_fitness)
-        assert np.all(offsp_fitness >= 0)
-        
-        exp_offsp_fitness = np.exp(-F1)
+        #offsp_fitness = verylarge - F1
+        #assert np.all(offsp_fitness >= 0)
+        offsp_fitness = -F1
+        exp_offsp_fitness = softmax(-F1)#np.exp(-F1)
         improv_wrt_parent = F - F1
         improv_wrt_pop = F_best - F1
         improv_wrt_bsf = F_bsf - F1
         improv_wrt_median = F_median - F1
         # MUDITA: if F_bsf = 1 and F1 = 0, then F_bsf / (F1 + eps) becomes 8388608.0 which is wrong.
-        #relative_fitness_improv = (F_bsf / (F1 + eps)) * improv_wrt_parent
-        relative_fitness_improv = (verylarge - (F_bsf / (F1 + eps))) * improv_wrt_parent
+        relative_fitness_improv = (F_bsf / (F1 + eps)) * improv_wrt_parent
+        #relative_fitness_improv = (verylarge - (F_bsf / (F1 + eps))) * improv_wrt_parent
         
         popsize = len(F)
 
@@ -811,15 +811,15 @@ class Unknown_AOS(object):
                 window_met[i, 5] = improv_wrt_median[i]
             window_met[i, 6] = relative_fitness_improv[i]
             assert window_met[i, 2] >= 0
-            assert window_met[i,6] >= 0
+            #assert window_met[i,6] >= 0
             self.window.append(window_op[i], window_met[i, :])
         
         self.gen_window.append(window_op, window_met)
 
-        reward = self.reward_type.calc_reward()
+        reward, num_op = self.reward_type.calc_reward()
         #old_reward = self.reward_type.old_reward
         #old_prob = self.probability_type.old_probability
-        quality = self.quality_type.calc_quality(self.old_reward, reward, self.tran_matrix)
+        quality = self.quality_type.calc_quality(self.old_reward, reward, num_op, self.tran_matrix)
         self.probability = self.probability_type.calc_probability(quality)
         self.tran_matrix = transitive_matrix(self.probability)
         self.old_reward = np.copy(reward)
@@ -880,7 +880,7 @@ def AUC(operators, rank, op, decay, window_size, ndcg = True):
 
 def UCB(N, C, reward):
     '''Calculates Upper Confidence Bound as a quality'''
-    ucb = reward + C * np.sqrt( 2 * np.log(np.sum(N)) / N)
+    ucb = reward + C * np.sqrt(np.log(np.sum(N)) / N)
     ucb[np.isinf(ucb) | np.isnan(ucb)] = 0.0
     return ucb
 
@@ -890,7 +890,6 @@ def UCB(N, C, reward):
 ## MANUEL: Why not use the names instead of numbers to choose?
 ## MUDITA: Then I will have to change parameter files as well. Can we stick to numbers for now, please?
 def build_reward(choice, n_ops, rew_args, gen_window, window):
-    
     if choice == 0:
         return Pareto_Dominance(n_ops, gen_window, rew_args["fix_appl"])
     elif choice == 1:
@@ -924,6 +923,7 @@ class RewardType(ABC):
     # FIXME: define this in the class as @property getter doctstring and get it from it
     # MANUEL: We should add the default values here as well.
     # MUDITA: Done!
+    # MUDITA_check: To generate existiong parameter files, I had to change categorical parameter (theta, succ_lin_quad, normal_factor, alpha, beta, intensity) type to object. Because in irace_parameter() function, categorical is represented as object. But to run this code for parameter tuning, I had to change these categorical to int.
     params = [
         "max_gen",          int,        10,     [1, 50],                        "Maximum number of generations for generational window",
         "fix_appl",         int,        20,     [10, 150],                      "Maximum number of successful operator applications for generational window",
@@ -976,13 +976,18 @@ class RewardType(ABC):
     def irace_parameters(cls, override = {}):
         return aos_irace_parameters(cls, override = override)
 
-    def check_reward(self, reward):
+    def check_reward(self, reward, num_op):
         # MANUEL: Can reward be negative?
         # MUDITA: Relative_fitness_improv holds negtaive values which might lead to negative reward value.
-        assert np.all(np.isfinite(reward))
+        if any(x != reward[0] for x in reward):
+            reward = (reward - np.min(reward)) / (np.max(reward) - np.min(reward))
+        else:
+            reward = np.zeros(self.n_ops)
+        assert np.all(reward >= 0), str(reward)
+        assert np.all(np.isfinite(reward)), str(reward)
         #self.old_reward[:] = reward[:]
-        debug_print("{:>30}:      reward={}".format(type(self).__name__, reward))
-        return reward
+        #debug_print("{:>30}:      reward={}".format(type(self).__name__, reward))
+        return reward, num_op
 
     @abstractmethod
     def calc_reward(self):
@@ -995,17 +1000,19 @@ Jorge Maturana, Fr ́ed ́eric Lardeux, and Frederic Saubion. “Autonomousopera
 
     def __init__(self, n_ops, gen_window, fix_appl = 20):
         super().__init__(n_ops, gen_window = gen_window, fix_appl = fix_appl)
-        debug_print("{:>30}: fix_appl = {}".format(type(self).__name__, self.fix_appl))
+        #debug_print("{:>30}: fix_appl = {}".format(type(self).__name__, self.fix_appl))
     
     def calc_reward(self):
         # Pareto dominance returns the number of operators dominated by an
         # operator whereas Pareto rank gives the number of operators an
         # operator is dominated by.
+        N = np.zeros(self.n_ops)
         std_op = np.full(self.n_ops, np.nan)
         mean_op = np.full(self.n_ops, np.nan)
         for i in range(self.n_ops):
             b = self.gen_window.metric_for_fix_appl_of_op(i, self.fix_appl)
-            if len(b) > 0:
+            N[i] = len(b)
+            if N[i] > 0:
                 std_op[i] = np.std(b)
                 mean_op[i] = np.mean(b)
 
@@ -1022,7 +1029,7 @@ Jorge Maturana, Fr ́ed ́eric Lardeux, and Frederic Saubion. “Autonomousopera
                     reward[i] += 1
         if np.sum(reward) != 0:
             reward /= np.sum(reward)
-        return super().check_reward(reward)
+        return super().check_reward(reward, N)
 
 
 class Pareto_Rank(RewardType):
@@ -1031,14 +1038,16 @@ Jorge Maturana, Fr ́ed ́eric Lardeux, and Frederic Saubion. “Autonomous oper
 """
     def __init__(self, n_ops, gen_window, fix_appl = 20):
         super().__init__(n_ops, gen_window = gen_window, fix_appl = fix_appl)
-        debug_print("{:>30}: fix_appl = {}".format(type(self).__name__, self.fix_appl))
+        #debug_print("{:>30}: fix_appl = {}".format(type(self).__name__, self.fix_appl))
 
     def calc_reward(self):
+        N = np.zeros(self.n_ops)
         std_op = np.full(self.n_ops, np.nan)
         mean_op = np.full(self.n_ops, np.nan)
         for i in range(self.n_ops):
             b = self.gen_window.metric_for_fix_appl_of_op(i, self.fix_appl)
-            if len(b) > 0:
+            N[i] = len(b)
+            if N[i] > 0:
                 std_op[i] = np.std(b)
                 mean_op[i] = np.mean(b)
 
@@ -1057,7 +1066,7 @@ Jorge Maturana, Fr ́ed ́eric Lardeux, and Frederic Saubion. “Autonomous oper
         if np.sum(reward) != 0:
             reward /= np.sum(reward)
         reward = 1. - reward
-        return super().check_reward(reward)
+        return super().check_reward(reward, N)
 
 
 class Compass_projection(RewardType):
@@ -1067,9 +1076,10 @@ class Compass_projection(RewardType):
     def __init__(self, n_ops, gen_window, fix_appl = 100, theta = 45):
         super().__init__(n_ops, gen_window = gen_window, fix_appl = fix_appl)
         self.theta = theta
-        debug_print("{:>30}: fix_appl = {}".format(type(self).__name__, self.fix_appl, self.theta))
+        #debug_print("{:>30}: fix_appl = {}".format(type(self).__name__, self.fix_appl, self.theta))
     
     def calc_reward(self):
+        N = np.zeros(self.n_ops)
         reward = np.zeros(self.n_ops)
         std = np.zeros(self.n_ops)
         avg = np.zeros(self.n_ops)
@@ -1078,7 +1088,8 @@ class Compass_projection(RewardType):
         #        B = [1, 1]
         for i in range(self.n_ops):
             b = self.gen_window.metric_for_fix_appl_of_op(i, self.fix_appl)
-            if len(b) > 0:
+            N[i] = len(b)
+            if N[i] > 0:
                 # Diversity
                 std[i] = np.std(b)
                 # Quality 
@@ -1098,7 +1109,7 @@ class Compass_projection(RewardType):
         # execution time of operator i over its last t applications.
         # We do not divide
         reward = reward - np.min(reward)
-        return super().check_reward(reward)
+        return super().check_reward(reward, N)
 
 class Area_Under_The_Curve(RewardType):
     """
@@ -1108,7 +1119,7 @@ Alvaro Fialho, Marc Schoenauer, and Mich`ele Sebag. “Toward comparison-based a
         super().__init__(n_ops, window_size = window_size, decay = decay)
         self.window = window
         self.window_size = window_size
-        debug_print("{:>30}: window_size = {}, decay = {}".format(type(self).__name__, self.window_size, self.decay))
+        #debug_print("{:>30}: window_size = {}, decay = {}".format(type(self).__name__, self.window_size, self.decay))
     
     def calc_reward(self):
         reward = np.zeros(self.n_ops)
@@ -1116,7 +1127,8 @@ Alvaro Fialho, Marc Schoenauer, and Mich`ele Sebag. “Toward comparison-based a
         window_op_sorted, rank = window.get_ops_sorted_and_rank()
         for op in range(self.n_ops):
             reward[op] = AUC(window_op_sorted, rank, op, self.window_size, self.decay)
-        return super().check_reward(reward)
+        N = window.count_ops()
+        return super().check_reward(reward, N)
 
 class Sum_of_Rank(RewardType):
     """
@@ -1126,7 +1138,7 @@ Alvaro Fialho, Marc Schoenauer, and Mich`ele Sebag. “Toward comparison-based a
         super().__init__(n_ops, window_size = window_size, decay = decay)
         self.window = window
         self.window_size = window_size
-        debug_print("{:>30}: window_size = {}, decay = {}".format(type(self).__name__, self.window_size, self.decay))
+        #debug_print("{:>30}: window_size = {}, decay = {}".format(type(self).__name__, self.window_size, self.decay))
     
     def calc_reward(self):
         reward = np.zeros(self.n_ops)
@@ -1138,7 +1150,8 @@ Alvaro Fialho, Marc Schoenauer, and Mich`ele Sebag. “Toward comparison-based a
             reward[i] = value[window_op_sorted == i].sum()
         if np.sum(reward) != 0:
             reward /= np.sum(reward)
-        return super().check_reward(reward)
+        N = window.count_ops()
+        return super().check_reward(reward, N)
 
 
 
@@ -1166,24 +1179,27 @@ acc=ACTIVE%20SERVICE&key=BF07A2EE685417C5%2E26BE4091F5AC6C0A%
 """
     
     def __init__(self, n_ops, gen_window, max_gen = 10, succ_lin_quad = 1, frac = 0.01, noise = 0.0):
+        # Hyper-parameter values are first assigned here, before this point its none.
         super().__init__(n_ops, gen_window = gen_window, max_gen = max_gen)
         self.succ_lin_quad = succ_lin_quad
         self.frac = frac
         self.noise = noise
-        debug_print("{:>30}: max_gen = {}, succ_lin_quad = {}, frac = {}, noise = {}".format(type(self).__name__, self.gen_window.max_gen, self.succ_lin_quad, self.frac, self.noise))
+        #debug_print("{:>30}: max_gen = {}, succ_lin_quad = {}, frac = {}, noise = {}".format(type(self).__name__, self.gen_window.max_gen, self.succ_lin_quad, self.frac, self.noise))
     
     def calc_reward(self):
+        N = np.zeros(self.n_ops)
         gen_window_len = len(self.gen_window)
         max_gen = self.gen_window.get_max_gen()
         reward = np.zeros(self.n_ops)
         for j in range(gen_window_len - max_gen, gen_window_len):
             total_success, total_unsuccess = self.gen_window.count_total_succ_unsucc(j)
+            N += total_success
             napplications = total_success + total_unsuccess
             # Avoid division by zero. If total == 0, then total_success is zero.
             napplications[napplications == 0] = 1
             reward += (total_success ** self.succ_lin_quad + self.frac * np.sum(total_success)) / napplications
         reward += self.noise
-        return super().check_reward(reward)
+        return super().check_reward(reward, N)
 
 class Immediate_Success(RewardType):
     """
@@ -1197,7 +1213,7 @@ y """
         gen_window_len = len(self.gen_window)
         total_success, total_unsuccess = self.gen_window.count_total_succ_unsucc(gen_window_len - 1)
         reward = total_success / self.popsize
-        return super().check_reward(reward)
+        return super().check_reward(reward, total_success)
 
 class Success_sum(RewardType):
     """
@@ -1205,21 +1221,23 @@ class Success_sum(RewardType):
  """
     def __init__(self, n_ops, gen_window, max_gen = 4):
         super().__init__(n_ops, gen_window = gen_window, max_gen = max_gen)
-        debug_print("{:>30}: max_gen = {}".format(type(self).__name__, self.gen_window.max_gen))
+        #debug_print("{:>30}: max_gen = {}".format(type(self).__name__, self.gen_window.max_gen))
     
     def calc_reward(self):
+        N = np.zeros(self.n_ops)
         gen_window_len = len(self.gen_window)
         max_gen = self.gen_window.get_max_gen()
         napplications = np.zeros(self.n_ops)
         reward = np.zeros(self.n_ops)
         for j in range(gen_window_len - max_gen, gen_window_len):
             total_success, total_unsuccess = self.gen_window.count_total_succ_unsucc(j)
+            N += total_success
             napplications += total_success + total_unsuccess
             value = self.gen_window.sum_at_generation(j)
             reward += value
         napplications[napplications == 0] = 1
         reward /= napplications
-        return super().check_reward(reward)
+        return super().check_reward(reward, N)
 
 class Normalised_success_sum_window(RewardType):
     """
@@ -1230,19 +1248,19 @@ Alvaro Fialho, Marc Schoenauer, and Mich`ele Sebag. “Analysis of adaptive oper
         self.window = window
         self.window_size = window_size
         self.normal_factor = normal_factor
-        debug_print("{:>30}: window_size = {}, normal_factor = {}".
-                    format(type(self).__name__, self.window_size, self.normal_factor))
+        #debug_print("{:>30}: window_size = {}, normal_factor = {}".format(type(self).__name__, self.window_size, self.normal_factor))
     
     def calc_reward(self):
         reward = np.zeros(self.n_ops)
         # Create a local truncated window.
         window = self.window.truncate(self.window_size)
         N = window.count_ops()
+        N_copy = np.copy(N)
         N[N == 0] = 1
         reward = window.sum_per_op() / N
         if np.max(reward) != 0:
             reward /= np.max(reward)**self.normal_factor
-        return super().check_reward(reward)
+        return super().check_reward(reward, N_copy)
 
 class Normalised_success_sum_gen(RewardType):
     """
@@ -1250,20 +1268,21 @@ Christian Igel and Martin Kreutz. “Using fitness distributions to improvethe e
 """
     def __init__(self, n_ops, gen_window, max_gen = 4):
         super().__init__(n_ops, gen_window = gen_window, max_gen = max_gen)
-        debug_print("{:>30}: max_gen = {}".format(type(self).__name__, self.gen_window.max_gen))
+        #debug_print("{:>30}: max_gen = {}".format(type(self).__name__, self.gen_window.max_gen))
     
     def calc_reward(self):
+        N = np.zeros(self.n_ops)
         gen_window_len = len(self.gen_window)
         max_gen = self.gen_window.get_max_gen()
         reward = np.zeros(self.n_ops)
         for j in range(gen_window_len - max_gen, gen_window_len):
             total_success, total_unsuccess = self.gen_window.count_total_succ_unsucc(j)
+            N += total_success
             napplications = total_success + total_unsuccess
             napplications[napplications == 0] = 1
             value = self.gen_window.sum_at_generation(j)
             reward += value / napplications
-            
-        return super().check_reward(reward)
+        return super().check_reward(reward, N)
 
 class Best2gen(RewardType):
     """
@@ -1274,10 +1293,11 @@ Giorgos Karafotias, Agoston Endre Eiben, and Mark Hoogendoorn. “Genericparamet
         self.scaling_constant = scaling_constant
         self.alpha = alpha
         self.beta = beta
-        debug_print("{:>30}: scaling constant = {}, alpha = {}, beta = {}".format(type(self).__name__, self.scaling_constant, self.alpha, self.beta))
+        #debug_print("{:>30}: scaling constant = {}, alpha = {}, beta = {}".format(type(self).__name__, self.scaling_constant, self.alpha, self.beta))
     
     def calc_reward(self):
         # Involves calculation of best in previous two generations.
+        N = np.zeros(self.n_ops)
         gen_window_len = len(self.gen_window)
         total_success_t, total_unsuccess_t = self.gen_window.count_total_succ_unsucc(gen_window_len - 1)
         if gen_window_len >= 2:
@@ -1285,6 +1305,7 @@ Giorgos Karafotias, Agoston Endre Eiben, and Mark Hoogendoorn. “Genericparamet
         else:
             total_success_t_1 = 0
             total_unsuccess_t_1 = 0
+        N = total_success_t + total_success_t_1
         n_applications = (total_success_t + total_unsuccess_t) - (total_success_t_1 + total_unsuccess_t_1)
         n_applications[n_applications == 0] = 1
         
@@ -1297,7 +1318,7 @@ Giorgos Karafotias, Agoston Endre Eiben, and Mark Hoogendoorn. “Genericparamet
         else:
             best_t_1 = np.ones(self.n_ops)
         reward = self.scaling_constant * np.fabs(best_t - best_t_1) / ((best_t_1**self.alpha) * (np.fabs(n_applications)**self.beta))
-        return super().check_reward(reward)
+        return super().check_reward(reward, N)
 
 class Normalised_best_sum(RewardType):
     """
@@ -1307,8 +1328,7 @@ Alvaro Fialho, Marc Schoenauer, and Mich`ele Sebag. “Analysis of adaptiveopera
         super().__init__(n_ops, gen_window = gen_window, max_gen = max_gen)
         self.intensity = intensity
         self.alpha = alpha
-        debug_print("{:>30}: max_gen = {}, intensity = {}, alpha = {}".format(
-            type(self).__name__, self.gen_window.max_gen, self.intensity, self.alpha))
+        #debug_print("{:>30}: max_gen = {}, intensity = {}, alpha = {}".format(type(self).__name__, self.gen_window.max_gen, self.intensity, self.alpha))
     
     def calc_reward(self):
         # Normalised best sum
@@ -1319,20 +1339,27 @@ Alvaro Fialho, Marc Schoenauer, and Mich`ele Sebag. “Analysis of adaptiveopera
         reward = (1.0 / max_gen) * (reward**self.intensity)
         reward[reward == 0.0] = 1.0
         reward = reward / np.max(reward)**self.alpha
-        return super().check_reward(reward)
+        
+        N = np.zeros(self.n_ops)
+        gen_window_len = len(self.gen_window)
+        max_gen = self.gen_window.get_max_gen()
+        for j in range(gen_window_len - max_gen, gen_window_len):
+            total_success, total_unsuccess = self.gen_window.count_total_succ_unsucc(j)
+            N += total_success
+        return super().check_reward(reward, N)
 
 
 ##################################################Quality definitions######################################################################
 
-def build_quality(choice, n_ops, qual_args, window):
+def build_quality(choice, n_ops, qual_args):
     if choice == 0:
         return Weighted_sum(n_ops, qual_args["decay_rate"])
     elif choice == 1:
-        return Upper_confidence_bound(n_ops, window, qual_args["scaling_factor"])
+        return Upper_confidence_bound(n_ops, qual_args["scaling_factor"])
     elif choice == 2:
-        return Identity(n_ops)
+        return Quality_Identity(n_ops)
     elif choice == 3:
-        return Weighted_normalised_sum(n_ops, qual_args["decay_rate"])
+        return Weighted_normalised_sum(n_ops, qual_args["decay_rate"], qual_args["q_min"])
     elif choice == 4:
         return Bellman_Equation(n_ops, qual_args["weight_reward"], qual_args["weight_old_reward"], qual_args["discount_rate"])
     else:
@@ -1346,14 +1373,16 @@ class QualityType(ABC):
     # MANUEL: We should add the default values here as well.
     # MUDITA: Added!
     params = [
-        "scaling_factor",    float, 0.5,    [0.0, 1.0],"Scaling Factor",
-        "decay_rate",        float, 0.6,    [0.0, 1.0],"Decay rate",
-        "weight_reward",     float, 1,      [0.0, 1.0],"Memory for current reward",
-        "weight_old_reward", float, 0.9,    [0.0, 1.0],"Memory for previous reward",
-        "discount_rate",     float, 0.0,    [0.01, 1.0],"Discount rate"
+        "scaling_factor",    float, 0.5,    [0.01, 100],    "Scaling Factor",
+        "decay_rate",        float, 0.6,    [0.0, 1.0],     "Decay rate",
+        "q_min",             float, 0.1,    [0.0, 1.0],     "Minimum quality attained by an operator",
+        "weight_reward",     float, 1,      [0.0, 1.0],     "Memory for current reward",
+        "weight_old_reward", float, 0.9,    [0.0, 1.0],     "Memory for previous reward",
+        "discount_rate",     float, 0.0,    [0.01, 1.0],    "Discount rate"
     ]
     params_conditions = {"scaling_factor" : [1],
                        "decay_rate": [0, 3],
+                       "q_min": [3],
                        "weight_reward": [4],
                        "weight_old_reward": [4],
                        "discount_rate": [4]}
@@ -1364,6 +1393,7 @@ class QualityType(ABC):
     def __init__(self, n_ops):
         self.n_ops = n_ops
         self.old_quality = np.zeros(n_ops)
+        self.eps = np.finfo(self.old_quality.dtype).eps
         
     @classmethod
     def add_argument(cls, parser):
@@ -1380,11 +1410,11 @@ class QualityType(ABC):
             quality /= np.sum(quality)
         assert np.all(quality >= 0.0)
         self.old_quality[:] = quality[:]
-        debug_print("{:>30}:     quality={}".format(type(self).__name__, quality))
+        #debug_print("{:>30}:     quality={}".format(type(self).__name__, quality))
         return(quality)
     
     @abstractmethod
-    def calc_quality(self, old_reward, reward, tran_matrix):
+    def calc_quality(self, old_reward, reward, len_var, tran_matrix):
         pass
 
 class Weighted_sum(QualityType):
@@ -1394,9 +1424,9 @@ class Weighted_sum(QualityType):
     def __init__(self, n_ops, decay_rate = 0.6):
         super().__init__(n_ops)
         self.decay_rate = decay_rate
-        debug_print("{:>30}: decay_rate = {}".format(type(self).__name__, self.decay_rate))
+        #debug_print("{:>30}: decay_rate = {}".format(type(self).__name__, self.decay_rate))
     
-    def calc_quality(self, old_reward, reward, tran_matrix):
+    def calc_quality(self, old_reward, reward, len_var, tran_matrix):
         quality = self.decay_rate * reward + (1.0 - self.decay_rate) * self.old_quality
         return super().check_quality(quality)
 
@@ -1404,23 +1434,21 @@ class Upper_confidence_bound(QualityType):
     """
 Alvaro Fialho et al. “Extreme value based adaptive operator selection”.In:International Conference on Parallel Problem Solving from Nature.https : / / hal . inria . fr / file / index / docid / 287355 / filename /rewardPPSN.pdf. Springer. 2008, pp. 175–184
 """
-    def __init__(self, n_ops, window, scaling_factor = 0.5):
+    def __init__(self, n_ops, scaling_factor = 0.5):
         super().__init__(n_ops)
-        self.window = window
         self.scaling_factor = scaling_factor
-        debug_print("{:>30}: scaling_factor = {}".format(type(self).__name__, self.scaling_factor))
+        #debug_print("{:>30}: scaling_factor = {}".format(type(self).__name__, self.scaling_factor))
     
-    def calc_quality(self, old_reward, reward, tran_matrix):
-        #window_op_sorted, N, rank = count_op(self.n_ops, self.window, self.off_met)
-        N = self.window.count_ops()
-        quality = UCB(N, self.scaling_factor, reward)
+    def calc_quality(self, old_reward, reward, num_op, tran_matrix):
+        num_op[num_op == 0] = 1
+        quality = UCB(num_op, self.scaling_factor, reward)
         return super().check_quality(quality)
 
-class Identity(QualityType):
+class Quality_Identity(QualityType):
     def __init__(self, n_ops):
         super().__init__(n_ops)
     
-    def calc_quality(self, old_reward, reward, tran_matrix):
+    def calc_quality(self, old_reward, reward, len_var, tran_matrix):
         quality = reward
         return super().check_quality(quality)
 
@@ -1428,17 +1456,21 @@ class Weighted_normalised_sum(QualityType):
     """
 Christian  Igel  and  Martin  Kreutz.  “Operator  adaptation  in  evolution-ary  computation  and  its  application  to  structure  optimization  of  neu-ral  networks”.  In:Neurocomputing55.1-2  (2003).https : / / ac . els -cdn.com/S0925231202006288/1-s2.0-S0925231202006288-main.pdf?_tid=c6274e78-02dc-4bf6-8d92-573ce0bed4c4&acdnat=1540907096_d0cc1e2b4ca56a49587b4d55e1008a84, pp. 347–361
 """
-    def __init__(self, n_ops, decay_rate = 0.3):
+    def __init__(self, n_ops, decay_rate = 0.3, q_min = 0.1):
         super().__init__(n_ops)
         self.decay_rate = decay_rate
-        debug_print("{:>30}: decay_rate = {}".format(type(self).__name__, self.decay_rate))
+        self.q_min = q_min
+        #debug_print("{:>30}: decay_rate = {}, q_min = {}".format(type(self).__name__, self.decay_rate, self.q_min))
     
-    def calc_quality(self, old_reward, reward, tran_matrix):
-        if np.sum(reward) > 0:
-            reward /= np.sum(reward)
-        else:
-            reward[:] = 1.0 / self.n_ops
-        quality = self.decay_rate * reward  + (1.0 - self.decay_rate) * self.old_quality
+    def calc_quality(self, old_reward, reward, len_var, tran_matrix):
+        reward += self.eps
+        reward /= np.sum(reward)
+        quality = self.decay_rate * np.maximum(self.q_min, reward) + (1.0 - self.decay_rate) * self.old_quality
+        #if np.sum(reward) > 0:
+            #reward /= np.sum(reward)
+        #else:
+            #reward[:] = 1.0 / self.n_ops
+        #quality = self.decay_rate * reward  + (1.0 - self.decay_rate) * self.old_quality
         return super().check_quality(quality)
 
 class Bellman_Equation(QualityType):
@@ -1450,9 +1482,9 @@ Mudita Sharma,  Manuel Lopez-Ibanez, and  Dimitar  Kazakov. “Performance Asses
         self.weight_reward = weight_reward
         self.weight_old_reward = weight_old_reward
         self.discount_rate = discount_rate
-        debug_print("{:>30}: weight_reward = {}, weight_old_reward = {}, discount_rate = {}".format(type(self).__name__, self.weight_reward, self.weight_old_reward, self.discount_rate))
+        #debug_print("{:>30}: weight_reward = {}, weight_old_reward = {}, discount_rate = {}".format(type(self).__name__, self.weight_reward, self.weight_old_reward, self.discount_rate))
     
-    def calc_quality(self, old_reward, reward, tran_matrix):
+    def calc_quality(self, old_reward, reward, len_var, tran_matrix):
         # This was called P in the original RecPM paper.
         #tran_matrix = transitive_matrix(old_probability)
         quality = self.weight_reward * reward + self.weight_old_reward * old_reward
@@ -1471,7 +1503,7 @@ def build_probability(choice, n_ops, prob_args):
     elif choice == 1:
         return Adaptive_Pursuit(n_ops, prob_args["p_min"], prob_args["p_max"], prob_args["learning_rate"])
     elif choice == 2:
-        return Adaptation_rule(n_ops, prob_args["p_min"], prob_args["learning_rate"])
+        return Probability_Identity(n_ops)
     else:
         raise ValueError("choice {} unknown".format(choice))
  
@@ -1487,7 +1519,7 @@ class ProbabilityType(ABC):
     ]
     # FIXME: We should use explicit class names or a function that converts from names to numbers
     params_conditions = {"p_min": [],
-                       "learning_rate": [1,2],
+                       "learning_rate": [1],
                        "error_prob": [0],
                        "p_max": [1]}
         
@@ -1518,7 +1550,7 @@ class ProbabilityType(ABC):
         assert np.all(probability >= 0.0)
         # Just copy the values.
         self.old_probability[:] = probability[:]
-        debug_print("{:>30}: probability={}".format(type(self).__name__, probability))
+        #debug_print("{:>30}: probability={}".format(type(self).__name__, probability))
         return(probability)
 
     @abstractmethod
@@ -1536,7 +1568,7 @@ class Probability_Matching(ProbabilityType):
         super().__init__(n_ops, p_min = p_min)
         # np.finfo(np.float32).eps adds a small epsilon number that doesn't make any difference but avoids 0.
         self.error_prob = error_prob + self.eps
-        debug_print("{:>30}: p_min = {}, error_prob = {}".format(type(self).__name__, self.p_min, self.error_prob))
+        #debug_print("{:>30}: p_min = {}, error_prob = {}".format(type(self).__name__, self.p_min, self.error_prob))
         
     def calc_probability(self, quality):
         quality += self.error_prob
@@ -1555,7 +1587,7 @@ evolutionary computation. http://www.cs.bham.ac.uk/~wbl/biblio/gecco2005/docs/p1
     def __init__(self, n_ops, p_min = 0.1, p_max = 0.9, learning_rate = 0.1):
         super().__init__(n_ops, p_min = p_min, learning_rate = learning_rate)
         self.p_max = p_max
-        debug_print("{:>30}: p_min = {}, p_max = {}, learning_rate = {}".format(type(self).__name__, self.p_min, self.p_max, self.learning_rate))
+        #debug_print("{:>30}: p_min = {}, p_max = {}, learning_rate = {}".format(type(self).__name__, self.p_min, self.p_max, self.learning_rate))
 
     def calc_probability(self, quality):
         delta = np.full(quality.shape[0], self.p_min)
@@ -1563,23 +1595,30 @@ evolutionary computation. http://www.cs.bham.ac.uk/~wbl/biblio/gecco2005/docs/p1
         probability = self.learning_rate * delta + (1.0  - self.learning_rate) * self.old_probability
         return super().check_probability(probability)
 
-class Adaptation_rule(ProbabilityType):
-    """
-Christian Igel and Martin Kreutz. “Using fitness distributions to improvethe evolution of learning structures”. In:Evolutionary Computation, 1999.CEC 99. Proceedings of the 1999 Congress on. Vol. 3.http://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.43.2107&rep=rep1&type=pdf. IEEE. 1999, pp. 1902–1909
-"""
-    def __init__(self, n_ops, p_min = 0.025, learning_rate = 0.5):
-        super().__init__(n_ops, p_min = p_min, learning_rate = learning_rate)
-        debug_print("{:>30}: p_min = {}, learning_rate = {}".format(type(self).__name__, self.p_min, self.learning_rate))
+#class Adaptation_rule(ProbabilityType):
+#"""
+#Christian Igel and Martin Kreutz. “Using fitness distributions to improvethe evolution of learning structures”. In:Evolutionary Computation, 1999.CEC 99. Proceedings of the 1999 Congress on. Vol. 3.http://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.43.2107&rep=rep1&type=pdf. IEEE. 1999, pp. 1902–1909
+#"""
+    #def __init__(self, n_ops, p_min = 0.025, learning_rate = 0.5):
+        #super().__init__(n_ops, p_min = p_min, learning_rate = learning_rate)
+        #debug_print("{:>30}: p_min = {}, learning_rate = {}".format(type(self).__name__, self.p_min, self.learning_rate))
         
-    def calc_probability(self, quality):
+    #def calc_probability(self, quality):
         # Normalize
-        quality += self.eps
-        quality /= np.sum(quality)
+        #quality += self.eps
+        #quality /= np.sum(quality)
 
         # np.maximum is element-wise
-        probability = self.learning_rate * np.maximum(self.p_min, quality) + (1.0 - self.learning_rate) * self.old_probability
-        return super().check_probability(probability)
+        #probability = self.learning_rate * np.maximum(self.p_min, quality) + (1.0 - self.learning_rate) * self.old_probability
+        #return super().check_probability(probability)
 
+class Probability_Identity(ProbabilityType):
+    def __init__(self, n_ops):
+        super().__init__(n_ops)
+    
+    def calc_probability(self, quality):
+        probability = quality
+        return super().check_probability(probability)
 
 #############Selection definitions##############################################
 
@@ -1661,11 +1700,12 @@ class Greedy_Selection(SelectionType):
 
 
 class Epsilon_Greedy_Selection(SelectionType):
+    # MUDITA_check: You have not checked the working of this definition, can you please check it?
     # Epsilon Greedy Selection
     def __init__(self, n_ops, sel_eps = 0.1):
         super().__init__(n_ops)
         self.sel_eps = sel_eps
-        debug_print("{:>30}: sel_eps = {}".format(type(self).__name__, self.sel_eps))
+        #debug_print("{:>30}: sel_eps = {}".format(type(self).__name__, self.sel_eps))
     
     def perform_selection(self, probability, select_counter):
         if self.op_init_list:
@@ -1678,12 +1718,13 @@ class Epsilon_Greedy_Selection(SelectionType):
 
 
 class Proportional_Greedy_Selection(SelectionType):
+    # MUDITA_check: You have not checked the working of this definition, can you please check it?
     # Combination of Proportional and Greedy Selection
     '''TODO'''
     def __init__(self, n_ops, sel_eps = 0.1):
         super().__init__(n_ops)
         self.sel_eps = sel_eps
-        debug_print("{:>30}: sel_eps = {}".format(type(self).__name__, self.sel_eps))
+        #debug_print("{:>30}: sel_eps = {}".format(type(self).__name__, self.sel_eps))
 
     def perform_selection(self, probability, select_counter):
         if self.op_init_list:
@@ -1696,6 +1737,7 @@ class Proportional_Greedy_Selection(SelectionType):
 
 
 class Linear_Annealed_Selection(SelectionType):
+    # MUDITA_check: You have not checked the working of this definition, can you please check it?
     # Linear Annealed Selection
     '''TODO'''
     def __init__(self, n_ops, budget, popsize):

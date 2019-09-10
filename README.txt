@@ -32,3 +32,38 @@ DE*-T-fe: Contains the data for 24 bbob functions when run on DE with strategy r
 DE*-E-fe: Contains the data for 24 bbob functions when run on DE with strategy represented by * (* can be 1,2,3,4). It has configuration for DE parameters found by target-runner-error-vs-fe.py.  
 DE*-B: Contains the data for 24 bbob functions when run on DE with strategy represented by * (* can be 1,2,3,4). It has configuration for DE parameters found by target-runner-best.py. 
 DE*-D: Contains the data for 24 bbob functions when run on DE with strategy represented by * (* can be 1,2,3,4). It has default configuration (FF=0.5, CR = 0.7 and NP = 300) for DE parameters.   
+
+
+Mapping of parameter representation from code to the document (thesis):
+Reward components and their parameters:
+Pareto_Dominance: fix_appl -> fix_appl
+Pareto_Rank: fix_appl -> fix_appl
+Compass_projection: fix_appl -> fix_appl, theta -> mathsymbol(theta)
+Area_Under_The_Curve: window_size -> W, decay -> D
+Sum_of_Rank -> window_size -> W, decay -> D
+Success_Rate: max_gen -> max_gen, succ_lin_quad -> mathsymbol(gamma), frac -> Frac, noise -> mathsymbol(epsilon)
+Immediate_Success
+Success_sum: max_gen -> max_gen
+Normalised_success_sum_window: window_size -> W, normal_factor -> mathsymbol(omega)
+Normalised_success_sum_gen: max_gen -> max_gen
+Best2gen: scaling_constant -> C, alpha -> mathsymbol(alpha), beta -> mathsymbol(beta)
+Normalised_best_sum: max_gen -> max_gen, intensity -> mathsymbol(rho), alpha -> mathsymbol(alpha)
+
+Quality components and their parameters:
+Weighted_sum: decay_rate -> mathsymbol(delta)
+Upper_confidence_bound: scaling_factor -> c
+Quality_Identity
+Weighted_normalised_sum: decay_rate -> mathsymbol(delta), q_min -> q_min
+Bellman_Equation: weight_reward -> c1, weight_old_reward -> c2, discount_rate -> mathsymbol(gamma)
+   
+Probability components and their parameters:
+Probability_Matching: p_min -> p_min, error_prob -> mathsymbol(epsilon)
+Adaptive_Pursuit: p_min -> p_min, p_max -> p_max, learning_rate -> mathsymbol(mu)
+Probability_Identity
+
+Selection components and their parameters:
+Proportional
+Greedy
+Epsilon-Greedy: sel_eps -> eps
+Proportional_Greedy: sel_eps -> eps
+Linear_Annealed
