@@ -471,7 +471,7 @@ def main(problem_subset, budget,
             (time.asctime(), ascetime(time.clock() - t0)))
 
 # ===============================================
-from argparse import ArgumentParser,RawDescriptionHelpFormatter,_StoreTrueAction,ArgumentDefaultsHelpFormatter
+from argparse import ArgumentParser,RawDescriptionHelpFormatter,_StoreTrueAction,ArgumentDefaultsHelpFormatter,Action
 
 if __name__ == '__main__':
     """read input parameters and call `main()`"""
@@ -500,11 +500,16 @@ if __name__ == '__main__':
     parser.add_argument('--result_folder', default="", help='file to store statistics about the evolution')
     parser.add_argument('--train_test', default="train", help = 'train or test option')
     parser.add_argument('--cost_best', default="yes", help = 'cost is minimising best or not')
-    
-    class dump_irace_parameters(_StoreTrueAction):
+
+    class dump_irace_parameters(Action):
+        def __init__(self, option_strings, **kwargs):
+            super(dump_irace_parameters, self).__init__(option_strings, **kwargs)
         def __call__(self, parser, namespace, values, option_string=None):
-            #print(values)
-            #print(option_string)
+            if values != None:
+                print("##### AOS:  " + values + ".txt\n")
+                print(de.DE_irace_parameters(override = dict(mutation=["known_aos"])))
+                print(aos.Unknown_AOS.irace_dump_knownAOS(values))
+                parser.exit(0)
             print(de.DE_irace_parameters())
             print(aos.Unknown_AOS.irace_parameters())
             print(aos.ProbabilityType.irace_parameters())
@@ -525,7 +530,7 @@ if __name__ == '__main__':
 
             parser.exit(0)
         
-    parser.add_argument('--irace', action=dump_irace_parameters, help='dump parameters.txt for irace')
+    parser.add_argument('--irace', nargs='?', action=dump_irace_parameters, help='dump parameters.txt for irace')
 
     # DE parameters
     de.DE_add_arguments(parser)
