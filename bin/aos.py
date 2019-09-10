@@ -55,10 +55,10 @@ def aos_irace_parameters(cls, override = {}):
     output += irace_parameter(name=cls.param_choice, type=object, domain=choices, help=choices_help)
     for i in range(0, len(cls.params), 5):
         arg, type, default, domain, help = cls.params[i:i+5]
-
         condition = irace_condition(cls.param_choice, cls.params_conditions[arg], override)
-        output += irace_parameter(name=arg, type=type, domain=domain,
-                                  condition=condition, help=help, override=override)
+        if not condition is None:
+            output += irace_parameter(name=arg, type=type, domain=domain,
+                                      condition=condition, help=help, override=override)
     return output
 
 
@@ -82,12 +82,13 @@ def irace_parameter(name, type, domain, condition="", help="", override = {}):
 
 def irace_condition(what, values, override = {}):
     """Return a string representation of the condition of an irace parameter"""
-    #print("before:", values)
-    if what in override:
-        values = [value for value in override[what] if value in values]
-    #print("after:", values)    
     if not values:
         return ""
+    if what in override:
+        values = [value for value in override[what] if value in values]
+        if not values:
+            return None
+        
     if len(values) == 1:
         return what + " == " + str(values[0])
     return what + " %in% c(" + ", ".join([str(x) for x in values]) + ")"
