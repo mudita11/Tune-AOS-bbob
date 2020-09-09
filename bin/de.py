@@ -37,7 +37,7 @@ class TraceFile():
         if self._file:
             _file.close()
 
-            
+# FIXME: JADE adaptation speed c=0.1 ?
 DE_params = {
         'FF':       [float, 0.5,    [0.1, 2.0],     'Scaling factor'],
         'CR':       [float, 1.0,    [0.1, 1.0],     'Crossover rate'],
@@ -102,16 +102,18 @@ def DE(fun, x0, lbounds, ubounds, budget, instance, instance_best_value,
         r0, r1 = samples[:2]
         #percent_population = int(0.05 * NP)
         # MUDITA_check: In the following line top_best_index is collection of index representing top_NP number of best candidates from current parent population.
+        # FIXME: Use np.partition(a, -p)[-p:]
         top_best_index = [idx for (idx,v) in sorted(enumerate(F), key = lambda x: x[1])[:int(top_NP * NP)]]
-        return (population[i] + scale * (population[np.random.choice(top_best_index)] - population[i] + population[r0] - population[r1]))
+        rtop = np.random.choice(top_best_index)
+        return (population[i] + scale * (population[rtop] - population[i] + population[r0] - population[r1]))
     
     def current_to_pbest_archived(population, samples, best, scale, NP, F, union):
         '''Jade: https://ieeexplore.ieee.org/stamp/stamp.jsp?arnumber=5208221'''
         '''current to pbest (JADE-with archive)'''
-        r0 = samples[:1]
-        top_best_index = [idx for (idx,v) in sorted(enumerate(F), key = lambda x: x[1])[:int(top_NP * NP)]]
-        return (population[i] + scale * (population[np.random.choice(top_best_index)] - population[i] + population[r0] - union[np.random.randint(NP)]))
-    
+        # r1
+        samples[1] = union[np.random.randint(NP)]
+        return (current_to_pbest(population, samples, best, scale, NP, F, union))
+        
     def best1(population, samples, best, scale, NP, F, union):
         r0, r1 = samples[:2]
         return (population[best] + scale * (population[r0] - population[r1]))
@@ -130,8 +132,10 @@ def DE(fun, x0, lbounds, ubounds, budget, instance, instance_best_value,
         obtain random integers from range(popsize),
         without replacement.  You can't have the original candidate either.
         """
-        idxs = list(range(popsize))
-        idxs.remove(candidate)
+        #idxs = list(range(popsize))
+        #idxs.remove(candidate)
+        # Would a[a != candidate] faster?
+        idxs = np.setdiff1d(np.arange(popsize), candidate)
         return(np.random.choice(idxs, number_samples, replace = False))
 
     mutations = [rand1, rand2, rand_to_best2, current_to_rand1, current_to_pbest, current_to_pbest_archived, best1, current_to_best1, best2]
@@ -162,6 +166,7 @@ def DE(fun, x0, lbounds, ubounds, budget, instance, instance_best_value,
     X = lbounds + (ubounds - lbounds) * np.random.rand(NP, dim)
     X[0, :] = x0
     # Evaluate population
+    # FIXME: this should probably be fitness to avoid confusion with scaling parameter F.
     F = np.apply_along_axis(fun, 1, X)
     best = np.argmin(F)
     x_min, f_min = X[best, :], F[best]
@@ -194,14 +199,16 @@ def DE(fun, x0, lbounds, ubounds, budget, instance, instance_best_value,
         for i in range(NP):
             # No mutation strategy needs more than 5.
             r = select_samples(NP, i, 5)
-            crossovers = (np.random.rand(dim) < CR)
-            crossovers[fill_points[i]] = True
             SI = select_mutation()
             assert SI >= 0 and SI <= len(mutations)
             opu[i] = SI
             #statistics_file.write(str(SI)+'\n')
             mutate = mutations[SI]
             bprime = mutate(X, r, best, FF, NP, F, union)
+            # binomial crossover
+            crossovers = (np.random.rand(dim) < CR)
+            # fill_points is the same as jrand
+            crossovers[fill_points[i]] = True
             u[i,:] = np.where(crossovers, bprime, X[i, :])
 
         # Evaluate the child population
@@ -219,7 +226,7 @@ def DE(fun, x0, lbounds, ubounds, budget, instance, instance_best_value,
             aos_method.OM_Update(F, F1, F_bsf = f_min, opu = opu)
     
         # MUDITA_check: Following 4 lines append the archive with worse parents than offsprings.
-        # Maintainng archive (a list)
+        # Maintaining archive (a list)
         start = np.argwhere(np.isnan(archive[:,0]))[0][0]
         poor_chandidates = X[F>F1]
         end = start+len(poor_chandidates)
