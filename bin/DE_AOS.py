@@ -34,17 +34,11 @@ Calling `DE_AOS.py` without parameters prints this
 help and the available suite names.
 """
 from __future__ import absolute_import, division, print_function, unicode_literals
-try: range = xrange
-except NameError: pass
 import os, sys
 import time
 import numpy as np  # "pip install numpy" installs numpy
 from cocoex import Suite, Observer, log_level, known_suite_names
 del absolute_import, division, print_function, unicode_literals
-import random
-import math
-import csv
-from numpy.linalg import inv
 import shutil
 
 import aos
@@ -52,52 +46,50 @@ import de, R_de
 
 verbose = 1
 
-try: import cma  # cma.fmin is a solver option, "pip install cma" installs cma
-except: pass
-try: from scipy.optimize import fmin_slsqp  # "pip install scipy" installs scipy
-except: pass
-try: range = xrange  # let range always be an iterator
-except NameError: pass
-
 def debug_print(*args, **kwargs):
     print(*args, file=sys.stderr, **kwargs)
 
-def default_observers(update={}):
-    """return a map from suite names to default observer names"""
-    # this is a function only to make the doc available and
-    # because @property doesn't work on module level
-    _default_observers.update(update)
-    return _default_observers
 _default_observers = {
     'bbob': 'bbob',
     'bbob-biobj': 'bbob-biobj',
     'bbob-biobj-ext': 'bbob-biobj',
     'bbob-constrained': 'bbob',
     'bbob-largescale': 'bbob',  # todo: needs to be confirmed
-    }
+}
+def default_observers(update={}):
+    """return a map from suite names to default observer names"""
+    # this is a function only to make the doc available and
+    # because @property doesn't work on module level
+    _default_observers.update(update)
+    return _default_observers
+
 def default_observer_options(budget_=None, suite_name_=None):
     """return defaults computed from input parameters or current global vars
     """
-    global budget, suite_name, result_folder
+    global budget, suite_name, result_folder, algo_name
     if budget_ is None:
         budget_ = budget
     if suite_name_ is None:
         suite_name_ = suite_name
     opts = {}
-    try:
-        if result_folder is not None and result_folder != "":
-            opts.update({'result_folder': '%s-%s_on_%s_budget%04dxD'
-                         % (result_folder, SOLVER.__name__, suite_name_, budget_)})
-        else:
-            opts.update({'result_folder': '%s-%s_on_%s_budget%04dxD'
-                         % (result_folder, SOLVER.__name__, suite_name_, budget_)})
-    except: pass
+    if result_folder:
+        tmp_result_folder = '%s-%s_on_%s_budget%04dxD' % (result_folder, SOLVER.__name__, suite_name_, budget_)
+    else:
+        tmp_result_folder = '%s_on_%s_budget%04dxD' % (SOLVER.__name__, suite_name_, budget_)
+    
+    opts.update({'result_folder': tmp_result_folder})
     try:
         solver_module = '(%s)' % SOLVER.__module__
     except:
         solver_module = ''
     try:
-        opts.update({'algorithm_name': SOLVER.__name__ + solver_module})
+        if algo_name:
+            algorithm_name = algo_name
+        elif result_folder:
+            algorithm_name = result_folder
+        else:
+            algorithm_name = SOLVER.__name__ + solver_module
+        opts.update({'algorithm_name': algorithm_name})
     except: pass
     return opts
 
@@ -145,7 +137,6 @@ def print_flush(*args):
     """print without newline but with flush"""
     print(*args, end="")
     sys.stdout.flush()
-
 
 def ascetime(sec):
     """return elapsed time as str.
@@ -279,11 +270,17 @@ def EA_AOS(fun, x0, lbounds, ubounds, budget, instance):
     instance_best_value = 0
     if instance in opt:
         instance_best_value = opt[instance]
-    
+
+    de_results_folder = None
+    if result_folder:
+        # This is hardcoded by BBOB so we have to use the same
+        de_results_folder = f"./exdata/{result_folder}"
+        os.makedirs(de_results_folder, exist_ok=True)
     cost = de.DE(fun, x0, lbounds, ubounds, budget, instance, instance_best_value,
-                 trace_filename, stats_filename,
+                 results_folder = de_results_folder,
+                 stats_filename = stats_filename,
                  # DE parameters
-                 FF, CR, NP, top_NP, mutation = mutation,
+                 FF = FF, CR = CR, NP = NP, top_NP = top_NP, mutation = mutation,
                  # Offspring Metrics
                  OM_choice = OM_choice,
                  # Rewards
@@ -293,8 +290,9 @@ def EA_AOS(fun, x0, lbounds, ubounds, budget, instance):
                  # Probabilities
                  prob_choice = prob_choice, prob_args = prob_args,
                  # Selection
-                 select_choice = select_choice, select_args = select_args)
-    print("\n",cost)
+                 select_choice = select_choice, select_args = select_args,
+                 known_aos = known_aos)
+    print(f"\n{cost}")
     return cost
 
 
@@ -372,37 +370,9 @@ def coco_optimize(solver, fun, max_evals, problem_index, max_runs=1):
         remaining_evals = max_evals - fun.evaluations
         x0 = center + (restarts > 0) * 0.8 * range_ * (
                 np.random.rand(fun.dimension) - 0.5)
-        #fun(x0)  # can be incommented, if this is done by the solver
 
-        if solver.__name__ in ("random_search", ):
-            solver(fun, fun.lower_bounds, fun.upper_bounds,
-                   remaining_evals)
-        elif solver.__name__ == 'fmin' and solver.__globals__['__name__'] in ['cma', 'cma.evolution_strategy', 'cma.es']:
-            if x0[0] == center[0]:
-                sigma0 = 0.02
-                restarts_ = 0
-            else:
-                x0 = "%f + %f * np.random.rand(%d)" % (
-                        center[0], 0.8 * range_[0], fun.dimension)
-                sigma0 = 0.2
-                restarts_ = 6 * (observer_options.as_string.find('IPOP') >= 0)
+        solver(fun, x0, fun.lower_bounds, fun.upper_bounds, remaining_evals, problem_index)
 
-            solver(fun, x0, sigma0 * range_[0], restarts=restarts_,
-                   options=dict(scaling=range_/range_[0], maxfevals=remaining_evals,
-                                termination_callback=lambda es: fun.final_target_hit,
-                                verb_log=0, verb_disp=0, verbose=-9))
-        elif solver.__name__ == 'fmin_slsqp':
-            solver(fun, x0, iter=1 + remaining_evals / fun.dimension,
-                   iprint=-1)
-############################ ADD HERE ########################################
-        # ### IMPLEMENT HERE THE CALL TO ANOTHER SOLVER/OPTIMIZER ###
-        # elif True:
-        #     CALL MY SOLVER, interfaces vary
-##############################################################################
-        elif True:
-            solver(fun, x0, fun.lower_bounds, fun.upper_bounds, remaining_evals, problem_index)
-        else:
-            raise ValueError("no entry for solver %s" % str(solver.__name__))
         if fun.evaluations >= max_evals or fun.final_target_hit:
             break
         # quit if fun.evaluations did not increase
@@ -427,8 +397,6 @@ max_runs = 1  # number of (almost) independent trials per problem instance
 number_of_batches = 1  # allows to run everything in several batches
 current_batch = 1      # 1..number_of_batches
 ##############################################################################
-#SOLVER = random_search
-# SOLVER = my_solver # SOLVER = fmin_slsqp # SOLVER = cma.fmin
 SOLVER = EA_AOS
 suite_instance = "" # "year:2016"
 suite_options = "dimensions: 20"   #"dimensions: 2,3,5,10,20 "  # if 40 is not desired
@@ -494,11 +462,17 @@ if __name__ == '__main__':
     # '*' == 0 or more.
     # '?' == 0 or 1.
     parser.add_argument('-i', '--instance', nargs='+', type=int, default=[], help='problem instance to train on (multiple numbers are possible)')
-    parser.add_argument('--seed', type=int, default=0, help='seed to initialise population')
+    parser.add_argument('--seed', type=int, default=-1, help='seed to initialise population')
     parser.add_argument('--trace', help='file to store fevals fitness progress')
     parser.add_argument('--stats', help='file to store statistics about the evolution')
-    parser.add_argument('--result_folder', default="", help='file to store statistics about the evolution')
+    parser.add_argument('--result_folder', default="", help='subdirectory of extdata/ to store statistics about the evolution')
+    parser.add_argument('--name', default = "", help='name of solver for output results')
+    # MUDITA: I included --train_or_test because during training irace generates a lot of output and error files which occupies memory quickly, especially when lots of algorithm are running in parallel.
     parser.add_argument('--train_test', default="train", help = 'train or test option')
+    # MUDITA: The cost returned to irace is calculated in target-runner-*
+    # scripts and these costs are based on a certain
+    # criteria. target-runner-best returns the cost as the best fitness seen
+    # till the budget is exhausted. --cost_best yes uses this criteria.
     parser.add_argument('--cost_best', default="yes", help = 'cost is minimising best or not')
 
     class dump_irace_parameters(Action):
@@ -508,16 +482,12 @@ if __name__ == '__main__':
             if values != None:
                 print("##### AOS:  " + values + ".txt\n")
                 print(de.DE_irace_parameters(override = dict(mutation=["aos"])))
-                print(aos.Unknown_AOS.irace_dump_knownAOS(values))
+                print(aos.AOS.irace_dump_knownAOS(values))
                 parser.exit(0)
             print(de.DE_irace_parameters())
-            print(aos.Unknown_AOS.irace_parameters())
-            print(aos.ProbabilityType.irace_parameters())
-            print(aos.RewardType.irace_parameters())
-            print(aos.QualityType.irace_parameters())
-            print(aos.SelectionType.irace_parameters())
+            print(aos.AOS.irace_parameters())
             debug_print("Dumping irace parameter file of known AOS:")
-            for key in aos.Unknown_AOS.known_AOS.keys():
+            for key in aos.AOS.known_AOS.keys():
                 filename = key + ".txt"
                 if os.path.isfile(filename):
                     print("error: File " + filename + " already exists!")
@@ -526,26 +496,20 @@ if __name__ == '__main__':
                     debug_print("Creating", filename)
                     output = "##### AOS:  " + key + ".txt\n"
                     f.write(de.DE_irace_parameters(override = dict(mutation=["aos"])))
-                    f.write(aos.Unknown_AOS.irace_dump_knownAOS(key))
+                    f.write(aos.AOS.irace_dump_knownAOS(key))
 
             parser.exit(0)
         
     parser.add_argument('--irace', nargs='?', action=dump_irace_parameters, help='dump parameters.txt for irace',
-                        choices = list(aos.Unknown_AOS.known_AOS.keys()))
+                        choices = list(aos.AOS.known_AOS))
+
+    parser.add_argument('--known-aos', default=None, help='select a known AOS',
+                        choices = list(aos.AOS.known_AOS))
 
     # DE parameters
     de.DE_add_arguments(parser)
     # Handle Offspring metric
-    aos.Unknown_AOS.add_argument(parser)
-    # Handle rewards
-    # This uses __subclasses__ to find choices.
-    rew_args_names = aos.RewardType.add_argument(parser)
-    # Handle qualities
-    qual_args_names = aos.QualityType.add_argument(parser)
-    # Handle probabilities
-    prob_args_names = aos.ProbabilityType.add_argument(parser)
-    # Handle Selection
-    select_args_names = aos.SelectionType.add_argument(parser)
+    rew_args_names, qual_args_names, prob_args_names, select_args_names = aos.AOS.add_argument(parser)
     
     args = parser.parse_args()
 
@@ -554,6 +518,8 @@ if __name__ == '__main__':
     current_batch = args.current_batch
     number_of_batches = args.number_of_batches
     result_folder = args.result_folder
+    algo_name = args.name
+
     train_or_test = args.train_test
     cost_best = args.cost_best
     
@@ -570,17 +536,21 @@ if __name__ == '__main__':
     NP = args.NP
     top_NP = args.top_NP
     mutation = args.mutation
+    known_aos = args.known_aos
     budget = args.budget
-    
+    assert known_aos == None or mutation == "aos"
+        
     seed = args.seed
     # If no seed is given, we generate one.
-    if seed == 0:
+    if seed == -1:
         seed = np.random.randint(0, 2**32 - 1, 1)
     np.random.seed(seed)
 
+    # FIXME: Pass args to AOS and handle all this there.
+    
     # Handle Offpring Metrics
     OM_choice = args.OM_choice
-    
+
     # Handle rewards
     rew_choice = args.rew_choice
     rew_args = {}
