@@ -230,7 +230,7 @@ def DE(fun, x0, lbounds, ubounds, budget, instance, instance_best_value,
         #trace.print(fun.evaluations - NP + best + 1, f_min)
 
         if mutation == "aos":
-            aos_method.OM_Update(F, F1, F_bsf = f_min, opu = opu)
+            aos_method.update(F, F1, F_bsf = f_min, opu = opu)
     
         # Maintainng archive (a list)
         start = np.argwhere(np.isnan(archive[:,0]))[0][0]

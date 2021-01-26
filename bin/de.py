@@ -55,7 +55,7 @@ DE_params = {
         'mutation': [object, "DE/rand/1",
                      # This has to match the list mutation_names below.
                      # FIXME: Use that list to build this list.
-                     ["DE/rand/1", "DE/rand/2", "DE/rand-to-best/2", "DE/current-to-rand/1", "DE/current_to_pbest", "DE/current_to_pbest_archived", "DE/best/1", "DE/current_to_best/1", "DE/best/2", "random", "aos"],
+                     ["DE/dummy", "DE/rand/1", "DE/rand/2", "DE/rand-to-best/2", "DE/current-to-rand/1", "DE/current_to_pbest", "DE/current_to_pbest_archived", "DE/best/1", "DE/current_to_best/1", "DE/best/2", "random", "aos"],
                      "Mutation strategy"]
         }
 
@@ -87,9 +87,13 @@ def DE_irace_parameters(override = {}):
 # aos.py
 
 def DE(fun, x0, lbounds, ubounds, budget, instance, instance_best_value,
-       results_folder, stats_filename,
+       results_folder, stats_filename, do_trace,
        FF, CR, NP, top_NP, mutation,
-       OM_choice, rew_choice, rew_args, qual_choice, qual_args, prob_choice, prob_args, select_choice, select_args, known_aos):
+       OM_choice, rew_choice, rew_args, qual_choice, qual_args, prob_choice, prob_args, select_choice, select_args, known_aos = None):
+
+    def dummy(population, samples, best, scale, NP, F, union):
+        "DE/dummy"
+        return population[i]
 
     def rand1(population, samples, best, scale, NP, F, union):
         "DE/rand/1"
@@ -176,13 +180,15 @@ def DE(fun, x0, lbounds, ubounds, budget, instance, instance_best_value,
             aos_method = aos.AOS.build_known_AOS(
                 known_aos, NP, budget, n_ops = n_operators,
                 rew_args = rew_args, qual_args = qual_args,
-                prob_args = prob_args, select_args = select_args)
+                prob_args = prob_args, select_args = select_args,
+                debug_filename = results_folder + '/' + fun.id)
         else:
             aos_method = aos.AOS(NP, budget, n_ops = n_operators, OM_choice = OM_choice,
                                  rew_choice = rew_choice, rew_args = rew_args,
                                  qual_choice = qual_choice, qual_args = qual_args,
                                  prob_choice = prob_choice, prob_args = prob_args,
-                                 select_choice = select_choice, select_args = select_args)
+                                 select_choice = select_choice, select_args = select_args,
+                                 debug_filename = results_folder + '/' + fun.id)
         select_mutation = aos_method.select_operator
     elif mutation == "random":
         # lambda that returns a random integer
@@ -208,7 +214,7 @@ def DE(fun, x0, lbounds, ubounds, budget, instance, instance_best_value,
     generation = 0
 
     trace_filename = None
-    if results_folder:
+    if results_folder and do_trace:
         trace_filename = results_folder + f'/trace_{fun.id}.txt'
     trace = TraceFile(trace_filename, dim = dim, optimum = instance_best_value)
     #trace.print(1, Fitness[0], header = True)
@@ -249,10 +255,10 @@ def DE(fun, x0, lbounds, ubounds, budget, instance, instance_best_value,
         # Evaluate the child population
         F1 = np.apply_along_axis(fun, 1, u)
 
-        # We need to call OM_update after evaluating F1 and before updating
+        # We need to call update after evaluating F1 and before updating
         # F_bsf, otherwise there will never be an improvement.
         if mutation == "aos":
-            aos_method.OM_Update(Fitness, F1, F_bsf = f_min, opu = opu)
+            aos_method.update(X, u, Fitness, F1, F_bsf = f_min, opu = opu)
         
         # Find the best child.
         best = np.argmin(F1)

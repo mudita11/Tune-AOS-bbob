@@ -73,7 +73,7 @@ def default_observer_options(budget_=None, suite_name_=None):
         suite_name_ = suite_name
     opts = {}
     if result_folder:
-        tmp_result_folder = '%s-%s_on_%s_budget%04dxD' % (result_folder, SOLVER.__name__, suite_name_, budget_)
+        tmp_result_folder = f'{SOLVER.__name__}_on_{suite_name_}_budget{budget_}xD/{result_folder}'
     else:
         tmp_result_folder = '%s_on_%s_budget%04dxD' % (SOLVER.__name__, suite_name_, budget_)
     
@@ -84,7 +84,7 @@ def default_observer_options(budget_=None, suite_name_=None):
         solver_module = ''
     try:
         if algo_name:
-            algorithm_name = algo_name
+            algorithm_name = algo_name + ""
         elif result_folder:
             algorithm_name = result_folder
         else:
@@ -274,10 +274,10 @@ def EA_AOS(fun, x0, lbounds, ubounds, budget, instance):
     de_results_folder = None
     if result_folder:
         # This is hardcoded by BBOB so we have to use the same
-        de_results_folder = f"./exdata/{result_folder}"
+        de_results_folder = f'exdata/{SOLVER.__name__}_on_{suite_name}_budget{int(budget / fun.dimension)}xD/{result_folder}'
         os.makedirs(de_results_folder, exist_ok=True)
     cost = de.DE(fun, x0, lbounds, ubounds, budget, instance, instance_best_value,
-                 results_folder = de_results_folder,
+                 results_folder = de_results_folder, do_trace = do_trace,
                  stats_filename = stats_filename,
                  # DE parameters
                  FF = FF, CR = CR, NP = NP, top_NP = top_NP, mutation = mutation,
@@ -313,7 +313,7 @@ def batch_loop(solver, suite, observer, budget,
 
     problem_subset is a list of problem_index(es). If empty, run all problems.
     """
-    global train_or_test, cost_best
+    global train_or_test, cost_best, do_trace
     addressed_problems = []
     short_info = ShortInfo()
     # problem_subset = range(165, 360)
@@ -463,7 +463,7 @@ if __name__ == '__main__':
     # '?' == 0 or 1.
     parser.add_argument('-i', '--instance', nargs='+', type=int, default=[], help='problem instance to train on (multiple numbers are possible)')
     parser.add_argument('--seed', type=int, default=-1, help='seed to initialise population')
-    parser.add_argument('--trace', help='file to store fevals fitness progress')
+    parser.add_argument('--trace', action="store_true", help='whether store fevals fitness progress')
     parser.add_argument('--stats', help='file to store statistics about the evolution')
     parser.add_argument('--result_folder', default="", help='subdirectory of extdata/ to store statistics about the evolution')
     parser.add_argument('--name', default = "", help='name of solver for output results')
@@ -509,7 +509,7 @@ if __name__ == '__main__':
     # DE parameters
     de.DE_add_arguments(parser)
     # Handle Offspring metric
-    rew_args_names, qual_args_names, prob_args_names, select_args_names = aos.AOS.add_argument(parser)
+    rew_args_names, qual_args_names, prob_args_names, select_args_names = aos.AOS.add_arguments(parser)
     
     args = parser.parse_args()
 
@@ -524,7 +524,7 @@ if __name__ == '__main__':
     cost_best = args.cost_best
     
     instance =  args.instance
-    trace_filename = args.trace
+    do_trace = args.trace
     stats_filename = args.stats
     
     ## FIXME: At some moment we could replace explicit parsing by implicit DE(**de_args)

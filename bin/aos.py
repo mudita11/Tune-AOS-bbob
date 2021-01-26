@@ -1,5 +1,5 @@
+__version__ = '1.0'
 # FIXME: Find all non-ascii characters and replace them for their ASCII equivalent.
-from __future__ import print_function
 import sys
 import copy
 import math
@@ -14,6 +14,33 @@ warnings.filterwarnings('error', "divide by zero encountered in true_divide")
 
 from abc import ABC,abstractmethod
 
+# A small epsilon number to avoid division by 0.
+EPSILON = np.finfo(np.float32).eps
+
+import gzip
+class DebugFile():
+    def __init__(self, filename, suffix, header, n_ops):
+        self._fh = None
+        if filename:
+            filename += suffix + ".gz"
+            print(f"Writing to file {filename}")
+            self._file = gzip.open(filename, "wt")
+            self._file.write("generation " + " ".join([header + str(i) for i in range(n_ops)]) + "\n")
+            
+    def write(self, generation, vector):
+        if not self._file: return
+        self._file.write(str(generation) + " ")
+        np.savetxt(self._file, vector[None,:], fmt = "%10.8g")
+
+    def __del__(self):
+        if self._file:
+            self._file.close()
+            self._file = None
+
+def all_subclasses(cls):
+    return list(set(cls.__subclasses__()).union(
+        [s for c in cls.__subclasses__() for s in all_subclasses(c)]))
+
 def debug_print(*args, **kwargs):
     print(*args, file=sys.stderr, **kwargs)
 
@@ -22,37 +49,55 @@ def normalize_sum(x):
     # [5, -5] sums to zero.
     assert np.all(x >= 0.0)
     s = x.sum()
+    # FIXME: use tolerance check
+    if s != 0: return x / s
+    x[:] = 1.0 / len(x)
+    return x
+
+def normalize_max(x):
+    # The divide by zero check does not work if we have negative values.
+    assert np.all(x >= 0.0)
+    s = x.max()
+    # FIXME: use tolerance check
     if s != 0: return x / s
     return x
 
-def softmax(x):
-    """Normalises each real value in a vector in the range 0 and 1 (normalised exponential function)"""
-    return np.exp(x - x.max())
+def ucb1(n, C, p):
+    '''Calculates Upper Confidence Bound (1)'''
+    ucb = p + C * np.sqrt(2 * np.log(n.sum()) / n)
+    #ucb[np.isinf(ucb) | np.isnan(ucb)] = 0.0
+    return ucb
+
+def get_choices_dict(cls):
+    return { x.__name__:x for x in all_subclasses(cls)}
 
 def get_choices(cls, override = []):
     """Get all possible choices of a component of AOS framework"""
-    choices = [x.__name__ for x in cls.__subclasses__()]
     if len(override):
         choices = override
+        if type(choices) == str:
+            choices = [choices]
+    else:
+        choices = [x.__name__ for x in all_subclasses(cls)]
     choices_help = ', '.join(f"{i}" for i in choices)
     return choices, choices_help
-    
-    
+
 def parser_add_arguments(cls, parser):
     "Helper function to add arguments of a class to an ArgumentParser"
     choices, choices_help = get_choices(cls)
     group = parser.add_argument_group(title=cls.__name__)
     group.add_argument("--"  + cls.param_choice, choices=choices,
                        help=cls.param_choice_help + " (" + choices_help + ")")
-
+    names = []
     for i in range(0, len(cls.params), 5):
         arg, type, default, domain, help = cls.params[i:i+5]
-        if type == object:
-            type = str
+        if type is None: continue
+        if type == object: type = str
         #group.add_argument('--' + arg, type=type, default=default, help=help)
         group.add_argument('--' + arg, type=type, default=None, help=help)
+        names.append(arg)
     # Return the names
-    return cls.params[0::5]
+    return names
 
 def aos_irace_parameters(cls, override = {}):
     """All AOS components may call this function.
@@ -66,6 +111,7 @@ def aos_irace_parameters(cls, override = {}):
     output += irace_parameter(name=cls.param_choice, type=object, domain=choices, help=choices_help)
     for i in range(0, len(cls.params), 5):
         arg, type, default, domain, help = cls.params[i:i+5]
+        if type is None: continue
         condition = irace_condition(cls.param_choice, cls.params_conditions[arg], override)
         if not condition is None:
             output += irace_parameter(name=arg, type=type, domain=domain,
@@ -78,8 +124,12 @@ def irace_parameter(name, type, domain, condition="", help="", override = {}):
     irace_types = {int:"i", float:"r", object: "c"}
     if name in override:
         domain = override[name]
-
+        if isinstance(domain, tuple):
+            domain = domain[0]
+        
     arg = f'"--{name} "'
+    if not hasattr(domain, '__len__') or isinstance(domain, str):
+        domain = [domain]
     if len(domain) == 1:
         type = object
     domain = "(" + ", ".join([str(x) for x in domain]) + ")"
@@ -104,20 +154,20 @@ def irace_condition(what, values, override = {}):
         if not values:
             return None
         
+    if not hasattr(values, '__len__') or isinstance(values, str):
+        values = [values]
     if len(values) == 1:
         return what + " == " + as_r_string(values[0])
     return what + " %in% c(" + ", ".join([as_r_string(x) for x in values]) + ")"
-
 
 class GenWindow(object):
     ''''Generational Window of OM values. g=0 is the oldest, while g=len(self)-1 is the most recent generation'''
 # FIXME (needs updating): gen_window stores the offspring metric data for each offspring when offspring is better than parent. Otherwise it stores np.nan for that offspring. Its a list. Its structre is as follows: [[[second_dim], [second_dim], [second_dim]], [[],[],[]], ...]. Second_dim represnts Offspring metric data for an offspring. The number of second dims will be equal to the population size, contained in third_dim. Third_dim represents a generation. Thus, [[],[],[]] has data of all offsprings in a generation."""
     
-    def __init__(self, n_ops, metric, max_gen = 0):
-        # Private
+    def __init__(self, n_ops, max_gen = 0):
         self.n_ops = n_ops
-        self.metric = metric
         self.max_gen = max_gen
+        # Private
         # A matrix of at most max_gen rows and with NP columns. Each entry
         # _gen_window_op[i,j] is the operator that created children j at
         # generation i.
@@ -140,98 +190,57 @@ class GenWindow(object):
         else:
             self._gen_window_op = np.append(self._gen_window_op, [window_op], axis = 0)
             self._gen_window_met = np.append(self._gen_window_met, [window_met], axis = 0)
-        
-        
-    def apply_at_generation(self, gen, function):
-        """Apply function to metric values at generation gen for all operators"""
-        window_met = self._gen_window_met[gen, :, self.metric]
-        window_op = self._gen_window_op[gen, :]
-        value = np.zeros(self.n_ops)
-        is_not_nan = ~np.isnan(window_met)
+
+    def count_succ_total(self, gen = None):
+        """Counts the number of successful and total applications for each operator in generation 'gen'"""
+        if gen is None:
+            gen = slice(-self.max_gen, None, None)
+        window_met = self._gen_window_met[gen, :].ravel()
+        window_op = self._gen_window_op[gen, :].ravel()
+        is_succ = ~np.isnan(window_met)
+        total_success = np.zeros(self.n_ops, dtype=int)
+        total_apps = np.zeros(self.n_ops, dtype=int)
         for op in range(self.n_ops):
-            temp_window_met = np.zeros(len(window_op))
-            # Assign 0.0 to any entry that is nan or belongs to a different op
-            temp_window_met = np.where((window_op == op) & is_not_nan, window_met, 0.0)
-            value[op] = function(temp_window_met)
+            is_op = window_op == op
+            total_success[op] = np.sum(is_op & is_succ)
+            total_apps[op] = np.sum(is_op)
+        # To avoid division by zero (assumes that value == 0 for these)
+        total_apps[total_apps == 0] = 1
+        return total_success, total_apps
+
+    def _apply(self, function, gen = None):
+        """Apply function to metric values at generation gen for all operators"""
+        if gen is None:
+            gen = slice(-self.max_gen, None, None)
+        window_met = self._gen_window_met[gen, :].ravel()
+        window_op = self._gen_window_op[gen, :].ravel()
+        # Assign 0.0 to any entry that is nan
+        is_not_succ = np.isnan(window_met)
+        window_met[is_not_succ] = 0
+        value = np.zeros(self.n_ops)
+        for op in range(self.n_ops):
+            is_op = window_op == op
+            if is_op.any():
+                value[op] = function(window_met[is_op])
         return value
 
-    def sum_at_generation(self,gen):
-        """Get metric sum for all operators at generation gen"""
-        return self.apply_at_generation(gen, np.sum)
+    def sum_per_op(self, gen = None):
+        """Return metric sum per op for each of the last max_gen generations"""
+        return self._apply(np.sum, gen = gen)
+
+    def max_per_op(self, gen = None):
+        """Return metric sum per op for each of the last max_gen generations"""
+        return self._apply(np.max, gen = gen)
     
-    def max_at_generation(self, gen):
-        """Get best metric value for all operators at generation gen"""
-        return self.apply_at_generation(gen, np.max)
-        
-    def max_per_generation(self, op):
-        """Get best metric value for operator op for each of the last max_gen generations"""
-        gen_window_len = len(self)
-        max_gen = self.get_max_gen()
-        start = gen_window_len - max_gen
-        window_met = self._gen_window_met[start:, :, self.metric]
-        window_op = self._gen_window_op[start:, :]
-        # Assign 0.0 to any entry that is nan or belongs to a different op
-        window_met = np.where((window_op == op) & ~np.isnan(window_met), window_met, 0.0)
-        assert window_met.shape[0] == max_gen
-        # maximum per row, as many rows as max_gen
-        return np.max(window_met, axis = 1)
-
     def is_success(self, gen):
-        window_met = self._gen_window_met[gen, :, self.metric]
+        window_met = self._gen_window_met[gen, :]
         return ~np.isnan(window_met)
-        
-    def total_success(self):
-        window_met = self._gen_window_met[-self.max_gen:, :, self.metric].ravel()
-        window_op = self._gen_window_op[-self.max_gen:, :].ravel()
-        is_succ = ~np.isnan(window_met)
-        total_success = np.zeros(self.n_ops)
-        total_apps = np.zeros(self.n_ops)
-        for op in range(self.n_ops):
-            is_op = window_op == op
-            total_success[op] = np.sum(is_op & is_succ)
-            total_apps[op] = np.sum(is_op)
-        total_apps[total_apps == 0] = 1.
-        return total_success, total_apps
 
-    def success(self, gen):
-        window_met = self._gen_window_met[gen, :, self.metric]
-        window_op = self._gen_window_op[gen, :]
-        is_succ = ~np.isnan(window_met)
-        total_success = np.zeros(self.n_ops)
-        total_apps = np.zeros(self.n_ops)
-        for op in range(self.n_ops):
-            is_op = window_op == op
-            total_success[op] = np.sum(is_op & is_succ)
-            total_apps[op] = np.sum(is_op)
-        total_apps[total_apps == 0] = 1.
-        total_success /= total_apps
-        return total_success, total_apps
-
-    def count_total_succ_unsucc(self, gen):
-        """Counts the number of successful and unsuccessful applications for each operator in generation 'gen'"""
-        window_met = self._gen_window_met[gen, :, self.metric]
-        window_op = self._gen_window_op[gen, :]
-        total_success = np.zeros(self.n_ops)
-        total_unsuccess = np.zeros(self.n_ops)
-        is_nan = np.isnan(window_met)
-        is_not_nan = ~is_nan
-        for op in range(self.n_ops):
-            is_op = window_op == op
-            total_success[op] = np.sum(is_op & is_not_nan)
-            total_unsuccess[op] = np.sum(is_op & is_nan)
-        return total_success, total_unsuccess
-
-    def metric_for_fix_appl_of_op(self, op, fix_appl):
-        """Return a vector of metric values for last fix_appl applications of operator op"""
-        # Stop at fix_appl starting from the end of the window (latest fix_applications of operators)
-        # MUDITA_check: Whats the use of gen_window_len here?
-        gen_window_len = len(self)
-        window_met = self._gen_window_met[:, :, self.metric]
-        window_op = self._gen_window_op[:, :]
-        # Without np.where, it returns a 1D array
-        b = window_met[(window_op == op) & ~np.isnan(window_met)]
-        # Keep only the last fix_appl values
-        return b[-fix_appl:]
+    def get_ops_of_child(self, i):
+        ## FIXME: This implementation assumes that all parents of i are stored
+        ## at the same place of the population, which is true for DE but
+        ## not in general.
+        return self._gen_window_op[-self.max_gen:, i]
         
     def write_to(self, filename):
         ops = self._gen_window_op
@@ -239,118 +248,168 @@ class GenWindow(object):
         gen = np.tile(np.arange(ops.shape[0]).reshape(-1,1), (1, ops.shape[1]))
         out = np.hstack((ops.reshape(-1,1),
                          gen.reshape(-1,1),
-                         met.reshape(met.shape[0] * met.shape[1], met.shape[2])))
-        np.savetxt(filename, out, fmt= 2*["%d"] + 7*["%+20.15e"],
-                   header = "operator generation"
-                   + " " + "absolute_fitness"
-                   + " " + "exp_absolute_fitness"
-                   + " " + "improv_wrt_parent"
-                   + " " + "improv_wrt_pop"
-                   + " " + "improv_wrt_bsf"
-                   + " " + "improv_wrt_median"
-                   + " " + "relative_fitness_improv")
-                   
-class OpWindow(object):
+                         met.reshape(-1,1)))
+        np.savetxt(filename, out, fmt= 2*["%d"] + 1*["%+20.15e"],
+                   header = "operator generation metric")
 
-    def __init__(self, n_ops, metric, max_size = 0):
+class OpWindow(object):
+    """ This window stores a sliding window of size maxsize per operator"""
+    def __init__(self, n_ops, max_size = 0):
         self.max_size = max_size
         self.n_ops = n_ops
-        self.metric = metric
-        # Vector of operators
-        self._window_op = np.full(max_size, -1)
-        # Matrix of metrics
-        # np.inf means not initialized
-        # np.nan means unsuccessful application
-        self._window_met = np.full((max_size, len(AOS.OM_choices)), np.inf)
+        if self.max_size > 0:
+            # Matrix of metric values per op
+            self.resize(max_size)
+
+    def resize(self, max_size):
+        self.max_size = max_size
+        self._window = np.full((self.n_ops, self.max_size), np.inf)
+        
+    def append(self, ops, values):
+        '''Push data of improved offspring in the window. It follows First In First Out Rule.'''
+        assert len(ops) == len(values)
+        if self.max_size == 0:
+            return
+        # We store only successes.
+        is_success = ~np.isnan(values) 
+        ops = ops[is_success]
+        values = values[is_success]
+        if len(values) > self.max_size:
+            ops = ops[-self.max_size:]
+            values = values[-self.max_size:]
+
+        for op in np.unique(ops):
+            # Shift contents FIFO
+            len_values = (ops == op).sum()
+            self._window[op, :] = np.roll(self._window[op, :], -len_values)
+            # Overwrite
+            self._window[op, -len_values:] = values[ops == op]
+            
+        #np.savetxt(sys.stderr, self._window, fmt="%8g")
+        
+class AppWindow(object):
+    """ This window stores a single sliding window of size maxsize for all operators (window of all operator applications)"""
+    def __init__(self, n_ops, max_size = 0):
+        self.max_size = max_size
+        self.n_ops = n_ops
+        if self.max_size > 0:
+            # Vector of operators
+            self._window_op = np.full(max_size, -1)
+            # Vector of metrics
+            # np.inf means not initialized
+            # np.nan means unsuccessful application
+            self._window_met = np.full(max_size, np.inf)
                 
     def resize(self, max_size):
         self.max_size = max_size
-        # Vector of operators
         self._window_op = np.full(max_size, -1)
-        self._window_met = np.full((max_size, len(AOS.OM_choices)), np.inf)
+        self._window_met = np.full(max_size, np.inf)
     
+    def append(self, ops, values):
+        '''Push data of improved offspring in the window. It follows First In First Out Rule.'''
+        assert len(ops) == len(values)
+        if self.max_size == 0:
+            return
+        # We store only successes.
+        is_success = ~np.isnan(values) 
+        ops = ops[is_success]
+        values = values[is_success]
+        if len(values) > self.max_size:
+            ops = ops[-self.max_size:]
+            values = values[-self.max_size:]
+
+        len_values = len(values)
+        # Shift contents FIFO
+        self._window_op = np.roll(self._window_op, -len_values)
+        self._window_met = np.roll(self._window_met, -len_values)
+        # Overwrite
+        self._window_op[-len_values:] = ops
+        self._window_met[-len_values:] = values
+        #np.savetxt(sys.stderr, [self._window_op, self._window_met], fmt="%8g")
+
     def count_ops(self):
-        N = np.zeros(self.n_ops)
+        n = np.zeros(self.n_ops, dtype=int)
         op, count = np.unique(self._window_op, return_counts=True)
-        N[op] = count
-        return N
-    
-    def truncate(self, size):
-        where = self.where_truncate(size)
-        # MUDITA: truncated working is not clear.
-        truncated = copy.copy(self)
-        truncated._window_op = truncated._window_op[where]
-        truncated._window_met = truncated._window_met[where, :]
-        return truncated
-    
-    def where_truncate(self, size):
-        """Returns the indexes of a truncated window after removing the offspring entry with unimproved metric from window and truncating to size"""
-        assert size > 0
-        # np.where returns a tuple, use np.flatnonzero to return a 1D array
-        where = np.flatnonzero(np.isfinite(self._window_met[:, self.metric]))
-        return where[:size]
+        n[op] = count
+        return n
+
+    def apply_per_op(self, fun):
+        """Apply function to metric values per operator"""
+        window_met = self._window_met
+        window_op = self._window_op
+        value = np.zeros(self.n_ops)
+        for op in np.unique(self._window_op):
+            value[op] = function(self._window_met[self._window_op == op])
+        return value
 
     def sum_per_op(self):
-        # FIXME: there is probably a faster way to do this.
-        #met_values = self._window_met[:, self.metric]
-        #return np.bincount(self._window_op, weights = met_values, minlength = self.n_ops)
-        value = np.zeros(self.n_ops)
-        for i in range(self.n_ops):
-            value[i] = np.sum(self._window_met[self._window_op == i, self.metric])
-        return value
-    
-    def get_ops_sorted_and_rank(self):
-        '''Return sorted window, number of successful applications of operators and rank'''
-        assert np.all(np.isfinite(self._window_met[:, self.metric]))
-        assert np.all(self._window_op >= 0)
-        x = self._window_met[:, self.metric]
-        # Gives rank to window[:, off_met]: largest number will get smallest number rank.
-        rank = rankdata(-x, method="min")
-        order = rank.argsort()
-        # If rank is [3, 1, 2]; then order of rank will be [1, 2, 0] because value ranked 3 is present at index 0. Thus, order[3] = 0 or order[rank] = index of rank.
-        # window_op_sorted is the operator vector sorted according to order i.e. highest Off_metrix to lowest
-        window_op_sorted = self._window_op[order]
-        rank = rank[order]
-        assert len(window_op_sorted) == len(rank)
-        return window_op_sorted, rank
+        """Sum of metric values per operator"""
+        return self.apply_per_op(np.sum)
 
-    def append(self, op, values):
-        '''Push data of improved offspring in the window. It follows First In First Out Rule.'''
-        # Fill from the bottom
-        which = (np.isinf(self._window_met[:,1]))
-        if np.any(which):
-            last_empty = np.max(np.flatnonzero(which))
-            self._window_op[last_empty] = op
-            self._window_met[last_empty, :] = values
-            return
+    def max_per_op(self):
+        """Sum of metric values per operator"""
+        return self.apply_per_op(np.max)
 
-        # Find last element that matches op
-        which = (self._window_op == op)
-        if np.any(which):
-            last = np.max(np.flatnonzero(which))
-        else:
-            # If the operator is not in the window, remove the worst if it is
-            # worse than the value we want to add.
-            last = np.argmin(self._window_met[:, 0])
-            if self._window_met[last, 0] >= values[0]:
-                return
+    def mean_per_op(self):
+        """Sum of metric values per operator"""
+        return self.apply_per_op(np.mean)
 
-        # Shift contents of window
-        self._window_op[1:(last+1)] = self._window_op[0:last]
-        self._window_met[1:(last+1), :] = self._window_met[0:last, :]
-        # Add it to the top
-        self._window_op[0] = op
-        self._window_met[0, :] = values
+
+def calc_diversity(parents, children):
+    # Calculate average euclidean distance of each child to all parents.
+    return distance.cdist(children, parents).sum(axis=1)
 
 class Metrics(object):
 
-    eps = np.finfo(np.float32).eps
+    # FIXME: can we get these names by listing the methods of the Metric class?
+    OM_choices = {
+        "absolute_fitness": 0, # "offsp_fitness"
+        "exp_absolute_fitness": 1,
+        "improv_wrt_parent": 2,
+        "improv_wrt_pop": 3,
+        "improv_wrt_bsf": 4,
+        "improv_wrt_median": 5,
+        "relative_fitness_improv": 6
+    }
+    param_choice = "OM_choice"
+    param_choice_help = "Offspring metric selected"
+    
+    @classmethod
+    def add_arguments(cls, parser):
+        metrics_names = list(cls.OM_choices)
+        parser.add_argument("--" + cls.param_choice, choices=metrics_names,
+                            help=cls.param_choice_help)
 
-    def __init__(self, minimize):
+
+    @classmethod
+    def irace_parameters(cls, override = {}):
+        metrics_names = list(cls.OM_choices)
+        #choices = range(1, 1 + len(metrics_names))
+        if cls.param_choice in override:
+            #choices = override[cls.param_choice]
+            metrics_names = override[cls.param_choice]
+            #choices_help = ', '.join(f"{i}:{j}" for i,j in zip(choices, metrics_names))
+        return irace_parameter(cls.param_choice, object, metrics_names,
+                               help=cls.param_choice_help)
+
+    def __init__(self, minimize, choice = None):
+        # We have to define it here and not a class level, because we need 'self'
+        OM_choices_fun = {
+            "absolute_fitness": self.absolute_fitness,
+            "exp_absolute_fitness": self.exp_absolute_fitness,
+            "improv_wrt_parent": self.improv_wrt_parent,
+            "improv_wrt_pop": self.improv_wrt_pop,
+            "improv_wrt_bsf": self.improv_wrt_bsf,
+            "improv_wrt_median": self.improv_wrt_median,
+            "relative_fitness_improv": self.relative_fitness_improv
+        }
         # FIXME: Extend to handle both minimization and maximization.
         assert minimize == True
         self.upper_bound = None
-        
+        self.choice = Metrics.OM_choices[choice]
+        self.calc_metric = OM_choices_fun[choice]
+
+    # Updates information and calculates the metric values.
     def update(self, F_children, F_parents, F_bsf):
         self.F_children = F_children
         self.F_parents = F_parents
@@ -361,29 +420,50 @@ class Metrics(object):
         # Best parent
         self.F_best = F_parents.min() 
         self.F_median = np.median(F_parents)
-                
+
+        return self.calc_metric()
+
+    def filter_non_improved(self, values):
+        # if child is worse or equal to parent, store np.nan.
+        return np.where(self.F_children < self.F_parents, values, np.nan)
+        
     # Fitness is minimised but metric is maximised
     def absolute_fitness(self):
         if self.upper_bound is None:
             # If all values are negative, then we need abs()
-            self.upper_bound = abs(self.F_children.max()) * 10
+            self.upper_bound = max(abs(self.F_children.max()),abs(self.F_parents.max())) * 10
         # If a later individual is still worse than the upper bound, it is
         # probably very bad anyway.
         values = np.maximum(0, self.upper_bound - self.F_children)
         assert (values >= 0).all(),f'F_children = {self.F_children[values <= 0]}, U = {self.upper_bound}'
+        values = self.filter_non_improved(values)
         return values
 
     def exp_absolute_fitness(self):
-        return softmax(-self.F_children)
-    # FIXME: In the paper we say max(0, improvement), why not here?
+        values = softmax(-self.F_children)
+        values = self.filter_non_improved(values)
+        return values
+
     def improv_wrt_parent(self):
-        return self.F_parents - self.F_children
+        values = self.F_parents - self.F_children
+        values = np.where(values > 0, values, np.nan)
+        return values
+
     def improv_wrt_pop(self):
-        return self.F_best - self.F_children
+        values = self.F_best - self.F_children
+        values = np.where(values > 0, values, np.nan)
+        return values
+    
     def improv_wrt_bsf(self):
-        return self.F_bsf - self.F_children
+        values = self.F_bsf - self.F_children
+        values = np.where(values > 0, values, np.nan)
+        return values
+    
     def improv_wrt_median(self):
-        return self.F_median - self.F_children
+        values = self.F_median - self.F_children
+        values = np.where(values > 0, values, np.nan)
+        return values
+    
     def relative_fitness_improv(self):
         # MUDITA: if F_bsf = 1 and F1 = 0, then F_bsf / (F1 + eps) becomes 8388608.0 which is wrong.
         ## We need to use the new bsf because we want to use the lowest value
@@ -391,450 +471,241 @@ class Metrics(object):
         assert np.all(self.F_new_bsf != 0), f"F_bsf = {self.F_new_bsf}"
         assert np.all(self.F_new_bsf != 0), f"F_bsf = {self.F_new_bsf}"
         # We use abs to ignore negative numbers. 
-        beta = (abs(self.F_new_bsf) + Metrics.eps) / (np.abs(self.F_children) + Metrics.eps)
+        beta = (abs(self.F_new_bsf) + EPSILON) / (np.abs(self.F_children) + EPSILON)
         # If we do have negative numbers, we may get values >= 1, just reverse.
         beta = np.where(beta > 1, 1 / beta, beta)
-        assert ((beta > 0) & (beta <= 1)).all(),f"beta={beta}, F_bsf = {self.F_new_bsf}, F_children = {self.F_children.abs() + Metrics.eps}"
+        assert ((beta > 0) & (beta <= 1)).all(),f"beta={beta}, F_bsf = {self.F_new_bsf}, F_children = {np.abs(self.F_children) + EPSILON}"
         return self.improv_wrt_parent() * beta
-   
+
+
+
 class AOS(object):
-    __version__ = '1.0'
     
-    # FIXME: can we get these names by listing the methods of the Metric class?
-    # FIXME: We should move these to Metrics
-    OM_choices = {"absolute_fitness": 0, # "offsp_fitness"
-                  "exp_absolute_fitness": 1,
-                  "improv_wrt_parent": 2,
-                  "improv_wrt_pop": 3,
-                  "improv_wrt_bsf": 4,
-                  "improv_wrt_median": 5,
-                  "relative_fitness_improv": 6}
-
-    param_choice = "OM_choice"
-    param_choice_help = "Offspring metric selected"
-
-    known_AOS = { #"AP" : {
-        #"OM_choice" : [6],
-        #"rew_choice" : ["Normalised_success_sum_window"], 
-        #"qual_choice": [0],
-        #"prob_choice":        [0], 
-        #"select_choice" : [1], 
-        #"window_size": [20, 150], 
-        #"normal_factor" :        [0, 1], 
-        #"decay_rate" : [0.0, 1.0], 
-        #"p_min" : [0.0, 0.5], 
-        #"error_prob" :        [0.0, 1.0], 
-        #},
+    known_AOS = {
+        "COBRA" : {
+            "OM_choice" : "improv_wrt_parent",
+            "rew_choice" : "AvgMetric",
+            "periodic" : True,
+            "max_gen" : ([1,50], 10), # default 10
+            "qual_choice" : "QualityIdentity",
+            "prob_choice" : "LinearRank",
+            "select_choice" : "ProportionalSelection",
+        },
+        # B. A. Julstrom, “What have you done for me lately? adapting operator probabilities in a steady-state genetic algorithm,” in ICGA, L. J. Eshelman, Ed. Morgan Kaufmann Publishers, San Francisco, CA, 1995, pp. 81–87.
         "ADOPP" : {
             "OM_choice" : "improv_wrt_median",
-            "rew_choice" : "Ancestor_success",
-            "decay": ([0.0, 1.0], 0.8), # default 0.8
+            "rew_choice" : "AncestorSuccess",
             "max_gen" : ([1, 50], 5), # default 5
-            "window_size": ([1, 500], 100), # qlen = 100
-            "frac": 0.0,
+            "decay": ([0.0, 1.0], 0.8), # default 0.8
+            "app_winsize": ([1, 500], 100), # qlen = 100
             "periodic" : False,
-            "convergence_factor" : 0, 
-            "qual_choice" : "Quality_Identity",
-            "prob_choice" : "Probability_Matching",
-            "select_choice" : "Proportional_Selection",
-            # FIXME: If the ranges don't change, do we need to provide them here?
+            "frac": 0.0,
+            "convergence_factor" : 0,
+            "qual_choice" : "QualityIdentity",
+            "prob_choice" : "ProbabilityMatching",
             "p_min" : 0.0,
-            "error_prob" : 0.0,
+            "select_choice" : "ProportionalSelection",
         },
-        
+        # B. A. Julstrom, “Adaptive operator probabilities in a genetic algorithm that applies three operators” in Proceedings of the 1997 ACM Symposium on Applied Computing, ser. SAC’97. New York, NY: ACM Press, 1997, pp. 233–238.
         "ADOPP_ext" : {
-            "OM_choice" : ["improv_wrt_median"],
-            "rew_choice" : ["Ancestor_success"],
-            "decay": [0.0, 1.0], # default 0.8
-            "max_gen" : [1, 50],
-            "window_size": [1, 500], # qlen = 100
-            "frac": [0.01, 0.1], # default 0.01
-            "convergence_factor" : [1, 100], # default 20
-            "qual_choice" : ["Quality_Identity"],
-            "prob_choice" : ["Probability_Matching"],
-            "select_choice" : ["Proportional_Selection"],
-            "p_min" : [0.0],
-            "error_prob" : [0.0],
-        },
-        "MA_S2" : {
-            "OM_choice" : ["relative_fitness_improv"],
-            "rew_choice" : ["Total_avg_gen"],
-            "max_gen" : [1],
-            "qual_choice" : ["Accumulate"],
-            "prob_choice" : ["Probability_Matching"],
-            "p_min" : [0.0],
-            "error_prob" : [0.0],
-            "select_choice" : ["Proportional_Selection"],
-        },
-
-        "AUC_AP" : {
-            "OM_choice" : ["improv_wrt_parent"],
-            "rew_choice" : ["Area_Under_The_Curve"],
-            "qual_choice" : ["Weighted_sum"],
-            "prob_choice" : ["Adaptive_Pursuit"],
-            "select_choice" : ["Proportional_Selection"],
-            "window_size" : [20, 150],
-            "decay" : [0.0, 1.0],
-            "decay_rate" : [0.01, 1.0],
-            "p_min" : [0.0, 0.5],
-            "p_max" : [0.0, 1.0],
-            "learning_rate" : [0.0, 1.0],
-        },
-
-        "AUC_MAB" : {
-            "OM_choice" : ["improv_wrt_parent"],
-            "rew_choice" : ["Area_Under_The_Curve"],
-            "qual_choice" : ["Upper_confidence_bound"],
-            "prob_choice" : ["Probability_Matching"],
-            "select_choice" : ["Greedy_Selection"],
-            "window_size" : [20, 150],
-            "decay" : [0.0, 1.0],
-            "scaling_factor" : [0.0, 1.0],
-            "p_min" : [0.0, 0.5],
-            "error_prob" : [0.0, 1.0],
-        },
-
-        "AUC_PM" : {
-            "OM_choice" : ["improv_wrt_parent"],
-            "rew_choice" : ["Area_Under_The_Curve"],
-            "qual_choice" : ["Weighted_sum"],
-            "prob_choice" : ["Probability_Matching"],
-            "select_choice" : ["Proportional_Selection"],
-            "window_size" : [20, 150],
-            "decay" : [0.0, 1.0],
-            "decay_rate" : [0.01, 1.0],
-            "p_min" : [0.0, 0.5],
-            "error_prob" : [0.0, 1.0],
-        },
-
-        "Compass" : {
-            "OM_choice" : ["improv_wrt_parent"],
-            "rew_choice" : ["Compass_projection"],
-            "qual_choice" : ["Quality_Identity"],
-            "prob_choice" : ["Probability_Matching"],
-            "select_choice" : ["Proportional_Selection"],
-            "fix_appl" : [10, 150],
-            "theta" : [36, 45, 54, 90],
-            "p_min" : [0.0, 0.5],
-            "error_prob" : [0.0, 1.0],
-        },
-
-        "Dyn_GEPv1" : {
-            "OM_choice" : ["improv_wrt_parent"],
-            "rew_choice" : ["Success_sum"],
-            "qual_choice" : ["Bellman_Equation"],
-            "prob_choice" : ["Probability_Matching"],
-            "select_choice" : ["Proportional_Selection"],
-            "max_gen" : [1, 50],
-            "weight_reward" : [0.0, 1.0],
-            "weight_old_reward" : [0.0, 1.0],
-            "discount_rate" : [0.0, 1.0],
-            "p_min" : [0.0, 0.5],
-            "error_prob" : [0.0, 1.0],
-        },
-
-        "Dyn_GEPv2" : {
-            "OM_choice" : ["improv_wrt_parent"],
-            "rew_choice" : ["Normalised_best_sum"],
-            "qual_choice" : ["Bellman_Equation"],
-            "prob_choice" : ["Probability_Matching"],
-            "select_choice" : ["Proportional_Selection"],
-            "max_gen" : [1, 50],
-            "intensity" : [1, 2, 3],
-            "alpha" : [0, 1],
-            "weight_reward" : [0.0, 1.0],
-            "weight_old_reward" : [0.0, 1.0],
-            "discount_rate" : [0.0, 1.0],
-            "p_min" : [0.0, 0.5],
-            "error_prob" : [0.0, 1.0],
-        },
-
-        "Ext_AP" : {
-            "OM_choice" : ["improv_wrt_parent"],
-            "rew_choice" : ["Normalised_best_sum"],
-            "qual_choice" : ["Weighted_sum"],
-            "prob_choice" : ["Adaptive_Pursuit"],
-            "select_choice" : ["Proportional_Selection"],
-            "max_gen" : [1, 50],
-            "intensity" : [1, 2, 3],
-            "alpha" : [0, 1],
-            "decay_rate" : [0.01, 1.0],
-            "p_min" : [0.0, 0.5],
-            "p_max" : [0.0, 1.0],
-            "learning_rate" : [0.0, 1.0],
-        },
-
-        "Ext_MAB" : {
-            "OM_choice" : ["improv_wrt_parent"],
-            "rew_choice" : ["Normalised_best_sum"],
-            "qual_choice" : ["Upper_confidence_bound"],
-            "prob_choice" : ["Probability_Matching"],
-            "select_choice" : ["Greedy_Selection"],
-            "max_gen" : [1, 50],
-            "intensity" : [1, 2, 3],
-            "alpha" : [0, 1],
-            "scaling_factor" : [0.0, 1.0],
-            "p_min" : [0.0, 0.5],
-            "error_prob" : [0.0, 1.0],
-        },
-
-        "Ext_PM" : {
-            "OM_choice" : ["improv_wrt_parent"],
-            "rew_choice" : ["Normalised_best_sum"],
-            "qual_choice" : ["Weighted_sum"],
-            "prob_choice" : ["Probability_Matching"],
-            "select_choice" : ["Proportional_Selection"],
-            "max_gen" : [1, 50],
-            "intensity" : [1, 2, 3],
-            "alpha" : [0, 1],
-            "decay_rate" : [0.01, 1.0],
-            "p_min" : [0.0, 0.5],
-            "error_prob" : [0.0, 1.0],
+            "OM_choice" : "improv_wrt_median",
+            "rew_choice" : "AncestorSuccess",
+            "max_gen" : ([1, 50], 5), # default 5
+            "decay": ([0.0, 1.0], 0.8), # default 0.8
+            "app_winsize": ([1, 500], 100), # qlen = 100
+            "periodic" : False,
+            "frac": ([0.01, 0.1], 0.01), # default 0.01
+            "convergence_factor" : ([1, 100], 20), # default 20
+            "qual_choice" : "QualityIdentity",
+            "prob_choice" : "ProbabilityMatching",
+            "p_min" : 0.0,
+            "select_choice" : "ProportionalSelection",
         },
         #  F. G. Lobo and D. E. Goldberg, “Decision making in a hybrid genetic
-        #  algorithm,” in Proceedings of the 1997 IEEE International Conference
-        #  on Evolutionary Computation (ICEC’97), T. Bäck, Z. Michalewicz, and
-        #  X. Yao, Eds. Piscataway, NJ: IEEE Press, 1997, pp. 121–125.
+        #  algorithm,” in Proceedings of the 1997 IEEE International Conference on
+        #  Evolutionary Computation (ICEC’97), T. Bäck, Z. Michalewicz, and X. Yao,
+        #  Eds. Piscataway, NJ: IEEE Press, 1997, pp. 121–125.
         "Hybrid" : {
-            "OM_choice" : ["improv_wrt_pop"],
-            "rew_choice" : ["Best2gen"], # FIXME: ExtMetric
-            "max_gen" : [1], 
-            #"qual_choice" : ["Bellman_Equation"],
-            "qual_choice" : ["Weighted_sum"],
-            "q_min" : [0.0], # default
-            "discount_rate" : [0.0, 1.0],
-            "prob_choice" : ["Probability_Matching"],
-            "p_min" : [0.0], # no default given.
-            "error_prob" : [0.0],
-            "select_choice" : ["Proportional_Selection"],
+            "OM_choice" : "improv_wrt_pop",
+            "rew_choice" : "ExtMetric", 
+            "max_gen" : 1,
+            "gamma" : 1,
+            "periodic" : False,
+            "qual_choice" : "Qlearning",
+            "q_min" : 0.0, 
+            "decay_rate" : ([0.001, 1.0], 0.1),
+            "prob_choice" : "ProbabilityMatching",
+            "p_min" : 0.0, # no default given.
+            "select_choice" : "ProportionalSelection",
         },
-        # 
-        # "Hybridv2" : {
-        #     "OM_choice" : ["improv_wrt_parent"],
-        #     "rew_choice" : ["Best2gen"],
-        #     "qual_choice" : ["Bellman_Equation"],
-        #     "prob_choice" : ["Probability_Matching"],
-        #     "select_choice" : ["Proportional_Selection"],
-        #     "scaling_constant" : [0.001, 1.0],
-        #     "alpha" : [0, 1],
-        #     "beta" : [0,1],
-        #     "weight_reward" : [0.0, 1.0],
-        #     "weight_old_reward" : [0.0, 1.0],
-        #     "discount_rate" : [0.0, 1.0],
-        #     "p_min" : [0.0, 0.5],
-        #     "error_prob" : [0.0, 1.0],
-        # },
-
-        "MEANS" : {
-            "OM_choice" : ["absolute_fitness"],
-            "rew_choice" : ["Success_Rate_old"],
-            "qual_choice" : ["Upper_confidence_bound"],
-            "prob_choice" : ["Probability_Matching"],
-            "select_choice" : ["Proportional_Selection"],
-            "max_gen" : [1, 50],
-            "succ_lin_quad": [1, 2],
-            "frac": [0.0, 1.0],
-            "noise": [0.0,1.0],
-            "scaling_factor" : [0.0, 1.0],
-            "p_min" : [0.0, 0.5],
-            "error_prob" : [0.0, 1.0],
-        },
-
-        "MMRDE" : {
-            "OM_choice" : ["improv_wrt_parent"],
-            "rew_choice" : ["Success_Rate_old"],
-            "qual_choice" : ["Quality_Identity"],
-            "prob_choice" : ["Probability_Matching"],
-            "select_choice" : ["Proportional_Selection"],
-            "max_gen" : [1, 50],
-            "succ_lin_quad": [1, 2],
-            "frac": [0.0, 1.0],
-            "noise": [0.0,1.0],
-            "p_min" : [0.0, 0.5],
-            "error_prob" : [0.0, 1.0],
-        },
-
         # C. Igel and M. Kreutz, “Using fitness distributions to improve the
         # evolution of learning structures,” in Proceedings of the 1999
         # Congress on Evolutionary Computation (CEC 1999), vol. 3. Piscataway,
         # NJ: IEEE Press, 1999, pp. 1902–1909.
         "Op_adapt" : {
-            "OM_choice" : ["improv_wrt_pop"],
-            "rew_choice" : ["Total_avg_gen"],
-            "periodic" : [1],
-            "max_gen" : [1, 50], # default 10
-            "qual_choice" : ["Weighted_sum"],
-            "decay_rate" : [0.01, 1], # default: 0.5 
-            "q_min" : [0.01, 1], # default 0.1
-            "prob_choice" : ["Probability_Matching"],
-            "p_min" : [0.0],
-            "error_prob" : [0.0],
-            "select_choice" : ["Proportional_Selection"],
+            "OM_choice" : "improv_wrt_pop",
+            "rew_choice" : "TotalGenAvg",
+            "periodic" : 1,
+            "max_gen" : ([1, 50], 10), # default 10
+            "qual_choice" : "Qlearning",
+            "decay_rate" : ([0.001, 1], 0.5), # default: 0.5 
+            "q_min" : ([0.01, 1], 0.1), # default 0.1
+            "prob_choice" : "ProbabilityMatching",
+            "p_min" : 0.0,
+            "select_choice" : "ProportionalSelection",
         },
-
-        "Adapt_NN" : {
-            "OM_choice" : ["improv_wrt_parent"],
-            "rew_choice" : ["Normalized_avg_period"],
-            "periodic" : [1],
-            "max_gen" : [1, 50], # default 4
-            "qual_choice" : ["Weighted_sum"],
-            "decay_rate": [0.01, 1.0], # delta default: 0.3
-            "q_min" : [1], # 
-            "prob_choice" : ["Probability_Matching"],
-            "p_min" : [0.01, 1.0], # default pmin = 0.1
-            "error_prob" : [0.0],
-            "select_choice" : ["Proportional_Selection"],
+        # J. T. Stanczak, J. J. Mulawka, and B. K. Verma, “Genetic algorithms with adaptive probabilities of operators selection,” in Proceedings Third International Conference on Computational Intelligence and Multimedia Applications. ICCIMA’99. IEEE, 1999, pp. 464—-468.
+        "APOS" : {
+            "OM_choice" : "improv_wrt_bsf",
+            "rew_choice" : "NormAvgMetric",
+            "periodic" : 0,
+            "max_gen" : 1,
+            "qual_choice" : "Qdecay",
+            "decay_rate" : ([0.01, 1], 0.4),
+            "q_min" : ([0.01, 1], 0.01),
+            "prob_choice" : "ProbabilityMatching",
+            "p_min" : 0.0,
+            "select_choice" : "ProportionalSelection",
         },
-
-        
-        "PD_PM" : {
-            "OM_choice" : ["improv_wrt_parent"],
-            "rew_choice" : ["Pareto_Dominance"],
-            "qual_choice" : ["Weighted_sum"],
-            "prob_choice" : ["Probability_Matching"],
-            "select_choice" : ["Proportional_Selection"],
-            "fix_appl" : [10, 150],
-            "decay_rate" : [0.01, 1.0],
-            "p_min" : [0.0, 0.5],
-            "error_prob" : [0.0, 1.0],
-        },
-
+        # J. Niehaus and W. Banzhaf, “Adaption of operator probabilities in
+        # genetic programming,” in Proceedings of the 4th European Conference on
+        # Genetic Programming, EuroGP 2001, ser. LNCS, J. Miller, M. Tomassini,
+        # P. L. Lanzi, C. Ryan, A. G. B. Tettamanzi, and W. B. Langdon,
+        # Eds. Springer, 2001, vol. 2038, pp. 325–336.
         "PDP" : {
-            "OM_choice" : ["improv_wrt_parent"],
-            "rew_choice" : ["Success_rate"],
-            "max_gen" : [100000], # default is np.inf
-            "gamma": [2],
-            "qual_choice" : ["Quality_Identity"],
-            "prob_choice" : ["Probability_Matching"],
-            "p_min" : [0.0, 0.5], # default is 0.2 / n_ops
-            "error_prob" : [0.0],
-            "select_choice" : ["Proportional_Selection"],
+            "OM_choice" : "improv_wrt_parent",
+            "rew_choice" : "SuccessRate",
+            "periodic": 0,
+            "max_gen" : 100000, # default is np.inf
+            "gamma": 2,
+            "qual_choice" : "QualityIdentity",
+            "prob_choice" : "ProbabilityMatching",
+            "p_min" : ([0.0, 1.0], 0.2), # default is 0.2 / n_ops
+            "select_choice" : "ProportionalSelection",
         },
-
-        "PR_PM" : {
-            "OM_choice" : ["improv_wrt_parent"],
-            "rew_choice" : ["Pareto_Rank"],
-            "qual_choice" : ["Weighted_sum"],
-            "prob_choice" : ["Probability_Matching"],
-            "select_choice" : ["Proportional_Selection"],
-            "fix_appl" : [10, 150],
-            "decay_rate" : [0.01, 1.0],
-            "p_min" : [0.0, 0.5],
-            "error_prob" : [0.0, 1.0],
+        # C. Igel and M. Kreutz, “Operator adaptation in evolutionary computation
+        # and its application to structure optimization of neural networks,”
+        # Neurocomputing, vol. 55, no. 1-2, pp. 347–361, 2003.
+        "Adapt_NN" : {
+            "OM_choice" : "improv_wrt_parent",
+            "rew_choice" : "NormAvgMetric",
+            "periodic" : 1,
+            "max_gen" : ([1, 50], 4), # default 4
+            "qual_choice" : "Qlearning",
+            "decay_rate": ([0.01, 1.0], 0.3), # delta default: 0.3
+            "q_min" : 1, # actually 1 / n_ops
+            "prob_choice" : "ProbabilityMatching",
+            "p_min" : ([0.01, 1.0], 0.1), # default pmin = 0.1
+            "select_choice" : "ProportionalSelection",
         },
-
-        "Proj_PM" : {
-            "OM_choice" : ["improv_wrt_parent"],
-            "rew_choice" : ["Compass_projection"],
-            "qual_choice" : ["Weighted_sum"],
-            "prob_choice" : ["Probability_Matching"],
-            "select_choice" : ["Proportional_Selection"],
-            "fix_appl" : [10, 150],
-            "theta" : [36, 45, 54, 90],
-            "decay_rate" : [0.01, 1.0],
-            "p_min" : [0.0, 0.5],
-            "error_prob" : [0.0, 1.0],
+        # Y. S. Ong and A. J. Keane, “Meta-Lamarckian learning in memetic algorithms,
+        # ”IEEE Trans. Evol. Comput., vol. 8, no. 2, pp. 99–110, 2004.
+        "MA_S2" : {
+            "OM_choice" : "relative_fitness_improv",
+            "rew_choice" : "TotalGenAvg",
+            "max_gen" : 1,
+            "periodic" : False,
+            "qual_choice" : "Accumulate",
+            "prob_choice" : "ProbabilityMatching",
+            "p_min" : 0.0,
+            "select_choice" : "ProportionalSelection",
         },
-
-        "RFI_AA_PM" : {
-            "OM_choice" : ["relative_fitness_improv"],
-            "rew_choice" : ["Normalised_success_sum_window"],
-            "qual_choice" : ["Weighted_sum"],
-            "prob_choice" : ["Probability_Matching"],
-            "select_choice" : ["Proportional_Selection"],
-            "window_size":[20, 150],
-            "normal_factor":[0, 1],
-            "decay_rate" : [0.01, 1.0],
-            "p_min" : [0.0, 0.5],
-            "error_prob" : [0.0, 1.0],
+        #  F. Vafaee, P. C. Nelson, C. Zhou, and W. Xiao, “Dynamic adaptation of genetic operators’ probabilities,” in Nature Inspired Cooperative Strategies for Optimization (NICSO 2007), ser. Studies in Computational Intelligence, N. Krasnogor, G. Nicosia, M. Pavone, and D. A. Pelta, Eds. Berlin, Heidelberg: Springer, 2008, vol. 129, pp. 159–168.
+        "Dyn_GEPv1" : {
+            "OM_choice" : "improv_wrt_parent",
+            "rew_choice" : "AvgMetric",
+            "periodic" : 0,
+            "max_gen" : 1,
+            "qual_choice" : "PrevReward",
+            "decay_rate" : ([0.01, 1.0], 0.1),
+            "q_min" : ([0,1], 0.001),
+            "prob_choice" : "ProbabilityMatching",
+            "p_min" : 0,
+            "select_choice" : "ProportionalSelection",
         },
-
-        "RFI_EA_PM" : {
-            "OM_choice" : ["relative_fitness_improv"],
-            "rew_choice" : ["Normalised_best_sum"],
-            "qual_choice" : ["Weighted_sum"],
-            "prob_choice" : ["Probability_Matching"],
-            "select_choice" : ["Proportional_Selection"],
-            "max_gen" : [1, 50],
-            "intensity" : [1, 2, 3],
-            "alpha" : [0, 1],
-            "decay_rate" : [0.01, 1.0],
-            "p_min" : [0.0, 0.5],
-            "error_prob" : [0.0, 1.0],
+        "Dyn_GEPv2" : {
+            "OM_choice" : "improv_wrt_parent",
+            "rew_choice" : "ExtMetric",
+            "periodic" : 0,
+            "max_gen" : 1,
+            "gamma" : 3,
+            "qual_choice" : "PrevReward",
+            "decay_rate" : ([0.01, 1.0], 0.1),
+            "q_min" : ([0,1], 0.001),
+            "prob_choice" : "ProbabilityMatching",
+            "p_min" : 0,
+            "select_choice" : "ProportionalSelection",
         },
-
-        "RecPM" : {
-            "OM_choice" : ["improv_wrt_parent"],
-            "rew_choice" : ["Immediate_Success"],
-            "qual_choice" : ["Bellman_Equation"],
-            "prob_choice" : ["Probability_Matching"],
-            "select_choice" : ["Proportional_Selection"],
-            "weight_reward" : [0.0, 1.0],
-            "weight_old_reward" : [0.0, 1.0],
-            "discount_rate" : [0.0, 1.0],
-            "p_min" : [0.0, 0.5],
-            "error_prob" : [0.0, 1.0],
+        # L. Da Costa, Á. Fialho, M. Schoenauer, and M. Sebag, “Adaptive operator selection with dynamic multi-armed bandits,” in Proceedings of the Genetic and Evolutionary Computation Conference, GECCO 2008, C. Ryan, Ed. New York, NY: ACM Press, 2008, pp. 913–920.
+        "DMAB" : {
+             "OM_choice" : "improv_wrt_parent",
+             "rew_choice" : "AvgMetric",
+             "periodic" : 0,
+             "max_gen" : 1,
+             "qual_choice": "AvgPHrestart",
+             "ph_delta": 0.15,
+             "ph_threshold": 0,
+             "prob_choice": "UCB1",
+             "C_ucb" : 0.5,
+             "select_choice": "GreedySelection",
+         },
+        # Á. Fialho, L. Da Costa, M. Schoenauer, and M. Sebag, “Extreme value based adaptive operator selection,” in Parallel Problem Solving from Nature, PPSN X, ser. Lecture Notes in Computer Science, G. Rudolph et al., Eds. Springer, Heidelberg, Germany, 2008, vol. 5199, pp. 175–184.
+        "ExMAB" : { 
+            "OM_choice" : "improv_wrt_parent",
+            "rew_choice" : "ExtAbsWindow",
+            "op_winsize" : ([1,100], 50),
+            "periodic" : 0,
+            "qual_choice" : "AvgPHrestart",
+            "ph_delta": 0.15,
+            "ph_threshold": 0,
+            "prob_choice": "UCB1",
+            "C_ucb" : 0.5,
+            "select_choice" : "GreedySelection",
         },
-            
-        "SR_AP" : {
-            "OM_choice" : ["improv_wrt_parent"],
-            "rew_choice" : ["Sum_of_Rank"],
-            "qual_choice" : ["Weighted_sum"],
-            "prob_choice" : ["Adaptive_Pursuit"],
-            "select_choice" : ["Proportional_Selection"],
-            "window_size" : [20, 150],
-            "decay" : [0.0, 1.0],
-            "decay_rate" : [0.01, 1.0],
-            "p_min" : [0.0, 0.5],
-            "p_max" : [0.0, 1.0],
-            "learning_rate" : [0.0, 1.0],
+        "ExPM" : {
+            "OM_choice" : "improv_wrt_parent",
+            "rew_choice" : "ExtAbsWindow",
+            "op_winsize" : ([1,100], 50),
+            "periodic" : 0,
+            "qual_choice" : "Qlearning",
+            "decay_rate": ([0.01, 1.0], 0.1),
+            "q_min" : 0, 
+            "prob_choice" : "ProbabilityMatching",
+            "p_min" : ([0.0, 1.0], 0.0), # default pmin = 0.0
+            "select_choice" : "ProportionalSelection",
         },
-
-        "SR_MAB" : {
-            "OM_choice" : ["improv_wrt_parent"],
-            "rew_choice" : ["Sum_of_Rank"],
-            "qual_choice" : ["Upper_confidence_bound"],
-            "prob_choice" : ["Probability_Matching"],
-            "select_choice" : ["Greedy_Selection"],
-            "window_size" : [20, 150],
-            "decay" : [0.0, 1.0],
-            "scaling_factor" : [0.0, 1.0],
-            "p_min" : [0.0, 0.5],
-            "error_prob" : [0.0, 1.0],
+        # Á. Fialho, L. Da Costa, M. Schoenauer, and M. Sebag, “Extreme value based adaptive operator selection,” in Parallel Problem Solving from Nature, PPSN X, ser. Lecture Notes in Computer Science, G. Rudolph et al., Eds. Springer, Heidelberg, Germany, 2008, vol. 5199, pp. 175–184.
+        "ExtAP" : {
+            "OM_choice" : "improv_wrt_parent",
+            "rew_choice" : "ExtAbsWindow",
+            "op_winsize" : ([1,100], 50),
+            "periodic" : 0,
+            "qual_choice" : "Qlearning",
+            "decay_rate": ([0.01, 1.0], 0.1),
+            "q_min" : 0, 
+            "prob_choice" : "AdaptivePursuit",
+            "p_min" : ([0.0, 1.0], 0.0), # default pmin = 0.0
+            "learning_rate": ([0.01, 1.0], 0.1),
+            "select_choice" : "ProportionalSelection",
         },
-
-        "SR_PM" : {
-            "OM_choice" : ["improv_wrt_parent"],
-            "rew_choice" : ["Sum_of_Rank"],
-            "qual_choice" : ["Weighted_sum"],
-            "prob_choice" : ["Probability_Matching"],
-            "select_choice" : ["Proportional_Selection"],
-            "window_size" : [20, 150],
-            "decay" : [0.0, 1.0],
-            "decay_rate" : [0.01, 1.0],
-            "p_min" : [0.0, 0.5],
-            "error_prob" : [0.0, 1.0],
+        # Jorge Maturana and Frédéric Saubion. “A compass to guide genetic al-gorithms”. In:International Conference on Parallel Problem Solving from Nature.http://www.info.univ-angers.fr/pub/maturana/files/MaturanaSaubion-Compass-PPSNX.pdf. Springer. 2008, pp. 256–265.
+       "Compass" : {
+            "OM_choice" : "improv_wrt_parent",
+            "rew_choice" : "CompassProjection",
+            "app_winsize": 100,
+            "theta": ([36, 45, 54, 90], 45),
+            "qual_choice" : "QualityIdentity",
+            "prob_choice" : "ProbabilityMatching",
+            "p_min" : ([0.0, 1.0], 1.0/3.0), # default pmin = 1/3
+            "select_choice" : "ProportionalSelection",
         },
-
-        "SaDE" : {
-            "OM_choice" : ["improv_wrt_parent"],
-            "rew_choice" : ["Success_Rate_old"],
-            "qual_choice" : ["Quality_Identity"],
-            "prob_choice" : ["Probability_Matching"],
-            "select_choice" : ["Proportional_Selection"],
-            "max_gen" : [1, 50],
-            "succ_lin_quad": [1, 2],
-            "frac": [0.0, 1.0],
-            "noise": [0.0,1.0],
-            "p_min" : [0.0, 0.5],
-            "error_prob" : [0.0, 1.0],
-        }
     }
 
     @classmethod
     def build_known_AOS(cls, name,
                         popsize, budget, n_ops, rew_args,
-                        qual_args, prob_args, select_args):
+                        qual_args, prob_args, select_args,
+                        debug_filename):
 
         if not name in AOS.known_AOS:
             raise ValueError(f"unknown AOS method {name}, known AOS are {list(AOS.known_AOS)}")
@@ -861,62 +732,57 @@ class AOS(object):
                     continue
                 if not ind in choice or choice[ind] == None:
                     choice[ind] = value
-                    
-        print(f'{name} = {dict(OM_choice = OM_choice, rew_choice = rew_choice, rew_args=rew_args, qual_choice=qual_choice, qual_args=qual_args, prob_choice = prob_choice, prob_args=prob_args, select_choice = select_choice, select_args=select_args)}')
+        # For debugging.          
+        # print(f'{name} = {dict(OM_choice = OM_choice, rew_choice = rew_choice, rew_args=rew_args, qual_choice=qual_choice, qual_args=qual_args, prob_choice = prob_choice, prob_args=prob_args, select_choice = select_choice, select_args=select_args)}')
 
+        # FIXME: how to use kwargs to avoid having to specify everything that passes through?
         return AOS(popsize, budget, n_ops,
                    OM_choice, rew_choice, rew_args,
                    qual_choice, qual_args,
-                   prob_choice, prob_args, select_choice, select_args)
-        
-        
+                   prob_choice, prob_args, select_choice, select_args,
+                   debug_filename)
+
     def __init__(self, popsize, budget, n_ops, OM_choice, rew_choice, rew_args,
-                 qual_choice, qual_args, prob_choice, prob_args, select_choice, select_args):
+                 qual_choice, qual_args, prob_choice, prob_args, select_choice, select_args,
+                 debug_filename = None):
 
         self.n_ops = n_ops
-        self.metrics = Metrics(minimize=True)
-        self.window = OpWindow(n_ops, metric = AOS.OM_choices[OM_choice])
-        self.gen_window = GenWindow(n_ops, metric = AOS.OM_choices[OM_choice])
-        self.tran_matrix = np.random.rand(n_ops, n_ops)
-        self.tran_matrix = normalize_matrix(self.tran_matrix)
+        self.metrics = Metrics(minimize=True, choice=OM_choice)
+
+        self.div_window = None
+        self.op_window = None
+        self.app_window = None
+        # We use the gen_window for statistics, so we always create it.
+        self.gen_window = GenWindow(n_ops)
+        # Number of applications of each operator (count once per generation, no window)
+        self.n_appl = np.zeros(n_ops, dtype=int)
+
         self.probability = np.full(n_ops, 1.0 / n_ops)
-        self.old_reward = np.zeros(n_ops)
+        
         self.periodic = rew_args["periodic"] if rew_args["max_gen"] else False
-            
-        rew_args["popsize"] = popsize
-        select_args["popsize"] = popsize
-        self.reward_type = build_reward(self, rew_choice, rew_args)
-        self.quality_type = build_quality(qual_choice, n_ops, qual_args)
-        self.probability_type = build_probability(prob_choice, n_ops, prob_args)
-        self.selection_type = build_selection(select_choice, n_ops, select_args, budget)
-        self.select_counter = 0
-    
+        self.reward_type = RewardType.build(rew_choice, self, rew_args)
+        self.quality_type = QualityType.build(qual_choice, self, qual_args)
+        self.probability_type = ProbabilityType.build(prob_choice, self, prob_args)
+        self.selection_type = SelectionType.build(select_choice, self, select_args)
+        self.update_counter = 1 # We start at 1 so if periodic, we do not update in the first generation.
+        
+        self.prob_file = DebugFile(debug_filename, ".prob", "p_", n_ops)
+        self.rew_file = DebugFile(debug_filename, ".rew", "r_", n_ops)
+        self.qual_file = DebugFile(debug_filename, ".qual", "q_", n_ops)
+
     @classmethod
-    def add_argument(cls, parser):
-        metrics_names = list(cls.OM_choices)
-        parser.add_argument("--" + cls.param_choice, choices=metrics_names,
-                            help=cls.param_choice_help)
-        # Handle rewards
-        rew_args_names = RewardType.add_argument(parser)
-        # Handle qualities
-        qual_args_names = QualityType.add_argument(parser)
-        # Handle probabilities
-        prob_args_names = ProbabilityType.add_argument(parser)
-        # Handle Selection
-        select_args_names = SelectionType.add_argument(parser)
+    def add_arguments(cls, parser):
+        Metrics.add_arguments(parser)
+        rew_args_names = RewardType.add_arguments(parser)
+        qual_args_names = QualityType.add_arguments(parser)
+        prob_args_names = ProbabilityType.add_arguments(parser)
+        select_args_names = SelectionType.add_arguments(parser)
         return (rew_args_names, qual_args_names, prob_args_names, select_args_names)
         
     @classmethod
     def irace_parameters(cls, override = {}):
         output = "# " + cls.__name__ + "\n"
-        metrics_names = list(cls.OM_choices)
-        #choices = range(1, 1 + len(metrics_names))
-        if cls.param_choice in override:
-            #choices = override[cls.param_choice]
-            metrics_names = override[cls.param_choice]
-            #choices_help = ', '.join(f"{i}:{j}" for i,j in zip(choices, metrics_names))
-        output += irace_parameter(cls.param_choice, object, metrics_names,
-                                        help=cls.param_choice_help)
+        output += Metrics.irace_parameters(override = override)
         output += RewardType.irace_parameters(override = override)
         output += QualityType.irace_parameters(override = override)
         output += ProbabilityType.irace_parameters(override = override)
@@ -939,7 +805,7 @@ class AOS(object):
             for param,domain in parameters.items():
                 if param == "OM_choice":
                     has_om = True
-                    choices = list(AOS.OM_choices)
+                    choices = list(Metrics.OM_choices)
                 elif param == "rew_choice":
                     has_rew = True
                     choices, _ = get_choices(RewardType)
@@ -968,140 +834,42 @@ class AOS(object):
             assert has_sel,f'{name} does not have select_choice'
         
     def select_operator(self):
-        return self.selection_type.perform_selection(self.probability, self.select_counter)
+        return self.selection_type.select(self.probability)
 
-############################Offspring Metric definitions#######################
-    def OM_Update(self, F, F1, F_bsf, opu):
-        """F: fitness of parent population
+    def update(self, X_p, X_c, F, F1, F_bsf, opu):
+        """
+        X_p : decision variables of parents
+        X_c : decision variables of children
+        F: fitness of parent population
         F1: fitness of children population
         F_bsf : best so far fitness
         opu: represents (op)erator that produced offspring (u).
         """
-        self.metrics.update(F1, F, F_bsf)
-        
-        #verylarge = 1e32
-        
-        # See OpWindow metrics
-        # Fitness is minimised but metric is maximised
-        ## MANUEL: we need to think if this is the best solution to convert to maximization
-        ## MUDITA: can't think of anything better than following.
-        #absolute_fitness = verylarge - F1
-        #assert np.all(absolute_fitness >= 0)
-        absolute_fitness = self.metrics.absolute_fitness()
-        exp_absolute_fitness = self.metrics.exp_absolute_fitness()
-        improv_wrt_parent = self.metrics.improv_wrt_parent()
-        improv_wrt_pop = self.metrics.improv_wrt_pop()
-        improv_wrt_bsf = self.metrics.improv_wrt_bsf()
-        improv_wrt_median = self.metrics.improv_wrt_median()
-        # MUDITA: if F_bsf = 1 and F1 = 0, then F_bsf / (F1 + eps) becomes 8388608.0 which is wrong.
-        relative_fitness_improv = self.metrics.relative_fitness_improv()
-        #relative_fitness_improv = (verylarge - (F_bsf / (F1 + eps))) * improv_wrt_parent
-        
-        popsize = len(F)
-        window_op = np.copy(opu)
-        window_met = np.full((popsize, 7), np.nan)
-        
-        for i in range(popsize):
-            # if child is worse or equal to parent, don't store an OM_metric,
-            if F1[i] >= F[i]:
-                continue
-            # MANUEL: If child is worse than parent, we don't store the op, so it is not counted as an application, is that right? It seems wrong.
-            # MUDITA: Ofcourse, we need to store the op. This is useful to count the number of unsuccessful applications (Line 158). I have added a line above continue (see two lines above).
-            window_met[i, 0] = absolute_fitness[i]
-            window_met[i, 1] = exp_absolute_fitness[i]
-            window_met[i, 2] = improv_wrt_parent[i]
-            if improv_wrt_pop[i] >= 0:
-                window_met[i, 3] = improv_wrt_pop[i]
-            if improv_wrt_bsf[i] >= 0:
-                window_met[i, 4] = improv_wrt_bsf[i]
-            if improv_wrt_median[i] >= 0:
-                window_met[i, 5] = improv_wrt_median[i]
-            window_met[i, 6] = relative_fitness_improv[i]
-            assert window_met[i, 2] >= 0
-            #assert window_met[i,6] >= 0
-            if self.window.max_size:
-                self.window.append(window_op[i], window_met[i, :])
-        
-        self.gen_window.append(window_op, window_met)
+        # To implement Compass-like AOS, we need to store an AppWindow for diversity and another for metric.
+        if self.div_window:
+            divers_met = calc_diversity(X_p, X_c)
+            self.div_window.append(opu, divers_met)
+        window_met = self.metrics.update(F1, F, F_bsf)
+        if self.op_window:
+            self.op_window.append(opu, window_met)
+        if self.app_window:
+            self.app_window.append(opu, window_met)
+
+        self.gen_window.append(opu, window_met)
+        # We count only one application per generation since update is generational
+        self.n_appl[np.unique(opu)] += 1
         # Update if we are not doing periodic updates or max_gen == 0 or
         # or counter % max_gen == 0
         if not self.periodic or self.gen_window.max_gen == 0 \
-           or self.select_counter % self.gen_window.max_gen:
-            # MANUEL: Why do we need to return num_op?
-            reward, num_op = self.reward_type.calc_reward()
-            #old_reward = self.reward_type.old_reward
-            #old_prob = self.probability_type.old_probability
-            quality = self.quality_type.calc_quality(self.old_reward, reward, num_op, self.tran_matrix)
+           or (self.update_counter % self.gen_window.max_gen == 0):
+            reward = self.reward_type.calc_reward()
+            quality = self.quality_type.calc_quality(reward)
             self.probability = self.probability_type.calc_probability(quality)
-            # FIXME: Why do we need to calculate this here?
-            self.tran_matrix = transitive_matrix(self.probability)
-            self.old_reward = np.copy(reward)
-        # FIXME: This is not really the selection counter, only the update counter.
-        self.select_counter += 1
-
-    
-###################Other definitions############################################
-
-def transitive_matrix(p):
-    """Calculates Transitive Matrix."""
-    ## Numpy broadcasting.
-    tran_matrix = p + p[:, np.newaxis]
-    return normalize_matrix(tran_matrix)
-
-def normalize_matrix(x):
-    """Normalise n_ops dimensional matrix""" 
-    return x / np.sum(x, axis=1)[:, None]
-
-def calc_delta_r(decay, W, window_size, ndcg):
-    if decay == 0:
-        return np.ones(window_size)
-    r = np.arange(float(W))
-    if ndcg:
-        r += 1
-        delta_r = ((2 ** (W - r)) - 1) / np.log(1 + r)
-    else:
-        delta_r = (decay ** r) * (W - r)
-    return delta_r
-
-def AUC(operators, rank, op, decay, window_size, ndcg = True):
-    """Calculates area under the curve for each operator"""
-    assert len(operators) == len(rank)
-    W = len(operators)
-    delta_r_vector = calc_delta_r(decay, W, window_size, ndcg)
-    x, y, area = 0, 0, 0
-    r = 0
-    while r < W:
-        delta_r = delta_r_vector[r]
-        # number of rewards equal to reward ranked r given by op
-        tiesY = np.count_nonzero(rank[operators == op] == rank[r])
-        # number of rewards equal to reward ranked r given by others
-        tiesX = np.count_nonzero(rank[operators != op] == rank[r])
-        assert tiesY >= 0
-        assert tiesX >= 0
-        if (tiesX + tiesY) > 0 :
-            delta_r = np.sum(delta_r_vector[r : r + tiesX + tiesY]) / (tiesX + tiesY)
-            x += tiesX * delta_r
-            area += (y * tiesX * delta_r) + (0.5 * delta_r * delta_r * tiesX * tiesY)
-            y += tiesY * delta_r
-            r += tiesX + tiesY
-        elif operators[r] == op:
-            y += delta_r
-            r += 1
-        else:
-            x += delta_r
-            area += y * delta_r
-            r += 1
-    return area
-
-def UCB(N, C, reward):
-    '''Calculates Upper Confidence Bound as a quality'''
-    ucb = reward + C * np.sqrt(np.log(np.sum(N)) / N)
-    ucb[np.isinf(ucb) | np.isnan(ucb)] = 0.0
-    return ucb
-
-##################################################Reward definitions######################################################################
-    
-
+            # This does nothing unless a debug filename is given.
+            self.prob_file.write(self.update_counter, self.probability)
+            self.rew_file.write(self.update_counter, reward)
+            self.qual_file.write(self.update_counter, quality)
+        self.update_counter += 1
 
 class BasicType(ABC):
     # FIXME: Is there a way to call this when defining the class instead of at init?
@@ -1113,10 +881,9 @@ class BasicType(ABC):
             assert p in params,f'condition key {p} not found in {cls}.params = {params}'
             found = np.isin(cond, choices)
             assert np.all(found),f'condition {cond} not found in {cls} choices = {choices}'
-        
             
     @classmethod
-    def add_argument(cls, parser):
+    def add_arguments(cls, parser):
         "Add arguments to an ArgumentParser"
         return parser_add_arguments(cls, parser)
 
@@ -1124,256 +891,172 @@ class BasicType(ABC):
     def irace_parameters(cls, override = {}):
         return aos_irace_parameters(cls, override = override)
 
+    @classmethod
+    def build(cls, choice, aos, kwargs):
+        "Build the chosen component given aos and kwargs"
+        # Use a dictionary so that we don't have to retype the name.
+        choices = get_choices_dict(cls)
+        if choice not in choices:
+            raise ValueError(f'{cls.__name__} choice {choice} unknown')
+        builder = choices[choice]
+        for key,cond in cls.params_conditions.items():
+            if choice not in cond:
+                # We use pop because the key may not exist.
+                kwargs.pop(key, None)
         
+        return builder(aos = aos, **kwargs)
+        
+
+# L. Da Costa, Á. Fialho, M. Schoenauer, and M. Sebag,
+# “Adaptive operator selection with dynamic multi-armed
+# bandits,” in Proceedings of the Genetic and Evolutionary
+# Computation Conference, GECCO 2008, C. Ryan, Ed.
+# New York, NY: ACM Press, 2008, pp. 913–920.
+class PageHinkleyTest:
+    def __init__(self, n_ops, delta, threshold):
+        self.delta = delta
+        self.threshold = 10**threshold
+        self.m = np.zeros(n_ops)
+        self.M = np.zeros(n_ops)
+    
+    def restart(self, reward, quality):
+        self.m += (reward - quality + self.delta)
+        self.M = np.maximum(self.M, np.abs(self.m))
+        do_restart = np.any(self.M - np.abs(self.m) > self.threshold)
+        if do_restart:
+            self.m[:] = 0
+            self.M[:] = 0
+        return do_restart
+            
+
 class RewardType(BasicType):
     # Static variables
     # FIXME: Use __slots__ to find which parameters need to be defined.
     # FIXME: define this in the class as @property getter doctstring and get it from it
     # MUDITA_check: To generate existiong parameter files, I had to change categorical parameter (theta, succ_lin_quad, normal_factor, alpha, beta, intensity) type to object. Because in irace_parameter() function, categorical is represented as object. But to run this code for parameter tuning, I had to change these categorical to int.
+    # FIXME: We do not use these defaults, so that we can override them when using --known-aos. Remove them?
     params = [
         "periodic",       object,      0,     [0, 1], "Periodic update (only every max_gen)",
-        "max_gen",          int,        10,     [1, 50],                        "Maximum number of generations for generational window",
-        "gamma",           object,       1,     [1, 2, 3],                        "Exponent (linear, quadratic, ...) of Success_rate",
-        "fix_appl",         int,        20,     [10, 150],                      "Maximum number of successful operator applications for generational window",
-        "theta",            object,        45,     [36, 45, 54, 90],               "Search direction",
-        "window_size",      int,        50,     [1, 500],                      "Size of window",
-        "decay",            float,      0.4,    [0.0, 1.0],                     "Decay value to emphasise the choice of better operator",
-        "succ_lin_quad",    object,        1,      [1, 2],                         "Operator success as linear or quadratic",
-        "frac",             float,      0.01,   [0.0, 0.1],                     "Fraction of sum of successes of all operators",
-        "noise",            float,      0.0,    [0.0, 1.0],                     "Small noise for randomness",
-        "normal_factor",    object,        1,      [0, 1],                         "Choice to normalise",
-        "scaling_constant", float,      1,      [0.001, 1.0],                   "Scaling constant (C)",
-        "alpha",            object,        0,      [0, 1],                         "Choice to normalise by best produced by any operator",
-        "beta",             object,        1,      [0, 1],                         "Choice to include the difference between budget used by an operator in previous two generations",
-        "intensity",        object,        1,      [1, 2, 3],                      "Intensify the changes of best fitness value",
+        "max_gen",          int,        10,     [1, 50], "Maximum number of generations for generational window",
+        "app_winsize",      int,        50,     [1, 500],       "Size of application window",
+        "op_winsize",      int,        50,     [1, 500],        "Size of window per operator",
+        "decay",            float,      0.4,    [0.0, 1.0],     "Decay value to emphasise the choice of better operator",
+        "frac",             float,      0.01,   [0.0, 0.1],     "Fraction of sum of successes of all operators",
         "convergence_factor",    float, 20,        [0, 100],    "Factor for convergence credits",
+        "gamma",           object,       1,     [1, 2, 3],      "Exponentation (linear, quadratic, ...) of metric values",
+        "theta",            object,        45,     [36, 45, 54, 90],               "Compass search direction",
+        
     ]
     params_conditions = {
-        "max_gen": ["Success_rate", "Success_Rate_old", "Success_sum", "Total_avg_gen", "Normalised_best_sum", "Ancestor_success", "Normalized_avg_period"],
-        "fix_appl": ["Pareto_Dominance", "Pareto_Rank", "Compass_projection"],
-        "theta": ["Compass_projection"],
-        "window_size": ["Area_Under_The_Curve", "Sum_of_Rank", "Normalised_success_sum_window", "Ancestor_success"],
-        "decay": ["Area_Under_The_Curve", "Sum_of_Rank", "Ancestor_success"],
-        "gamma": ["Success_rate"],
-        "succ_lin_quad" : ["Success_Rate_old"],
-        "frac": ["Ancestor_success","Success_Rate_old"],
-        "noise": ["Success_Rate_old"],
-        "normal_factor": ["Normalised_success_sum_window"],
-        "scaling_constant": ["Best2gen"],
-        "alpha" : ["Best2gen", "Normalised_best_sum"],
-        "beta": ["Best2gen"],
-        "intensity": ["Normalised_best_sum"],
-        "convergence_factor" : ["Ancestor_success"]
+        # Periodic applies to all because it is used by AOS update, but it is
+        # not really used explicitly by any method.
+        "periodic" : [],
+        "max_gen": ["AvgMetric", "NormAvgMetric", "AncestorSuccess", "ExtMetric", "TotalGenAvg", "SuccessRate"],
+        "app_winsize": ["AncestorSuccess", "CompassProjection"],
+        "decay": ["AncestorSuccess"],
+        "frac": ["AncestorSuccess"],
+        "convergence_factor": ["AncestorSuccess"],
+        "gamma": ["ExtMetric","SuccessRate"],
+        "op_winsize": ["AvgAbsWindow", "AvgNormWindow", "ExtAbsWindow", "ExtNormWindow"],
+        "theta" : ["CompassProjection"],
     }
-    # param_choices = [
-    #     "Pareto_Dominance",
-    #     "Pareto_Rank",
-    #     "Compass_projection",
-    #     "Area_Under_The_Curve",
-    #     "Sum_of_Rank",
-    #     "Success_Rate_old",
-    #     "Immediate_Success",
-    #     "Success_sum",
-    #     "Normalised_success_sum_window",
-    #     "Total_avg_gen",
-    #     "Best2gen",
-    #     "Normalised_best_sum"
-    # ]
     param_choice = "rew_choice"
     param_choice_help = "Reward method selected"
 
-    def __init__(self, aos, max_gen = None, window_size = None, decay = None, fix_appl = None):
+    def __init__(self, aos, max_gen = None, app_winsize = None, op_winsize = None, decay = None):
         # Set a few common short-cuts.
+        self.aos = aos
         self.n_ops = aos.n_ops
         self.metrics = aos.metrics
         if max_gen:
             self.gen_window = aos.gen_window
             self.gen_window.max_gen = max_gen
-        if window_size:
-            self.window = aos.window
-            self.window.resize(window_size)
-            self.window_size = window_size
+        if app_winsize:
+            self.aos.app_window = AppWindow(self.n_ops, max_size = app_winsize)
+        if op_winsize:
+            self.aos.op_window = OpWindow(self.n_ops, max_size = op_winsize)
         self.decay = decay
-        self.fix_appl = fix_appl
-        self.eps = np.finfo(np.float32).eps
-        
 
-    def check_reward(self, reward, num_op):
-        # FIXME: What is num_op?
-        # MANUEL: Can reward be negative?
-        # MUDITA: Relative_fitness_improv holds negtaive values which might lead to negative reward value.
-        rew_min = reward.min()
-        rew_diff = reward.max() - rew_min
-        if rew_diff > 0:
-            reward = (reward - rew_min) / rew_diff
-        else:
-            reward[:] = 0.0
-            
+    def check_reward(self, reward):
+        # rew_min = reward.min()
+        # rew_diff = reward.max() - rew_min
+        # if rew_diff > 0:
+        #     reward = (reward - rew_min) / rew_diff
+        # else:
+        #     reward[:] = 0.0
         assert np.all(np.isfinite(reward)), f"Infinite reward {reward}"
         assert np.all(reward >= 0), f"Negative reward {reward}"
-        #debug_print("{:>30}:      reward={}".format(type(self).__name__, reward))
-        return reward, num_op
+        return reward
 
     @abstractmethod
     def calc_reward(self):
         pass
 
-class Pareto_Dominance(RewardType):
-    """
-Jorge Maturana, Fr ́ed ́eric Lardeux, and Frederic Saubion. “Autonomousoperator management for evolutionary algorithms”. In:Journal of Heuris-tics16.6 (2010).https://link.springer.com/content/pdf/10.1007/s10732-010-9125-3.pdf, pp. 881–909.
-"""
 
-    def __init__(self, aos, fix_appl = 20):
-        # This uses the gen_window, shouldn't we limit the size of the window?
-        super().__init__(aos, fix_appl = fix_appl)
-        #debug_print("{:>30}: fix_appl = {}".format(type(self).__name__, self.fix_appl))
+class AvgMetric(RewardType):
+
+    def __init__(self, aos, max_gen = 4):
+        super().__init__(aos, max_gen = max_gen)
+        assert max_gen > 0
+        debug_print(f"{type(self).__name__}: max_gen = {self.gen_window.max_gen}")
+
+    def calc_reward(self):
+        _, napplications = self.gen_window.count_succ_total()
+        napplications[napplications == 0] = 1
+        reward = self.gen_window.sum_per_op()
+        reward /= napplications
+        return super().check_reward(reward)
+
+class NormAvgMetric(AvgMetric):
+    """C. Igel and M. Kreutz, “Operator adaptation in evolutionary computation and its application to structure optimization of neural networks,” Neurocomputing, vol. 55, no. 1-2, pp. 347–361, 2003.
+    """
+
+    def __init__(self, aos, max_gen = 4):
+        super().__init__(aos, max_gen = max_gen)
+        assert max_gen > 0
+        debug_print(f"{type(self).__name__}: max_gen = {self.gen_window.max_gen}")
+
+    def calc_reward(self):
+        reward = super().calc_reward()
+        # The paper also normalizes by the total but this could be optional or
+        # it could be done in the quality component.
+        reward = normalize_sum(reward)        
+        return super().check_reward(reward)
+
+
+class ExtMetric(RewardType):
+    """F. G. Lobo and D. E. Goldberg, “Decision making in a hybrid genetic
+algorithm,” in Proceedings of the 1997 IEEE International Conference on
+Evolutionary Computation (ICEC’97), T. Bäck, Z. Michalewicz, and X. Yao,
+Eds. Piscataway, NJ: IEEE Press, 1997, pp.  121–125."""
+    
+    def __init__(self, aos, max_gen = 10000, gamma = 1):
+        super().__init__(aos, max_gen = max_gen)
+        self.gamma = int(gamma)
+        assert self.gamma >= 1 and self.gamma <= 4
+        # When the window is large, we speed up computation by tracking the max
+        # ourselves.  This breaks the sliding window, but for such large
+        # windows it doesn't really make sense to worry about that.
+        self.use_window = max_gen < 10000
+        self.max_metric = np.zeros(self.n_ops)
+        debug_print(f"{type(self).__name__}: max_gen = {self.gen_window.max_gen}  gamma = {self.gamma}")
     
     def calc_reward(self):
-        # Pareto dominance returns the number of operators dominated by an
-        # operator whereas Pareto rank gives the number of operators an
-        # operator is dominated by.
-        N = np.zeros(self.n_ops)
-        std_op = np.full(self.n_ops, np.nan)
-        mean_op = np.full(self.n_ops, np.nan)
-        for i in range(self.n_ops):
-            b = self.gen_window.metric_for_fix_appl_of_op(i, self.fix_appl)
-            N[i] = len(b)
-            if N[i] > 0:
-                std_op[i] = np.std(b)
-                mean_op[i] = np.mean(b)
-
-        reward = np.zeros(self.n_ops)
-        for i in range(self.n_ops):
-            if np.isnan(std_op[i]):
-                continue
-            for j in range(self.n_ops):
-                if i == j or np.isnan(std_op[j]):
-                    continue
-                # We want to minimize the std but maximise the mean quality.
-                # Count if j dominates i.
-                if std_op[i] < std_op[j] and mean_op[i] > mean_op[j]:
-                    reward[i] += 1
-        reward = normalize_sum(reward)
-        return super().check_reward(reward, N)
+        max_gen = self.gen_window.get_max_gen()
+        last_gen = len(self.gen_window) - 1
+        if self.use_window or max_gen < last_gen:
+            gen_window_len = len(self.gen_window)
+            # We override the saved value if we use the sliding window.
+            self.max_metric = self.gen_window.max_per_op()
+        else:
+            # If the window is anyway not full, use pre-computed.
+            self.max_metric = np.maximum(self.max_metric,
+                                         self.gen_window.max_per_op(last_gen))
+        reward = self.max_metric ** self.gamma
+        return super().check_reward(reward)
 
 
-class Pareto_Rank(RewardType):
-    """
-Jorge Maturana, Fr ́ed ́eric Lardeux, and Frederic Saubion. “Autonomous operator management for evolutionary algorithms”. In:Journal of Heuris-tics16.6 (2010).https://link.springer.com/content/pdf/10.1007/s10732-010-9125-3.pdf, pp. 881–909.
-"""
-    def __init__(self, aos, fix_appl = 20):
-        super().__init__(aos, fix_appl = fix_appl)
-        #debug_print("{:>30}: fix_appl = {}".format(type(self).__name__, self.fix_appl))
-
-    def calc_reward(self):
-        N = np.zeros(self.n_ops)
-        std_op = np.full(self.n_ops, np.nan)
-        mean_op = np.full(self.n_ops, np.nan)
-        for i in range(self.n_ops):
-            b = self.gen_window.metric_for_fix_appl_of_op(i, self.fix_appl)
-            N[i] = len(b)
-            if N[i] > 0:
-                std_op[i] = np.std(b)
-                mean_op[i] = np.mean(b)
-
-        reward = np.zeros(self.n_ops)
-        for i in range(self.n_ops):
-            if np.isnan(std_op[i]):
-                continue
-            for j in range(self.n_ops):
-                if i == j or np.isnan(std_op[j]):
-                    continue
-                # We want to minimize the std but maximise the mean quality.
-                # Count if j dominates i.
-                if std_op[j] < std_op[i] and mean_op[j] > mean_op[i]:
-                    reward[i] += 1
-        
-        reward = normalize_sum(reward)
-        reward = 1. - reward
-        return super().check_reward(reward, N)
-
-
-class Compass_projection(RewardType):
-    """
-        Jorge Maturana and Fr ́ed ́eric Saubion. “A compass to guide genetic al-gorithms”. In:International Conference on Parallel Problem Solving fromNature.http://www.info.univ-angers.fr/pub/maturana/files/MaturanaSaubion-Compass-PPSNX.pdf. Springer. 2008, pp. 256–265.
-        """
-    def __init__(self, aos, fix_appl = 100, theta = 45):
-        super().__init__(aos, fix_appl = fix_appl)
-        self.theta = int(theta)
-        #debug_print("{:>30}: fix_appl = {}".format(type(self).__name__, self.fix_appl, self.theta))
-    
-    def calc_reward(self):
-        N = np.zeros(self.n_ops)
-        reward = np.zeros(self.n_ops)
-        std = np.zeros(self.n_ops)
-        avg = np.zeros(self.n_ops)
-        angle = np.zeros(self.n_ops)
-        # Projection on line B with theta = pi/4
-        #        B = [1, 1]
-        for i in range(self.n_ops):
-            b = self.gen_window.metric_for_fix_appl_of_op(i, self.fix_appl)
-            N[i] = len(b)
-            if N[i] > 0:
-                # Diversity
-                std[i] = np.std(b)
-                # Quality 
-                avg[i] = np.mean(b)
-        if np.max(std) != 0:
-            std = std / np.max(std)
-        if np.max(avg) != 0:
-            avg = avg / np.max(avg)
-        # MANUEL: What should happen if both are zero?
-        # MUDITA: Conceptually, its okay to have avg and std as 0. In that case coordinate will be on origin and there won't be any projection. Thus perpendicular distance fom coordinate to plane will be 0. So to deal with 0s, I have added eps in denominator. But again the issue is 1/(0+eps) = 8388608 which is wrong. Conceptually, (std, avg) = (0, 1) is possible. On scientific calulator arctan(1/0) = 1.5707... But in python it gives division by 0 error.
-        # assert avg != 0.0 and std != 0.0
-        where = np.flatnonzero((std!=0) | (avg!=0))
-        angle[where] = np.fabs(np.arctan(np.deg2rad(avg[where] / std[where]) - np.deg2rad(self.theta)))
-        # Euclidean distance of the vector
-        reward = (np.sqrt(std**2 + avg**2)) * np.cos(angle)
-        # Maturana & Sablon (2008) divide by T_it defined as mean
-        # execution time of operator i over its last t applications.
-        # We do not divide
-        reward = reward - np.min(reward)
-        return super().check_reward(reward, N)
-
-class Area_Under_The_Curve(RewardType):
-    """
-Alvaro Fialho, Marc Schoenauer, and Mich`ele Sebag. “Toward comparison-based adaptive operator selection”. In:Proceedings of the 12th annual con-ference on Genetic and evolutionary computation.https://hal.inria.fr/file/index/docid/471264/filename/banditGECCO10.pdf. ACM.2010, pp. 767–774
-"""
-    def __init__(self, aos, window_size = 50, decay = 0.4):
-        super().__init__(aos, window_size = window_size, decay = decay)
-        #debug_print("{:>30}: window_size = {}, decay = {}".format(type(self).__name__, self.window_size, self.decay))
-    
-    def calc_reward(self):
-        reward = np.zeros(self.n_ops)
-        window = self.window.truncate(self.window_size)
-        window_op_sorted, rank = window.get_ops_sorted_and_rank()
-        for op in range(self.n_ops):
-            reward[op] = AUC(window_op_sorted, rank, op, self.window_size, self.decay)
-        N = window.count_ops()
-        return super().check_reward(reward, N)
-
-class Sum_of_Rank(RewardType):
-    """
-Alvaro Fialho, Marc Schoenauer, and Mich`ele Sebag. “Toward comparison-based adaptive operator selection”. In:Proceedings of the 12th annual con-ference on Genetic and evolutionary computation.https://hal.inria.fr/file/index/docid/471264/filename/banditGECCO10.pdf. ACM.2010, pp. 767–774
-"""
-    def __init__(self, aos, window_size = 50, decay = 0.4):
-        super().__init__(aos, window_size = window_size, decay = decay)
-        #debug_print("{:>30}: window_size = {}, decay = {}".format(type(self).__name__, self.window_size, self.decay))
-    
-    def calc_reward(self):
-        reward = np.zeros(self.n_ops)
-        window = self.window.truncate(self.window_size)
-        window_op_sorted, rank = window.get_ops_sorted_and_rank()
-        # Fialho's thesis: https://tel.archives-ouvertes.fr/tel-00578431/document (pg. 79).
-        value = (self.decay ** rank) * (self.window_size - rank)
-        for i in range(self.n_ops):
-            reward[i] = value[window_op_sorted == i].sum()
-        reward = normalize_sum(reward)
-        N = window.count_ops()
-        return super().check_reward(reward, N)
-
-
-class Success_rate(RewardType):
+class SuccessRate(RewardType):
     """ 
     J. Niehaus and W. Banzhaf, “Adaption of operator
     probabilities in genetic programming,” in Proceedings of
@@ -1386,254 +1069,37 @@ class Success_rate(RewardType):
     def __init__(self, aos, max_gen = 10000, gamma = 2):
         super().__init__(aos, max_gen = max_gen)
         self.gamma = int(gamma)
-        assert gamma >= 1 and gamma <= 4
-        # When the window is large, we speed up computation by keeping our own
-        # counts. This breaks the sliding window, but for such large windows it
-        # doesn't really make sense to worry about that.
+        assert self.gamma >= 1 and self.gamma <= 4
+        # When the window is large or not full, we speed up computation by
+        # keeping our own counts.  This breaks the sliding window, but for such
+        # large windows it doesn't really make sense to worry about that.
         self.use_window = max_gen < 10000
         self.success = np.zeros(self.n_ops)
         self.used = np.ones(self.n_ops)
-        #debug_print("{:>30}: max_gen = {}, succ_lin_quad = {}, frac = {}, noise = {}".format(type(self).__name__, self.gen_window.max_gen, self.succ_lin_quad, self.frac, self.noise))
-    
+        debug_print(f"{type(self).__name__}: max_gen = {self.gen_window.max_gen}  gamma = {self.gamma}")
+            
     def calc_reward(self):
-        N = np.zeros(self.n_ops)
         max_gen = self.gen_window.get_max_gen()
         last_gen = len(self.gen_window) - 1
-        # If the window is anyway not full, use pre-computed.
         if self.use_window or max_gen < last_gen:
-            self.success, self.used = self.gen_window.total_success()
+            self.success, self.used = self.gen_window.count_succ_total()
         else:
-            success, used = self.gen_window.success_ratio(last_gen)
+            # If the window is anyway not full, use pre-computed.
+            success, used = self.gen_window.count_succ_total(last_gen)
             self.success += success
             self.used += used
-        N += self.success
-        reward = (self.success**gamma) / self.used
-        return super().check_reward(reward, N)
+        reward = (self.success ** self.gamma) / self.used
+        return super().check_reward(reward)
 
 
-class Success_Rate_old(RewardType):
-    """ 
-
-A Kai Qin, Vicky Ling Huang, and Ponnuthurai N Suganthan. “Differ-
-ential evolution algorithm with strategy adaptation for global numeri-
-cal optimization”. In: IEEE transactions on Evolutionary Computation
-13.2 (2009). https://www.researchgate.net/profile/Ponnuthurai_
-Suganthan/publication/224330344_Differential_Evolution_Algorithm_
-With_Strategy_Adaptation_for_Global_Numerical_Optimization/
-links/0c960525d39935a20c000000.pdf, pp. 398–417.
-
-With noise == 0, we get
-
-Bryant A Julstrom. “Adaptive operator probabilities in a genetic algo-
-rithm that applies three operators”. In: Proceedings of the 1997 ACM
-symposium on Applied computing. http://delivery.acm.org/10.1145/
-340000/331746/p233-julstrom.pdf?ip=144.32.48.138&id=331746&
-acc=ACTIVE%20SERVICE&key=BF07A2EE685417C5%2E26BE4091F5AC6C0A%
-2E4D4702B0C3E38B35 % 2E4D4702B0C3E38B35 & _ _ acm _ _ = 1540905461 _
-4567820ac9495f6bfbb8462d1c4244a3. ACM. 1997, pp. 233–238.
-
-"""
-    
-    def __init__(self, aos, max_gen = 10, succ_lin_quad = 1, frac = 0.01, noise = 0.0):
-        # Hyper-parameter values are first assigned here, before this point its none.
-        super().__init__(aos, max_gen = max_gen)
-        self.succ_lin_quad = int(succ_lin_quad)
-        self.frac = frac
-        self.noise = noise
-        #debug_print("{:>30}: max_gen = {}, succ_lin_quad = {}, frac = {}, noise = {}".format(type(self).__name__, self.gen_window.max_gen, self.succ_lin_quad, self.frac, self.noise))
-    
-    def calc_reward(self):
-        N = np.zeros(self.n_ops)
-        gen_window_len = len(self.gen_window)
-        max_gen = self.gen_window.get_max_gen()
-        reward = np.zeros(self.n_ops)
-        for j in range(gen_window_len - max_gen, gen_window_len):
-            total_success, total_unsuccess = self.gen_window.count_total_succ_unsucc(j)
-            N += total_success
-            napplications = total_success + total_unsuccess
-            # Avoid division by zero. If total == 0, then total_success is zero.
-            napplications[napplications == 0] = 1
-            reward += (total_success ** self.succ_lin_quad + self.frac * np.sum(total_success)) / napplications
-        reward += self.noise
-        return super().check_reward(reward, N)
-
-class Immediate_Success(RewardType):
-    """
- Mudita  Sharma,  Manuel  L ́opez-Ib ́a ̃nez,  and  Dimitar  Kazakov.  “Perfor-mance Assessment of Recursive Probability Matching for Adaptive Oper-ator Selection in Differential Evolution”. In:International Conference onParallel Problem Solving from Nature.http://eprints.whiterose.ac.uk/135483/1/paper_66_1_.pdf. Springer. 2018, pp. 321–333.
-y """
-    def __init__(self, aos, popsize):
-        # FIXME: This uses gen_window but not max_gen???
-        super().__init__(aos)
-        self.popsize = popsize
-    
-    def calc_reward(self):
-        gen_window_len = len(self.gen_window)
-        total_success, total_unsuccess = self.gen_window.count_total_succ_unsucc(gen_window_len - 1)
-        reward = total_success / self.popsize
-        return super().check_reward(reward, total_success)
-
-class Normalized_avg_period(RewardType):
-    """
-C. Igel and M. Kreutz, “Operator adaptation in evolutionary computation and its application to structure optimization of neural networks,” Neurocomputing, vol. 55, no. 1-2, pp. 347–361, 2003.
-    """
-
-    def __init__(self, aos, max_gen = 4):
-        super().__init__(aos, max_gen = max_gen)
-        assert max_gen > 0
-        #debug_print("{:>30}: max_gen = {}".format(type(self).__name__, self.gen_window.max_gen))
-
-    def calc_reward(self):
-        N = np.zeros(self.n_ops)
-        # Most recent generation
-        gen_window_len = len(self.gen_window)
-        # Oldest generation
-        max_gen = self.gen_window.get_max_gen()
-        reward = np.zeros(self.n_ops)
-        napplications = np.zeros(self.n_ops)
-        for j in range(gen_window_len - max_gen, gen_window_len):
-            total_success, total_unsuccess = self.gen_window.count_total_succ_unsucc(j)
-            N += total_success
-            napplications += total_success + total_unsuccess
-            value = self.gen_window.sum_at_generation(j)
-            reward += value
-        # To avoid division by zero (assumes that value == 0 for these)
-        napplications[napplications == 0] = 1
-        reward /= napplications
-        # FIXME: The paper also normalizes by the total but this could be optional or it could be done in the quality component.
-        reward = normalize_sum(reward)        
-        return super().check_reward(reward, N)
-
-class Success_sum(RewardType):
-    """
- Christian  Igel  and  Martin  Kreutz.  “Operator  adaptation  in  evolution-ary  computation  and  its  application  to  structure  optimization  of  neu-ral  networks”.  In:Neurocomputing55.1-2  (2003).https : / / ac . els -cdn.com/S0925231202006288/1-s2.0-S0925231202006288-main.pdf?_tid=c6274e78-02dc-4bf6-8d92-573ce0bed4c4&acdnat=1540907096_d0cc1e2b4ca56a49587b4d55e1008a84, pp. 347–361.
- """
-    def __init__(self, aos, max_gen = 4):
-        super().__init__(aos, max_gen = max_gen)
-        #debug_print("{:>30}: max_gen = {}".format(type(self).__name__, self.gen_window.max_gen))
-    
-    def calc_reward(self):
-        N = np.zeros(self.n_ops)
-        gen_window_len = len(self.gen_window)
-        max_gen = self.gen_window.get_max_gen()
-        napplications = np.zeros(self.n_ops)
-        reward = np.zeros(self.n_ops)
-        for j in range(gen_window_len - max_gen, gen_window_len):
-            total_success, total_unsuccess = self.gen_window.count_total_succ_unsucc(j)
-            N += total_success
-            napplications += total_success + total_unsuccess
-            value = self.gen_window.sum_at_generation(j)
-            reward += value
-        napplications[napplications == 0] = 1
-        reward /= napplications
-        return super().check_reward(reward, N)
-
-class Normalised_success_sum_window(RewardType):
-    """
-Alvaro Fialho, Marc Schoenauer, and Mich`ele Sebag. “Analysis of adaptive operator selection techniques on the royal road and long k-path problems”.In:Proceedings of the 11th Annual conference on Genetic and evolutionarycomputation.https://hal.archives-ouvertes.fr/docs/00/37/74/49/PDF/banditGECCO09.pdf. ACM. 2009, pp. 779–786.
-"""
-    def __init__(self, aos, window_size = 50, normal_factor = 1):
-        super().__init__(aos, window_size = window_size)
-        self.normal_factor = int(normal_factor)
-        #debug_print("{:>30}: window_size = {}, normal_factor = {}".format(type(self).__name__, self.window_size, self.normal_factor))
-    
-    def calc_reward(self):
-        reward = np.zeros(self.n_ops)
-        # Create a local truncated window.
-        window = self.window.truncate(self.window_size)
-        N = window.count_ops()
-        N_copy = np.copy(N)
-        N[N == 0] = 1
-        reward = window.sum_per_op() / N
-        if np.max(reward) != 0:
-            reward /= np.max(reward)**self.normal_factor
-        return super().check_reward(reward, N_copy)
-
-class Total_avg_gen(RewardType): # This was Normalised_success_sum_gen
-    """
-C. Igel and M. Kreutz, “Using fitness distributions to improve the evolution of learning structures,” in Proceedings of the 1999 Congress on Evolutionary Computation (CEC 1999), vol. 3. Piscataway, NJ: IEEE Press, 1999, pp. 1902–1909.
-"""
-    def __init__(self, aos, max_gen = 4):
-        super().__init__(aos, max_gen = max_gen)
-        assert max_gen > 0
-        #debug_print("{:>30}: max_gen = {}".format(type(self).__name__, self.gen_window.max_gen))
-    
-    def calc_reward(self):
-        N = np.zeros(self.n_ops)
-        # Most recent generation
-        gen_window_len = len(self.gen_window)
-        # Oldest generation
-        max_gen = self.gen_window.get_max_gen()
-        reward = np.zeros(self.n_ops)
-        for j in range(gen_window_len - max_gen, gen_window_len):
-            # FIXME: If we can remove N, we can have self.gen_window.avg_at_generation(self,gen)
-            total_success, total_unsuccess = self.gen_window.count_total_succ_unsucc(j)
-            N += total_success
-            napplications = total_success + total_unsuccess
-            # To avoid division by zero (assumes that value == 0 for these)
-            napplications[napplications == 0] = 1
-            value = self.gen_window.sum_at_generation(j)
-            reward += value / napplications
-        return super().check_reward(reward, N)
-
-class Best2gen(RewardType):
-    """
-Giorgos Karafotias, Agoston Endre Eiben, and Mark Hoogendoorn. “Genericparameter  control  with  reinforcement  learning”.  In:Proceedings of the2014 Annual Conference on Genetic and Evolutionary Computation.http://www.few.vu.nl/~gks290/papers/GECCO2014-RLControl.pdf. ACM.2014, pp. 1319–1326.
- """
-    def __init__(self, aos, scaling_constant = 1., alpha = 0, beta = 1):
-        super().__init__(aos, max_gen = 2)
-        assert scaling_constant > 0. and scaling_constant <= 1.
-        self.scaling_constant = scaling_constant
-        self.alpha = int(alpha)
-        assert self.alpha == 0 or self.alpha == 1
-        self.beta = int(beta)
-        assert self.beta == 0 or self.beta == 1
-        #debug_print("{:>30}: scaling constant = {}, alpha = {}, beta = {}".format(type(self).__name__, self.scaling_constant, self.alpha, self.beta))
-    
-    def calc_reward(self):
-        gen_window_len = len(self.gen_window)
-        
-        # Calculating best in current generation
-        best_g = self.gen_window.max_at_generation(gen_window_len - 1)
-        # Calculating best in previous generation
-        if gen_window_len >= 2:
-            best_g_1 = self.gen_window.max_at_generation(gen_window_len - 2)
-        else:
-            best_g_1 = np.zeros(self.n_ops)
-
-        if self.alpha == 1:
-            denom = best_g_1.copy()
-            # We want to avoid division by zero
-            denom[denom == 0] = 1.
-        else:
-            denom = 1.
-
-        total_success_g, total_unsuccess_g = self.gen_window.count_total_succ_unsucc(gen_window_len - 1)
-        if gen_window_len >= 2:
-            total_success_g_1, total_unsuccess_g_1 = self.gen_window.count_total_succ_unsucc(gen_window_len - 2)
-        else:
-            total_success_g_1 = total_unsuccess_g_1 = 0
-        N = total_success_g + total_success_g_1
-        
-        if self.beta == 1:
-            n_applications = (total_success_g + total_unsuccess_g) - (total_success_g_1 + total_unsuccess_g_1)
-            # We want to avoid division by zero
-            n_applications[n_applications == 0] = 1
-            n_applications = np.fabs(n_applications)
-        else:
-            n_applications = 1.
-
-        # FIXME why the fabs here? If the value is negative, isn't that bad?
-        reward = self.scaling_constant * np.fabs(best_g - best_g_1) / (denom  * n_applications)
-        return super().check_reward(reward, N)
-
-class Ancestor_success(RewardType):
+class AncestorSuccess(RewardType):
     '''
     B. A. Julstrom, "What have you done for me lately? adapting operator probabilities in a steady-state genetic algorithm," in ICGA, L. J. Eshelman, Ed. Morgan Kaufmann Publishers, San Francisco, CA, 1995, pp. 81–87.
 
     B. A. Julstrom, "An inquiry into the behavior of adaptive operator probabilities in steady-state genetic algorithms,” in Proceedings of the Second Nordic Workshop on Genetic Algorithms and their Applications, August, 1996, pp. 15–26.
     '''
-    def __init__(self, aos, window_size = 100, max_gen = 5, decay = 0.8, frac = 0.01, convergence_factor = 20):
-        super().__init__(aos, window_size = window_size, max_gen = max_gen)
+    def __init__(self, aos, app_winsize = 100, max_gen = 5, decay = 0.8, frac = 0.01, convergence_factor = 20):
+        super().__init__(aos, app_winsize = app_winsize, max_gen = max_gen)
         assert decay >= 0.0 and decay <= 1.0
         # The most recent generation is max_gen - 1.
         self.decay_g = decay ** np.arange(max_gen - 1, -1, -1)
@@ -1642,13 +1108,11 @@ class Ancestor_success(RewardType):
 
         assert convergence_factor >= 0
         self.convergence_factor = convergence_factor
-        #debug_print("{:>30}: max_gen = {}".format(type(self).__name__, self.gen_window.max_gen))
-        
-        # In the paper, we use the application window, however this is closer
-        # to a quality queue.  In any case, it is more efficient to memorise
-        # the values as a queue
-        self.accum_credit = deque(maxlen = window_size)
-        self.total_credit = deque(maxlen = window_size)
+        debug_print(f"{type(self).__name__}: app_winsize = {app_winsize}  max_gen = {self.gen_window.max_gen}  decay_g = {self.decay_g}  frac = {self.frac}  convergence_factor = {self.convergence_factor}")
+        # In the paper, we use the application window, however, it is more
+        # efficient to just memorise the values as a queue
+        self.accum_credit = deque(maxlen = app_winsize)
+        self.total_credit = deque(maxlen = app_winsize)
         
     def calc_reward(self):
         reward = np.zeros(self.n_ops)
@@ -1656,15 +1120,9 @@ class Ancestor_success(RewardType):
         last_gen = len(self.gen_window) - 1
         succ = self.gen_window.is_success(last_gen)
         which_succ = np.where(succ)[0]
-        N = np.zeros(self.n_ops)
-        max_gen = self.gen_window.get_max_gen()
         for i in which_succ:
             # For each child i, we get the operators applied to it
-            ## FIXME: The current implementation of gen_window assumes that all
-            ## parents of i are stored at the same place of the population,
-            ## which is true for DE but not in general..
-            ops = self.gen_window._gen_window_op[-max_gen:, i]
-            N[ops[0]] += 1
+            ops = self.gen_window.get_ops_of_child(i)
             # We get the decay that corresponds to each operator.
             D = self.decay_g[-len(ops):]
             # For each operator, its reward is the sum of decays.
@@ -1682,491 +1140,392 @@ class Ancestor_success(RewardType):
             tmp = (1.0 / (abs(diff)**3)) if diff > 0 else 2
             tot_acc_reward += self.convergence_factor * tmp
             
-        ops_count = self.window.count_ops()
-        reward = np.where(ops_count > 0, tot_acc_reward / ops_count, 0.0)
-        return super().check_reward(reward, N)
+        ops_count = self.aos.app_window.count_ops()
+        tot_acc_reward[ops_count == 0] = 0
+        ops_count[ops_count == 0] = 1
+        reward = tot_acc_reward / ops_count
+        return super().check_reward(reward)
 
-class Normalised_best_sum(RewardType):
-    """
-Alvaro Fialho, Marc Schoenauer, and Mich`ele Sebag. “Analysis of adaptiveoperator selection techniques on the royal road and long k-path problems”.In:Proceedings of the 11th Annual conference on Genetic and evolutionarycomputation.https://hal.archives-ouvertes.fr/docs/00/37/74/49/PDF/banditGECCO09.pdf. ACM. 2009, pp. 779–786.
+class TotalGenAvg(RewardType): # This was Normalised_success_sum_gen
+    """C. Igel and M. Kreutz, “Using fitness distributions to improve the evolution of learning structures,” in Proceedings of the 1999 Congress on Evolutionary Computation (CEC 1999), vol. 3. Piscataway, NJ: IEEE Press, 1999, pp. 1902–1909.
 """
-    def __init__(self, aos, max_gen = 10, intensity = 1, alpha = 1):
+    def __init__(self, aos, max_gen = 4):
         super().__init__(aos, max_gen = max_gen)
-        self.intensity = int(intensity)
-        self.alpha = int(alpha)
-        #debug_print("{:>30}: max_gen = {}, intensity = {}, alpha = {}".format(type(self).__name__, self.gen_window.max_gen, self.intensity, self.alpha))
+        assert max_gen > 0
+        debug_print(f"{type(self).__name__}: max_gen = {self.gen_window.max_gen}")
     
     def calc_reward(self):
-        # Normalised best sum
-        reward = np.zeros(self.n_ops)
-        max_gen = self.gen_window.get_max_gen()
-        for i in range(self.n_ops):
-            reward[i] = np.sum(self.gen_window.max_per_generation(i))
-        reward = (1.0 / max_gen) * (reward**self.intensity)
-        reward[reward == 0.0] = 1.0
-        reward = reward / np.max(reward)**self.alpha
-        
-        N = np.zeros(self.n_ops)
+        # Most recent generation
         gen_window_len = len(self.gen_window)
+        # Oldest generation
         max_gen = self.gen_window.get_max_gen()
-        for j in range(gen_window_len - max_gen, gen_window_len):
-            total_success, total_unsuccess = self.gen_window.count_total_succ_unsucc(j)
-            N += total_success
-        return super().check_reward(reward, N)
+        reward = np.zeros(self.n_ops)
+        # FIXME: We could have a gen_window.mean_per_generation()
+        for g in range(gen_window_len - max_gen, gen_window_len):
+            value = self.gen_window.sum_per_op(g)
+            _, napplications = self.gen_window.count_succ_total(g)
+            reward += value / napplications
+        return super().check_reward(reward)
 
 
-##################################################Quality definitions######################################################################
+class AvgAbsWindow(RewardType):
+    """
+    Á. Fialho, M. Schoenauer, and M. Sebag. Analysis of adaptive operator selection techniques on the royal road and long k-path problems. In Proc. Genetic Evol. Comput. Conf., pages 779–786, 2009.
+    """
+    def __init__(self, aos, op_winsize = 50):
+        super().__init__(aos, op_winsize = op_winsize)
+        debug_print(f"{type(self).__name__}: op_winsize = {self.op_winsize}")
 
-def get_choices_dict(cls):
-    return { x.__name__:x for x in cls.__subclasses__()}
+    def calc_reward(self):
+        reward = self.aos.op_window.mean_per_op()
+        return super().check_reward(reward)
+
+class AvgNormWindow(AvgAbsWindow):
+    """
+    Á. Fialho, M. Schoenauer, and M. Sebag. Analysis of adaptive operator selection techniques on the royal road and long k-path problems. In Proc. Genetic Evol. Comput. Conf., pages 779–786, 2009.
+    """
+    def __init__(self, aos, op_winsize = 50):
+        super().__init__(aos, op_winsize = op_winsize)
+        debug_print(f"{type(self).__name__}: op_winsize = {self.op_winsize}")
+
+    def calc_reward(self):
+        reward = super().calc_reward()
+        reward = normalize_max(reward)
+        return super().check_reward(reward)
+
+class ExtAbsWindow(RewardType):
+    """
+    Á. Fialho, M. Schoenauer, and M. Sebag. Analysis of adaptive operator selection techniques on the royal road and long k-path problems. In Proc. Genetic Evol. Comput. Conf., pages 779–786, 2009.
+    """
+    def __init__(self, aos, op_winsize = 50):
+        super().__init__(aos, op_winsize = op_winsize)
+        debug_print(f"{type(self).__name__}: op_winsize = {self.op_winsize}")
+
+    def calc_reward(self):
+        reward = self.aos.op_window.max_per_op()
+        return super().check_reward(reward)
+
+class ExtNormWindow(ExtAbsWindow):
+    """
+    Á. Fialho, M. Schoenauer, and M. Sebag. Analysis of adaptive operator selection techniques on the royal road and long k-path problems. In Proc. Genetic Evol. Comput. Conf., pages 779–786, 2009.
+    """
+    def __init__(self, aos, op_winsize = 50):
+        super().__init__(aos, op_winsize = op_winsize)
+        debug_print(f"{type(self).__name__}: op_winsize = {self.op_winsize}")
+
+    def calc_reward(self):
+        reward = super().calc_reward()
+        reward = normalize_max(reward)
+        return super().check_reward(reward)
+
+class CompassProjection(RewardType):
+    """
+        Jorge Maturana and Frédéric Saubion. “A compass to guide genetic algorithms”. In:International Conference on Parallel Problem Solving fromNature.http://www.info.univ-angers.fr/pub/maturana/files/MaturanaSaubion-Compass-PPSNX.pdf. Springer. 2008, pp. 256–265.
+        """
+    def __init__(self, aos, app_winsize = 100, theta = 45):
+        super().__init__(aos, app_winsize = 100)
+        self.aos.div_window = AppWindow(self.n_ops, app_winsize)
+        debug_print(f"{type(self).__name__}: app_winsize = {self.app_winsize}  theta = {theta}")
+        self.theta = np.deg2rad(theta)
     
-def build_reward(aos, choice, rew_args):
-    # Use a dictionary so that we don't have to retype the name.
-    choices = get_choices_dict(RewardType)
-
-    if choice == "Pareto_Dominance":
-        return choices[choice](aos = aos, fix_appl = rew_args["fix_appl"])
-    elif choice == "Pareto_Rank":
-        return choices[choice](aos = aos, fix_appl = rew_args["fix_appl"])
-    elif choice == "Compass_projection":
-        return choices[choice](aos = aos, fix_appl = rew_args["fix_appl"], theta = rew_args["theta"])
-    elif choice == "Area_Under_The_Curve":
-        return choices[choice](aos = aos, window_size = rew_args["window_size"], decay = rew_args["decay"])
-    elif choice == "Sum_of_Rank":
-        return choices[choice](aos = aos, window_size = rew_args["window_size"], decay = rew_args["decay"])
-    elif choice == "Success_Rate_old":
-        return choices[choice](aos = aos, max_gen = rew_args["max_gen"], succ_lin_quad = rew_args["succ_lin_quad"], frac = rew_args["frac"], noise = rew_args["noise"])
-    elif choice == "Success_Rate":
-        return choices[choice](aos = aos, max_gen = rew_args["max_gen"], gamma = rew_args["gamma"])
-    elif choice == "Ancestor_success":
-        # FIXME: This is ugly. There must be a way to just pass rew_args as **kwargs and let the called function sort out the keywords. 
-        return choices[choice](aos = aos, window_size = rew_args["window_size"], max_gen = rew_args["max_gen"], decay = rew_args["decay"], frac = rew_args["frac"], convergence_factor = rew_args["convergence_factor"])
-    elif choice == "Immediate_Success":
-        return choices[choice](aos = aos, popsize = rew_args["popsize"])
-    elif choice == "Success_sum":
-        return choices[choice](aos = aos, max_gen = rew_args["max_gen"])
-    elif choice == "Normalized_avg_period":
-        return choices[choice](aos = aos, max_gen = rew_args["max_gen"])
-    elif choice == "Normalised_success_sum_window":
-        return choices[choice](aos = aos, window_size = rew_args["window_size"], normal_factor = rew_args["normal_factor"])
-    elif choice == "Total_avg_gen":
-        return choices[choice](aos = aos, max_gen = rew_args["max_gen"])
-    elif choice == "Best2gen":
-        return choices[choice](aos = aos, scaling_constant = rew_args["scaling_constant"], alpha = rew_args["alpha"], beta = rew_args["beta"])
-    elif choice == "Normalised_best_sum":
-        return choices[choice](aos = aos, max_gen = rew_args["max_gen"], intensity = rew_args["intensity"], alpha = rew_args["alpha"])
-    else:
-        raise ValueError(f"reward choice {choice} unknown")
-
-def build_quality(choice, n_ops, qual_args):
-    # Use a dictionary so that we don't have to retype the name.
-    choices = get_choices_dict(QualityType)
-
-    if choice == "Weighted_sum":
-        return choices[choice](n_ops, qual_args["decay_rate"], qual_args["q_min"])
-    elif choice == "Accumulate":
-        return choices[choice](n_ops)
-    elif choice == "Upper_confidence_bound":
-        return choices[choice](n_ops, qual_args["scaling_factor"])
-    elif choice == "Quality_Identity":
-        return choices[choice](n_ops)
-    elif choice == "Weighted_normalised_sum":
-        return choices[choice](n_ops, qual_args["decay_rate"], qual_args["q_min"])
-    elif choice == "Bellman_Equation":
-        return choices[choice](n_ops, qual_args["weight_reward"], qual_args["weight_old_reward"], qual_args["discount_rate"])
-    else:
-        raise ValueError(f"quality choice {choice} unknown")
-
+    def calc_reward(self):
+        avg_div = self.aos.div_window.mean_per_op()
+        avg_div = normalise_max(avg_div)
+        avg_met = self.aos.app_window.mean_per_op()
+        avg_met = normalise_max(avg_met)
+        # ||(d,m)||
+        norm = np.sqrt(avg_dist**2 + avg_met**2)
+        angle = np.abs(np.arctan2(avg_met, avg_div) - self.theta)
+        reward = norm * np.cos(angle)
+        reward = reward - reward.min()
+        # Maturana & Sablon (2008) divide by T_it defined as mean execution
+        # time of operator i over its last t applications. We do not handle execution time yet.
+        return super().check_reward(reward)
 
 class QualityType(BasicType):
     # Static variables
-    # FIXME: Use __slots__ to find which parameters need to be defined.
-    # FIXME: define this in the class as @property getter doctstring and get it from it
     params = [
-        "scaling_factor",    float, 0.5,    [0.01, 100],    "Scaling Factor",
         "decay_rate",        float, 0.6,    [0.01, 1.0],     "Decay rate (delta)",
         "q_min",             float, 0.1,    [0.0, 1.0],     "Minimum quality attained by an operator (divided by num operators)",
-        "weight_reward",     float, 1,      [0.0, 1.0],     "Memory for current reward",
-        "weight_old_reward", float, 0.9,    [0.0, 1.0],     "Memory for previous reward",
-        "discount_rate",     float, 0.0,    [0.01, 1.0],    "Discount rate"
+        "ph_delta",          float, 0.15,   [0.01, 1.0],    "Delta for Page-Hinkley test",
+        "ph_threshold",      int,   0,      [-3, 3],    "10^threshold for Page-Hinkley test"
     ]
     params_conditions = {
-        "scaling_factor" : ["Upper_confidence_bound"],
-        "decay_rate": ["Weighted_sum", "Weighted_normalised_sum"],
-        "q_min": ["Weighted_sum", "Weighted_normalised_sum"],
-        "weight_reward": ["Bellman_Equation"],
-        "weight_old_reward": ["Bellman_Equation"],
-        "discount_rate": ["Bellman_Equation"]
+        "decay_rate" : ["Qlearning", "Qdecay", "PrevReward"],
+        "q_min" : ["Qlearning", "Qdecay", "PrevReward"],
+        "ph_delta" : ["AvgPHrestart"],
+        "ph_threshold" : ["AvgPHrestart"]
+ 
     }
     param_choice = "qual_choice"
     param_choice_help = "Quality method selected"
     
-    def __init__(self, n_ops):
-        self.n_ops = n_ops
-        self.old_quality = np.zeros(n_ops)
-        self.eps = np.finfo(self.old_quality.dtype).eps
-        
+    def __init__(self, aos, decay_rate = None, q_min = None):
+        self.aos = aos
+        self.n_ops = aos.n_ops
+        self.old_quality = np.zeros(self.n_ops)
+        if decay_rate != None:
+            assert decay_rate >= 0 and decay_rate <= 1
+            self.decay_rate = decay_rate
+        if q_min != None:
+            assert q_min >= 0 and q_min <= 1
+            self.q_min = q_min / self.n_ops
+ 
     def check_quality(self, quality):
         assert np.sum(quality) >= 0
         # FIXME: why do we need to normalize it to sum to 1?
         quality = normalize_sum(quality)
-        self.old_quality[:] = quality[:]
-        #debug_print("{:>30}:     quality={}".format(type(self).__name__, quality))
+        self.old_quality[:] = quality
         return quality
     
     @abstractmethod
-    def calc_quality(self, old_reward, reward, len_var, tran_matrix):
+    def calc_quality(self, reward):
         pass
 
-class Weighted_sum(QualityType):
-    """
- Dirk Thierens. “An adaptive pursuit strategy for allocating operator probabilities”.  In:Proceedings of the 7th annual conference on Genetic andevolutionary computation.http://www.cs.bham.ac.uk/~wbl/biblio/gecco2005/docs/p1539.pdf. ACM. 2005, pp. 1539–1546.
- """
-    def __init__(self, n_ops, decay_rate = 0.6, q_min = 0.0):
-        super().__init__(n_ops)
-        assert decay_rate >= 0 and decay_rate <= 1
-        self.decay_rate = decay_rate
-        self.q_min = q_min / self.n_ops
-        #debug_print("{:>30}: decay_rate = {}".format(type(self).__name__, self.decay_rate))
-    
-    def calc_quality(self, old_reward, reward, len_var, tran_matrix):
+class QualityIdentity(QualityType):
+    def __init__(self, aos):
+        super().__init__(aos)
+        debug_print(f"{type(self).__name__}: n_ops = {self.n_ops}")
+        
+    def calc_quality(self, reward):
+        return self.check_quality(reward)
+
+### Previously Weighted_sum
+class Qlearning(QualityType):
+    """ """
+    def __init__(self, aos, decay_rate = 0.6, q_min = 0.0):
+        super().__init__(aos, decay_rate = decay_rate, q_min = q_min)
+        debug_print(f"{type(self).__name__}: n_ops = {self.n_ops}  decay_rate = {self.decay_rate}  q_min = {self.q_min}")
+
+    def calc_quality(self, reward):
         quality = self.decay_rate * np.maximum(self.q_min, reward) + (1.0 - self.decay_rate) * self.old_quality
         return super().check_quality(quality)
 
-class Upper_confidence_bound(QualityType):
-    """
-Alvaro Fialho et al. “Extreme value based adaptive operator selection”.In:International Conference on Parallel Problem Solving from Nature.https : / / hal . inria . fr / file / index / docid / 287355 / filename /rewardPPSN.pdf. Springer. 2008, pp. 175–184
-"""
-    def __init__(self, n_ops, scaling_factor = 0.5):
-        super().__init__(n_ops)
-        self.scaling_factor = scaling_factor
-        #debug_print("{:>30}: scaling_factor = {}".format(type(self).__name__, self.scaling_factor))
-
-    # FIXME: What is num_op?
-    # FIXME: Is old_reward actually old_quality?
-    def calc_quality(self, old_reward, reward, num_op, tran_matrix):
-        num_op[num_op == 0] = 1
-        quality = UCB(num_op, self.scaling_factor, reward)
+class Qdecay(QualityType):
+    """ """
+    def __init__(self, aos, decay_rate = 0.6, q_min = 0.0):
+        super().__init__(aos, decay_rate = decay_rate, q_min = q_min)
+        debug_print(f"{type(self).__name__}: n_ops = {self.n_ops}  decay_rate = {self.decay_rate}  q_min = {self.q_min}")
+    
+    def calc_quality(self, reward):
+        quality = self.q_min + reward + (1.0 - self.decay_rate) * self.old_quality
         return super().check_quality(quality)
 
 class Accumulate(QualityType):
-    def __init__(self, n_ops):
-        super().__init__(n_ops)
-    
-    def calc_quality(self, old_reward, reward, len_var, tran_matrix):
-        quality = old_reward + reward
+    def __init__(self, aos):
+        super().__init__(aos)
+        debug_print(f"{type(self).__name__}: n_ops = {self.n_ops}")
+        
+    def calc_quality(self, reward):
+        quality = reward + self.old_quality
         return self.check_quality(quality)
 
-
-class Quality_Identity(QualityType):
-    def __init__(self, n_ops):
-        super().__init__(n_ops)
+class PrevReward(QualityType):
+    """ """
+    def __init__(self, aos, decay_rate = 0.6, q_min = 0.0):
+        super().__init__(aos, decay_rate = decay_rate, q_min = q_min)
+        self.old_reward = np.zeros(self.n_ops)
+        debug_print(f"{type(self).__name__}: n_ops = {self.n_ops}  decay_rate = {self.decay_rate}  q_min = {self.q_min}")
     
-    def calc_quality(self, old_reward, reward, len_var, tran_matrix):
-        quality = reward
+    def calc_quality(self, reward):
+        # It basically ignores self.old_quality
+        quality = self.q_min + reward + (1.0 - self.decay_rate) * self.old_reward
+        self.old_reward[:] = reward
         return self.check_quality(quality)
 
-class Weighted_normalised_sum(QualityType):
-    """
-Christian  Igel  and  Martin  Kreutz.  “Operator  adaptation  in  evolution-ary  computation  and  its  application  to  structure  optimization  of  neu-ral  networks”.  In:Neurocomputing55.1-2  (2003).https : / / ac . els -cdn.com/S0925231202006288/1-s2.0-S0925231202006288-main.pdf?_tid=c6274e78-02dc-4bf6-8d92-573ce0bed4c4&acdnat=1540907096_d0cc1e2b4ca56a49587b4d55e1008a84, pp. 347–361
+# L. Da Costa, Á. Fialho, M. Schoenauer, and M. Sebag,
+# “Adaptive operator selection with dynamic multi-armed
+# bandits,” in Proceedings of the Genetic and Evolutionary
+# Computation Conference, GECCO 2008, C. Ryan, Ed.
+# New York, NY: ACM Press, 2008, pp. 913–920.
+class PageHinkleyTest:
+    def __init__(self, n_ops, delta, threshold):
+        self.delta = delta
+        self.threshold = 10**threshold
+        self.m = np.zeros(n_ops)
+        self.M = np.zeros(n_ops)
+    
+    def restart(self, reward, quality):
+        self.m += (reward - quality + self.delta)
+        self.M = np.maximum(self.M, np.abs(self.m))
+        do_restart = np.any(self.M - np.abs(self.m) > self.threshold)
+        if do_restart:
+            self.m[:] = 0
+            self.M[:] = 0
+        return do_restart
+
+class AvgPHrestart(QualityType):
+    """L. Da Costa, Á. Fialho, M. Schoenauer, and M. Sebag, “Adaptive operator selection with dynamic multi-armed bandits,” in Proceedings of the Genetic and Evolutionary Computation Conference, GECCO 2008, C. Ryan, Ed.
+ New York, NY: ACM Press, 2008, pp. 913–920.
 """
-    def __init__(self, n_ops, decay_rate = 0.3, q_min = 0.1):
-        super().__init__(n_ops)
-        self.decay_rate = decay_rate
-        self.q_min = q_min / self.n_ops
-        #debug_print("{:>30}: decay_rate = {}, q_min = {}".format(type(self).__name__, self.decay_rate, self.q_min))
+    def __init__(self, aos, ph_delta, ph_threshold):
+        super().__init__(aos)
+        assert ph_delta > 0
+        self.ph_test = PageHinkleyTest(self.n_ops, delta = ph_delta, threshold = ph_threshold)
+        debug_print(f"{type(self).__name__}: n_ops = {self.n_ops}  ph_delta = {self.ph_test.delta}  ph_threshold = {self.ph_test.threshold}")
     
-    def calc_quality(self, old_reward, reward, len_var, tran_matrix):
-        reward += self.eps
-        reward /= np.sum(reward)
-        quality = self.decay_rate * np.maximum(self.q_min, reward) + (1.0 - self.decay_rate) * self.old_quality
-        #if np.sum(reward) > 0:
-            #reward /= np.sum(reward)
-        #else:
-            #reward[:] = 1.0 / self.n_ops
-        #quality = self.decay_rate * reward  + (1.0 - self.decay_rate) * self.old_quality
+    def calc_quality(self, reward):
+        inv_ntot = 1. / np.where(self.aos.n_appl > 0, self.aos.n_appl, 1)
+        quality = inv_ntot * reward + (1. - inv_ntot) * self.old_quality
+        if self.ph_test.restart(reward, quality):
+            debug_print(f"{type(self).__name__}: PH restart")
+            self.aos.n_appl[:] = 0
+            quality[:] = 0
         return super().check_quality(quality)
 
-class Bellman_Equation(QualityType):
-    """
-Mudita Sharma,  Manuel Lopez-Ibanez, and  Dimitar  Kazakov. “Performance Assessment of Recursive Probability Matching for Adaptive Oper-ator Selection in Differential Evolution”. In:International Conference onParallel Problem Solving from Nature.http://eprints.whiterose.ac.uk/135483/1/paper_66_1_.pdf. Springer. 2018, pp. 321–333.
- """
-    def __init__(self, n_ops, weight_reward = 1, weight_old_reward = 0.9, discount_rate = 0.01):
-        super().__init__(n_ops)
-        self.weight_reward = weight_reward
-        self.weight_old_reward = weight_old_reward
-        self.discount_rate = discount_rate
-        #debug_print("{:>30}: weight_reward = {}, weight_old_reward = {}, discount_rate = {}".format(type(self).__name__, self.weight_reward, self.weight_old_reward, self.discount_rate))
     
-    def calc_quality(self, old_reward, reward, len_var, tran_matrix):
-        # This was called P in the original RecPM paper.
-        #tran_matrix = transitive_matrix(old_probability)
-        quality = self.weight_reward * reward + self.weight_old_reward * old_reward
-        # Rec_PM formula:  Q_t+1 = (1 - gamma * P)^-1 x Q_t+1
-        quality = np.matmul(np.linalg.pinv(1.0 - self.discount_rate * tran_matrix), quality)
-        quality = softmax(quality)
-        return super().check_quality(quality)
-
-
-
-#################################################Probability definitions######################################################################
-
-def build_probability(choice, n_ops, prob_args):
-    # Use a dictionary so that we don't have to retype the name.
-    choices = get_choices_dict(ProbabilityType)
-
-    if choice == "Probability_Matching":
-        return choices[choice](n_ops, prob_args["p_min"], prob_args["error_prob"])
-    elif choice == "Adaptive_Pursuit":
-        return choices[choice](n_ops, prob_args["p_min"], prob_args["p_max"], prob_args["learning_rate"])
-    elif choice == "Probability_Identity":
-        return choices[choice](n_ops)
-    else:
-        raise ValueError(f"probability choice {choice} unknown")
- 
 class ProbabilityType(BasicType):
     # Static variables
-    # FIXME: Use __slots__ to find which parameters need to be defined.
-    # FIXME: define this in the class as @property getter doctstring and get it from it
     params = [
-        "p_min",         float,     0,    [0.0, 0.5], "Minimum probability of selection of an operator (p_min < 1 / n_ops)",
+        "p_min",         float,     0,    [0.0, 1], "Minimum probability of selection of an operator is p_min / n_ops)",
         "learning_rate", float,     0.1,    [0.0, 1.0], "Learning Rate",
-        # FIXME: This should be eps_p
-        "error_prob",    float,     0.0,    [0.0, 1.0], "Probability epsilon",
-        "p_max",         float,     0.9,    [0.0, 1.0], "Maximum probability of selection of an operator"
+        "C_ucb",         float,     0.5,    [0.01, 100.0], "Scaling factor in UCB",
+
     ]
     params_conditions = {
-        "p_min": [],
-        "learning_rate": ["Adaptive_Pursuit"],
-        "error_prob": ["Probability_Matching"],
-        "p_max": ["Adaptive_Pursuit"]
+        "p_min": ["ProbabilityMatching", "AdaptivePursuit"],
+        "learning_rate" : ["AdaptivePursuit"],
+        "C_ucb": ["UCB1"],
     }
     param_choice = "prob_choice"
     param_choice_help = "Probability method selected"
         
-    def __init__(self, n_ops, p_min = None, learning_rate = None):
-        # n_ops, p_min_prob and learning_rate used in more than one probability definition
-        assert p_min >= 0 and p_min <= 1. / n_ops
-        # FIXME: We should probably make this p_min / n_ops
-        self.p_min = p_min
+    def __init__(self, aos, p_min = 0, learning_rate = None):
+        n_ops = aos.n_ops
+        assert p_min >= 0 and p_min <= 1
+        self.p_min = p_min / n_ops
+        self.one_minus_p_min = (1.0 - p_min)
+        assert self.one_minus_p_min > 0.0
         self.learning_rate = learning_rate
         self.old_probability = np.full(n_ops, 1.0 / n_ops)
-        # eps: a small epsilon number to avoid division by 0.
-        self.eps = np.finfo(self.old_probability.dtype).eps
-
+        
     def check_probability(self, probability):
-        # FIXME: We already added eps in calc_probability
-        probability += self.eps
-        probability /= probability.sum()
-        assert np.allclose(probability.sum(), 1.0, equal_nan = True)
         assert np.all(probability >= 0.0)
+        probability = normalize_sum(probability)
+        assert np.allclose(probability.sum(), 1.0, equal_nan = True),f'prob = {probability}'
         # Just copy the values.
-        self.old_probability[:] = probability[:]
-        #debug_print("{:>30}: probability={}".format(type(self).__name__, probability))
+        self.old_probability[:] = probability
         return probability
 
     @abstractmethod
     def calc_probability(self, quality):
         "Must be implemented by derived probability methods"
         pass
-    
-# MANUEL: These should have more descriptive names and a doctstring documenting
-# where they come from (references) and what they do.
-class Probability_Matching(ProbabilityType):
+
+class ProbabilityMatching(ProbabilityType):
     # FIXME: Probability matching predates this paper.
     """Dirk Thierens. "An adaptive pursuit strategy for allocating operator probabilities".  In: Proceedings of the 7th annual conference on Genetic and evolutionary computation. http://www.cs.bham.ac.uk/~wbl/biblio/gecco2005/docs/p1539.pdf. ACM. 2005, pp. 1539–1546."""
     
-    def __init__(self, n_ops, p_min = 0.1, error_prob = 0.0):
-        super().__init__(n_ops, p_min = p_min)
-        self.one_minus_p_min = (1.0 - n_ops * self.p_min)
-        assert self.one_minus_p_min > 0.0
-        self.error_prob = error_prob + self.eps
-        #debug_print("{:>30}: p_min = {}, error_prob = {}".format(type(self).__name__, self.p_min, self.error_prob))
-        
+    def __init__(self, aos, p_min = 0.1):
+        super().__init__(aos, p_min = p_min)
+        debug_print(f"{type(self).__name__}: n_ops = {aos.n_ops}  p_min = {self.p_min}")
+                
     def calc_probability(self, quality):
-        # FIXME: Do we need epsilon above and below?
-        quality += self.error_prob
         probability = normalize_sum(quality)
+        # self.p_min is already divided by n_ops
         if self.p_min > 0: 
             probability = self.p_min + self.one_minus_p_min * probability
         return self.check_probability(probability)
-        
 
-class Adaptive_Pursuit(ProbabilityType):
+class AdaptivePursuit(ProbabilityType):
     """ Proposed by:
-
 Dirk Thierens. “An adaptive pursuit strategy for allocating operator prob-
 abilities”. In: Proceedings of the 7th annual conference on Genetic and
 evolutionary computation. http://www.cs.bham.ac.uk/~wbl/biblio/gecco2005/docs/p1539.pdf. ACM. 2005, pp. 1539–1546.
 
 """
-    def __init__(self, n_ops, p_min = 0.1, p_max = 0.9, learning_rate = 0.1):
-        super().__init__(n_ops, p_min = p_min, learning_rate = learning_rate)
-        self.p_max = p_max
-        #debug_print("{:>30}: p_min = {}, p_max = {}, learning_rate = {}".format(type(self).__name__, self.p_min, self.p_max, self.learning_rate))
-
+    def __init__(self, aos, p_min = 0.1, learning_rate = 0.1):
+        super().__init__(aos, p_min = p_min, learning_rate = learning_rate)
+        self.p_max = (aos.n_ops - 1) * self.p_min
+        assert self.p_max > self.p_min
+        debug_print(f"{type(self).__name__}: n_ops = {aos.n_ops}  p_min = {self.p_min}  p_max = {self.p_max}  learning_rate = {self.learning_rate}")
+        
     def calc_probability(self, quality):
-        delta = np.full(quality.shape[0], self.p_min)
+        delta = np.full(len(quality), self.p_min)
         delta[np.argmax(quality)] = self.p_max
         probability = self.learning_rate * delta + (1.0  - self.learning_rate) * self.old_probability
         return super().check_probability(probability)
 
-#class Adaptation_rule(ProbabilityType):
-#"""
-#Christian Igel and Martin Kreutz. “Using fitness distributions to improvethe evolution of learning structures”. In:Evolutionary Computation, 1999.CEC 99. Proceedings of the 1999 Congress on. Vol. 3.http://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.43.2107&rep=rep1&type=pdf. IEEE. 1999, pp. 1902–1909
-#"""
-    #def __init__(self, n_ops, p_min = 0.025, learning_rate = 0.5):
-        #super().__init__(n_ops, p_min = p_min, learning_rate = learning_rate)
-        #debug_print("{:>30}: p_min = {}, learning_rate = {}".format(type(self).__name__, self.p_min, self.learning_rate))
+class LinearRank(ProbabilityType):
+    """Probability proportional to rank, not value."""
+    def __init__(self, aos):
+        super().__init__(aos)
+        debug_print(f"{type(self).__name__}: n_ops = {aos.n_ops}")
         
-    #def calc_probability(self, quality):
-        # Normalize
-        #quality += self.eps
-        #quality /= np.sum(quality)
-
-        # np.maximum is element-wise
-        #probability = self.learning_rate * np.maximum(self.p_min, quality) + (1.0 - self.learning_rate) * self.old_probability
-        #return super().check_probability(probability)
-
-class Probability_Identity(ProbabilityType):
-    def __init__(self, n_ops):
-        super().__init__(n_ops)
-    
     def calc_probability(self, quality):
-        probability = quality
+        probability = rankdata(quality, method = "min")
+        # check_probability normalizes to sum already.
         return super().check_probability(probability)
 
-#############Selection definitions##############################################
+class UCB1(ProbabilityType):
+    '''L. Da Costa, Á. Fialho, M. Schoenauer, and M. Sebag, “Adaptive operator selection with dynamic multi-armed bandits,” in Proceedings of the Genetic and Evolutionary Computation Conference, GECCO 2008, C. Ryan, Ed. New York, NY: ACM Press, 2008, pp. 913–920.'''
+    def __init__(self, aos, C_ucb = 2):
+        super().__init__(aos)
+        n_ops = aos.n_ops
+        assert C_ucb > 0
+        self.C_ucb = C_ucb
+        self.used = np.ones(n_ops)
+        self.ph_m = np.zeros(n_ops)
+        self.ph_M = np.zeros(n_ops)
+        
+    def calc_probability(self, quality):
+        '''Calculates Upper Confidence Bound (1)'''
+        n = self.aos.np_appl
+        n[n == 0] = 1
+        probability = quality + self.C_ucb * np.sqrt(2 * np.log(n.sum()) / n)
+        return super().check_probability(probability)
 
-def build_selection(choice, n_ops, select_args, budget):
-    # Use a dictionary so that we don't have to retype the name.
-    choices = get_choices_dict(SelectionType)
-
-    if choice == "Proportional_Selection":
-        return choices[choice](n_ops)
-    elif choice == "Greedy_Selection":
-        return choices[choice](n_ops)
-    elif choice == "Epsilon_Greedy_Selection":
-        return choices[choice](n_ops, select_args["sel_eps"])
-    elif choice == "Proportional_Greedy_Selection":
-        return choices[choice](n_ops, select_args["sel_eps"])
-    elif choice == "Linear_Annealed_Selection":
-        return choices[choice](n_ops, budget, select_args["popsize"])
-    else:
-        raise ValueError(f"selection choice {choice} unknown")
 
 class SelectionType(BasicType):
-    params = ["sel_eps", float,     0.1,    [0.0, 1.0], "Random selection with probability sel_eps" ]
-    params_conditions = {"sel_eps": ["Epsilon_Greedy_Selection", "Proportional_Greedy_Selection"]}
+    params = [
+    ]
+    params_conditions = {
+    }
 
     param_choice = "select_choice"
     param_choice_help = "Selection method"
         
-    def __init__(self, n_ops):
+    def __init__(self, aos):
         # The initial list of operators (randomly permuted)
-        self.n_ops = n_ops
-        self.op_init_list = list(np.random.permutation(n_ops))
+        self.n_ops = aos.n_ops
+        self.op_init_list = list(np.random.permutation(self.n_ops))
 
     def check_selection(self, selected):
         assert selected >= 0 and selected <= self.n_ops
         return selected
-    
+
+    # Python 3.8 adds @final
+    def select(self, probability):
+        if self.op_init_list:
+            op = self.op_init_list.pop()
+        else:
+            op = self._select(probability)
+        return self.check_selection(op)
+        
     @abstractmethod
-    def perform_selection(self, probability, select_counter):
+    def _select(self, probability, update_counter):
         pass
 
-# MANUEL: These should have more descriptive names and a doctstring documenting
-# where they come from (references) and what they do.
-class Proportional_Selection(SelectionType):
+class ProportionalSelection(SelectionType):
     """Also called Roulette wheel selection.
 
  Thierens, Dirk. "An adaptive pursuit strategy for allocating operator probabilities." Proceedings of the 7th annual conference on Genetic and evolutionary computation. ACM, 2005. """
-    def __init__(self, n_ops):
-        super().__init__(n_ops)
+    def __init__(self, aos):
+        super().__init__(aos)
     
-    def perform_selection(self, probability, select_counter):
+    def _select(self, probability):
         # Roulette wheel selection
-        if self.op_init_list:
-            SI = self.op_init_list.pop()
-        else:
-            SI = np.random.choice(len(probability), p = probability)
-        return super().check_selection(SI)
+        return np.random.choice(len(probability), p = probability)
 
-
-class Greedy_Selection(SelectionType):
-    """ Fialho, Álvaro, Marc Schoenauer, and Michèle Sebag. "Toward comparison-based adaptive operator selection." Proceedings of the 12th annual conference on Genetic and evolutionary computation. ACM, 2010.
+class GreedySelection(SelectionType):
+    """Fialho, Álvaro, Marc Schoenauer, and Michèle Sebag. "Toward comparison-based adaptive operator selection." Proceedings of the 12th annual conference on Genetic and evolutionary computation. ACM, 2010.
 """
-    def __init__(self, n_ops):
-        super().__init__(n_ops)
+    def __init__(self, aos):
+        super().__init__(aos)
     
-    def perform_selection(self, probability, select_counter):
+    def _select(self, probability):
         # Greedy Selection
-        if self.op_init_list:
-            SI = self.op_init_list.pop()
-        else:
-            SI = np.argmax(probability)
-        return super().check_selection(SI)
-
-
-class Epsilon_Greedy_Selection(SelectionType):
-    # MUDITA_check: You have not checked the working of this definition, can you please check it?
-    # Epsilon Greedy Selection
-    def __init__(self, n_ops, sel_eps = 0.1):
-        super().__init__(n_ops)
-        self.sel_eps = sel_eps
-        #debug_print("{:>30}: sel_eps = {}".format(type(self).__name__, self.sel_eps))
-    
-    def perform_selection(self, probability, select_counter):
-        if self.op_init_list:
-            SI = self.op_init_list.pop()
-        elif np.random.uniform() < self.sel_eps:
-            SI = np.random.randint(0, self.n_ops)
-        else:
-            SI = np.argmax(probability)
-        return super().check_selection(SI)
-
-
-class Proportional_Greedy_Selection(SelectionType):
-    # MUDITA_check: You have not checked the working of this definition, can you please check it?
-    # Combination of Proportional and Greedy Selection
-    '''TODO'''
-    def __init__(self, n_ops, sel_eps = 0.1):
-        super().__init__(n_ops)
-        self.sel_eps = sel_eps
-        #debug_print("{:>30}: sel_eps = {}".format(type(self).__name__, self.sel_eps))
-
-    def perform_selection(self, probability, select_counter):
-        if self.op_init_list:
-            SI = self.op_init_list.pop()
-        elif np.random.uniform() < self.sel_eps:
-            SI = np.random.choice(len(probability), p = probability)
-        else:
-            SI = np.argmax(probability)
-        return super().check_selection(SI)
-
-
-class Linear_Annealed_Selection(SelectionType):
-    # MUDITA_check: You have not checked the working of this definition, can you please check it?
-    # Linear Annealed Selection
-    '''TODO'''
-    def __init__(self, n_ops, budget, popsize):
-        super().__init__(n_ops)
-        self.budget = budget
-        self.popsize = popsize
-        self.n_steps = self.budget / self.popsize
-        self.max_value = 1.0
-        self.min_value = 0.0
-        self.step_size = (self.max_value - self.min_value) / self.n_steps
-
-    def perform_selection(self, probability, select_counter):
-        self.eps_value = self.max_value - (self.step_size * select_counter)
-        if self.op_init_list:
-            SI = self.op_init_list.pop()
-        elif np.random.uniform() < self.eps_value:
-            SI = np.random.randint(0, self.n_ops)
-        else:
-            SI = np.argmax(probability)
-        return super().check_selection(SI)
+        return np.argmax(probability)
 
 # FIXME: Find a way to call these checks at class creation time.
 # Sanity checks.
@@ -2175,4 +1534,3 @@ QualityType.check_params()
 ProbabilityType.check_params()
 SelectionType.check_params()
 AOS.check_known_AOS()
-
