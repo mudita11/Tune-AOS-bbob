@@ -1,0 +1,26 @@
+
+# DE parameters
+FF                   "--FF "                   r (0.1, 2.0)                                          # Scaling factor
+CR                   "--CR "                   r (0.1, 1.0)                                          # Crossover rate
+NP                   "--NP "                   i (50, 400)                                           # Population size
+top_NP               "--top_NP "               r (0.02, 1.0)                                         # Top candidates
+mutation             "--mutation "             c (aos)                                               # Mutation strategy
+##### AOS:  Hybridv2.txt
+# Unknown_AOS
+OM_choice            "--OM_choice "            c (2)                                                 # Offspring metric selected (2:improv_wrt_parent)
+# ProbabilityType
+prob_choice          "--prob_choice "          c (0)                                                 # 0:Probability_Matching
+p_min                "--p_min "                r (0.0, 1.0)                                          # Minimum probability of selection of an operator
+error_prob           "--error_prob "           r (0.0, 1.0)           | prob_choice == 0             # Probability noise
+# RewardType
+rew_choice           "--rew_choice "           c (10)                                                # 10:Best2gen
+scaling_constant     "--scaling_constant "     r (0.001, 1.0)         | rew_choice == 10             # Scaling constant
+alpha                "--alpha "                c (0, 1)               | rew_choice == 10             # Choice to normalise by best produced by any operator
+beta                 "--beta "                 c (0, 1)               | rew_choice == 10             # Choice to include the difference between budget used by an operator in previous two generations
+# QualityType
+qual_choice          "--qual_choice "          c (4)                                                 # 4:Bellman_Equation
+weight_reward        "--weight_reward "        r (0.0, 1.0)           | qual_choice == 4             # Memory for current reward
+weight_old_reward    "--weight_old_reward "    r (0.0, 1.0)           | qual_choice == 4             # Memory for previous reward
+discount_rate        "--discount_rate "        r (0.0, 1.0)           | qual_choice == 4             # Discount rate
+# SelectionType
+select_choice        "--select_choice "        c (0)                                                 # 0:Proportional_Selection
