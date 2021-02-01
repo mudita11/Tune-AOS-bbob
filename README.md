@@ -4,10 +4,12 @@
 
 **cocoex, taken from (https://numbbo.github.io/coco-doc/)**
 
-cd ..
 git clone https://github.com/numbbo/coco.git # get coco using git
+
 cd coco
+
 python3 do.py run-python install-user # install Python experimental module cocoex 
+
 python3 do.py install-postprocessing install-user # install post-processing 
 
 **Pygmo**
@@ -16,7 +18,7 @@ pip3 install --user pygmo
 **Check command**
 irace --check
 
-## Folder description 
+## Description 
 **Target runner**
 - target-runner-target-vs-fe.py is same as target-runner-hv that calculates the area under the curve generated using trace file. The ECDF graph represents log10(FEvals/dim) vs fraction of targets solved for a problem. 
 - target-runner-error-vs-fe.py calculates the area under the curve generated using trace file. The ECDF graph represents log10(FEvals/dim) vs best fitness seen for different targets for a problem. 
@@ -43,16 +45,19 @@ Normalised_success_sum_window: window_size -> W, normal_factor -> mathsymbol(ome
 Normalised_success_sum_gen: max_gen -> max_gen;
 Best2gen: scaling_constant -> C, alpha -> mathsymbol(alpha), beta -> mathsymbol(beta);
 Normalised_best_sum: max_gen -> max_gen, intensity -> mathsymbol(rho), alpha -> mathsymbol(alpha)
+
 **Quality components and their parameters**
 Weighted_sum: decay_rate -> mathsymbol(delta);
 Upper_confidence_bound: scaling_factor -> c;
 Quality_Identity;
 Weighted_normalised_sum: decay_rate -> mathsymbol(delta), q_min -> q_min;
 Bellman_Equation: weight_reward -> c1, weight_old_reward -> c2, discount_rate -> mathsymbol(gamma)
+
 **Probability components and their parameters**
 Probability_Matching: p_min -> p_min, error_prob -> mathsymbol(epsilon);
 Adaptive_Pursuit: p_min -> p_min, p_max -> p_max, learning_rate -> mathsymbol(mu);
 Probability_Identity
+
 **Selection components and their parameters**
 Proportional; 
 Greedy; 
