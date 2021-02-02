@@ -1,4 +1,5 @@
 # Generic-AOS-framework
+Adaptive Operator Selection (AOS) method consists of multiple components such as reward, quality etc. The AOS methods from literature is be generalised by identifying these components. Each component is presented with a number of alternative choices, each represented with a formula. IRACE is setup to select the best combination of components and tune their hyper parameters. Refer to https://arxiv.org/pdf/2005.05613.pdf for full details on the design of the framework.
 
 ## Installation
 
@@ -77,3 +78,18 @@ Greedy;
 Epsilon-Greedy: sel_eps -> eps;
 Proportional_Greedy: sel_eps -> eps;
 Linear_Annealed
+
+## Reference
+If you use this repository, please cite the following paper:
+
+'@article{sharma2020unified,
+
+title={Unified Framework for the Adaptive Operator Selection of Discrete Parameters},
+
+author={Sharma, Mudita and Lopez-Ibanez, Manuel and Kazakov, Dimitar},
+
+journal={arXiv preprint arXiv:2005.05613},
+
+year={2020}
+
+}'
