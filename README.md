@@ -81,12 +81,12 @@ Linear_Annealed
 
 ## Reference
 If you use this repository, please cite the following paper:
-'''
+```
 @article{sharma2020unified,
 title={Unified Framework for the Adaptive Operator Selection of Discrete Parameters},
 author={Sharma, Mudita and Lopez-Ibanez, Manuel and Kazakov, Dimitar},
 journal={arXiv preprint arXiv:2005.05613},
 year={2020}
-
 }
-'''
+```
+
