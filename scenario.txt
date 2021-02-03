@@ -6,7 +6,7 @@
 ## value on the command line).
 
 ## File that contains the description of the parameters.
-parameterFile = "./RecPM.txt"
+parameterFile = "./default_parameter_setting/RecPM.txt"
 
 ## Directory where the programs will be run.
 execDir = "./arena"
